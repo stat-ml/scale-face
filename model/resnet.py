@@ -1,17 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding:utf-8 -*-
-"""
-Created on 2020/04/24
-author: lujie
-"""
-
-
 import thop
 import torch
 import torch.nn as nn
-
-from IPython import embed
-
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -236,12 +225,3 @@ def resnet_zoo(backbone="resnet18", feat_dim=512, drop_ratio=0.5):
         block = Bottleneck
 
     return ResNet(block, version_dict[backbone], feat_dim, drop_ratio)
-
-
-if __name__ == "__main__":
-
-    input = torch.Tensor(1, 3, 112, 112)
-    model = resnet_zoo("resnet18")
-    flops, params = thop.profile(model, inputs=(input,))
-    flops, params = thop.clever_format([flops, params], "%.3f")
-    print(flops, params)

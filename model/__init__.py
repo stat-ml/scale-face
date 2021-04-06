@@ -9,6 +9,4 @@ model_dict = {
     "spherenet20": SphereNet20,
 }
 
-criterions_dict = {
-    "mlsloss": MLSLoss
-}
+criterions_dict = {"mlsloss": MLSLoss}
