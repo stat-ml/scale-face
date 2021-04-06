@@ -16,7 +16,7 @@ from utils import cfg
 from utils import optims
 
 import model as mlib
-from config import training_args
+from parser_cfg import training_args
 
 torch.backends.cudnn.bencmark = True
 
@@ -49,6 +49,7 @@ class Trainer:
         self.model["backbone"] = mlib.model_dict[self.model_args.backbone]()
         if self.args.resume:
             model_dict = torch.load(args.resume, map_location=self.device)
+            self.start_epoch = model_dict["epoch"]
             self.model["backbone"].load_state_dict(model_dict["backbone"])
 
         self.model["uncertain"] = mlib.UncertaintyHead(self.model_args.in_feats)
@@ -125,8 +126,7 @@ class Trainer:
         return train_loss
 
     def _main_loop(self):
-        for epoch in range(0, 10):
-
+        for epoch in range(self.start_epoch, self.args.epochs):
             train_loss = self._model_train(epoch)
 
             if min_train_loss > train_loss:
