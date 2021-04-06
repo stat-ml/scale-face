@@ -1,4 +1,5 @@
-"""Functions for image processing
+"""
+    Functions for image processing
 """
 # MIT License
 #
@@ -233,7 +234,7 @@ register = {
 }
 
 
-def preprocess(images, is_training=False):
+def preprocess(images, center_crop, is_training=False):
     # Load images first if they are file paths
     if type(images[0]) == str:
         image_paths = images
@@ -249,12 +250,12 @@ def preprocess(images, is_training=False):
 
     # Process images
     preprocess_train = [
-        ["center_crop", (112, 96)],
+        ["center_crop", center_crop],
         ["random_flip"],
         ["standardize", "mean_scale"],
     ]
     preprocess_test = [
-        ["center_crop", (112, 96)],
+        ["center_crop", center_crop],
         ["standardize", "mean_scale"],
     ]
     proc_funcs = preprocess_train if is_training else preprocess_test

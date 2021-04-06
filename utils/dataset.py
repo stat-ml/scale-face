@@ -38,7 +38,6 @@ queue_timeout = 600
 
 class Dataset(object):
     def __init__(self, path=None, prefix=None):
-
         if path is not None:
             self.init_from_path(path)
         else:
@@ -101,6 +100,8 @@ class Dataset(object):
         paths = []
         labels = []
         names = []
+        import pdb
+        pdb.set_trace()
         for label, class_name in enumerate(class_names):
             classdir = os.path.join(folder, class_name)
             if os.path.isdir(classdir):

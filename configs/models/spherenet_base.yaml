@@ -1,0 +1,6 @@
+title: "spherenet_base"
+backbone: "spherenet20"
+in_feats: 512
+criterion:
+    name: "mlsloss"
+    mean: false 

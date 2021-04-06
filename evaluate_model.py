@@ -2,7 +2,7 @@ import torch
 from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
 
-def evaluate_lfw_paired(model, batches=100, path="/gpfs/gpfs0/r.karimov/pfe/list_casi_mtcnncaffe_aligned_nooverlap.txt"):
+def evaluate_lfw_paired(model, batches=100, path="e/list_casi_mtcnncaffe_aligned_nooverlap.txt"):
     trainset = Dataset(path)
     batch_format = {
         "size": 256,
