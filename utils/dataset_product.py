@@ -1,22 +1,25 @@
 import os
+from collections import namedtuple
+from typing import Union
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
 import ctypes
-from multiprocessing import Process, Queue, Condition, Lock
+from multiprocessing import Process, Queue, Lock
 
-queue_timeout = 600
+DPath = namedtuple("DPath", ["path", "prefix"])
 
 
-class Dataset(object):
-    def __init__(self, path=None, prefix=None):
-        if path is not None:
-            self.init_from_path(path)
-        else:
-            self.data = pd.DataFrame([], columns=["path", "abspath", "label", "name"])
-
-        self.prefix = prefix
-        self.base_seed = 0
+class DatasetProduct:
+    def __init__(
+        self, path_query: Union[str, DPath], path_distractor: Union[str, DPath]
+    ):
+        if isinstance(path_query, str):
+            path_query = DPath(path=path_query, prefix=None)
+        if isinstance(path_distractor, str):
+            path_distractor = DPath(path=path_distractor, prefix=None)
+        self.init_from_path(path_query, is_query=True)
+        self.init_from_path(path_distractor, is_query=False)
         self.batch_queue = None
         self.batch_workers = None
 
@@ -50,29 +53,28 @@ class Dataset(object):
     def iloc(self):
         return self.data.iloc
 
-    def init_from_path(self, path):
-        path = os.path.expanduser(path)
+    def init_from_path(self, path: DPath, is_query):
+        path = os.path.expanduser(path.path)
         _, ext = os.path.splitext(path)
+
         if os.path.isdir(path):
-            self.init_from_folder(path)
+            self.init_from_folder(path, is_query=is_query)
         elif ext == ".txt":
-            self.init_from_list(path)
+            self.init_from_list(path, is_query=is_query)
         else:
             raise ValueError(
                 "Cannot initialize dataset from path: %s\n\
                 It should be either a folder, .txt or .hdf5 file"
                 % path
             )
-        # print('%d images of %d classes loaded' % (len(self.images), self.num_classes))
 
-    def init_from_folder(self, folder):
+    def init_from_folder(self, folder, is_query):
         folder = os.path.abspath(os.path.expanduser(folder))
         class_names = os.listdir(folder)
         class_names.sort()
         paths = []
         labels = []
         names = []
-
         for label, class_name in enumerate(class_names):
             classdir = os.path.join(folder, class_name)
             if os.path.isdir(classdir):
@@ -83,12 +85,18 @@ class Dataset(object):
                 labels.extend(len(images_class) * [label])
                 names.extend(len(images_class) * [class_name])
         abspaths = [os.path.join(folder, p) for p in paths]
-        self.data = pd.DataFrame(
-            {"path": paths, "abspath": abspaths, "label": labels, "name": names}
-        )
-        self.prefix = folder
+        if is_query is True:
+            self.data_query = pd.DataFrame(
+                {"path": paths, "abspath": abspaths, "label": labels, "name": names}
+            )
+            self.prefix_query = folder
+        else:
+            self.data_distractor = pd.DataFrame(
+                {"path": paths, "abspath": abspaths, "label": labels, "name": names}
+            )
+            self.prefix_distractor = folder
 
-    def init_from_list(self, filename, folder_depth=2):
+    def init_from_list(self, filename, is_query, folder_depth=2):
         with open(filename, "r") as f:
             lines = f.readlines()
         lines = [line.strip().split(" ") for line in lines]
@@ -106,54 +114,16 @@ class Dataset(object):
                                         label(int)" or just "fullpath(str)"'
             )
 
-        self.data = pd.DataFrame(
-            {"path": paths, "abspath": abspaths, "label": labels, "name": names}
-        )
-        self.prefix = abspaths[0].split("/")[:-folder_depth]
-
-    def __len__(self):
-        return len(self.data["path"])
-
-    def set_base_seed(self, base_seed=0):
-        self.base_seed = base_seed
-
-    def random_samples_from_class(self, label, num_samples, exception=None):
-        indices_temp = list(np.where(self.data["label"].values == label)[0])
-
-        if exception is not None:
-            indices_temp.remove(exception)
-            assert len(indices_temp) > 0
-        indices = []
-        iterations = int(np.ceil(1.0 * num_samples / len(indices_temp)))
-        for i in range(iterations):
-            sample_indices = np.random.permutation(indices_temp)
-            indices.append(sample_indices)
-        indices = list(np.concatenate(indices, axis=0)[:num_samples])
-        return indices
-
-    def get_batch_indices(self, batch_format):
-        indices_batch = []
-        batch_size = batch_format["size"]
-
-        num_classes = batch_format["num_classes"]
-        assert batch_size % num_classes == 0
-        num_samples_per_class = batch_size // num_classes
-        idx_classes = np.random.permutation(self.classes)[:num_classes]
-        indices_batch = []
-        for c in idx_classes:
-            indices_batch.extend(
-                self.random_samples_from_class(c, num_samples_per_class)
+        if is_query is True:
+            self.data_query = pd.DataFrame(
+                {"path": paths, "abspath": abspaths, "label": labels, "name": names}
             )
-
-        return indices_batch
-
-    def get_batch(self, batch_format):
-        indices = self.get_batch_indices(batch_format)
-        batch = {}
-        for column in self.data.columns:
-            batch[column] = self.data[column].values[indices]
-
-        return batch
+            self.prefix_query = abspaths[0].split("/")[:-folder_depth]
+        else:
+            self.data_distractor = pd.DataFrame(
+                {"path": paths, "abspath": abspaths, "label": labels, "name": names}
+            )
+            self.prefix_distractor = abspaths[0].split("/")[:-folder_depth]
 
     def get_batch_in_range(self, l, r):
         if l >= len(self):
@@ -164,26 +134,8 @@ class Dataset(object):
             batch[column] = self.data[column].values[indices]
         return batch
 
-    def start_batch_queue(self, batch_format, proc_func=None, maxsize=1, num_threads=3):
-        self.batch_queue = Queue(maxsize=maxsize)
-
-        def batch_queue_worker(seed):
-            np.random.seed(seed + self.base_seed)
-            while True:
-                batch = self.get_batch(batch_format)
-                if proc_func is not None:
-                    batch["image"] = proc_func(batch["abspath"])
-                self.batch_queue.put(batch)
-
-        self.batch_workers = []
-        for i in range(num_threads):
-            worker = Process(target=batch_queue_worker, args=(i,))
-            worker.daemon = True
-            worker.start()
-            self.batch_workers.append(worker)
-
     def start_sequential_batch_queue(
-        self, batch_size, proc_func=None, maxsize=1, num_threads=3
+        self, batch_format, proc_func=None, maxsize=1, num_threads=3
     ):
         self.batch_queue = Queue(maxsize=maxsize)
 
@@ -191,12 +143,12 @@ class Dataset(object):
             while True:
                 lock.acquire()
                 batch = self.get_batch_in_range(
-                    cur_idx.value, cur_idx.value + batch_size
+                    cur_idx.value, cur_idx.value + batch_format["size"]
                 )
                 if batch is None:
                     # TODO: break worker, queue won't stop
                     break
-                cur_idx.value += batch_size
+                cur_idx.value += batch_format["size"]
                 lock.release()
                 if proc_func is not None:
                     batch["image"] = proc_func(batch["abspath"])
@@ -211,7 +163,7 @@ class Dataset(object):
             worker.start()
             self.batch_workers.append(worker)
 
-    def pop_batch_queue(self, timeout=queue_timeout):
+    def pop_batch_queue(self, timeout):
         return self.batch_queue.get(block=True, timeout=timeout)
 
     def release_queue(self):

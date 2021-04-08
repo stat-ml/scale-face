@@ -5,11 +5,12 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.dataset_lfw import Dataset as LFW_Dataset
+from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
 
 
 __all__ = ["visualize_ambiguity_dilemma_lfw", "visualize_low_high_similarity_pairs"]
+
 
 # TODO: remove from here and move to the utils submodule
 # after that we can expose this
@@ -52,7 +53,7 @@ def visualize_ambiguity_dilemma_lfw(
     if device is None:
         device = "cpu"
 
-    paths_full = LFW_Dataset(lfw_path)["abspath"]
+    paths_full = Dataset(lfw_path)["abspath"]
     linspace_size = 20
     kernel_values = np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int)
 

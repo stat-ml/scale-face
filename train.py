@@ -1,27 +1,19 @@
 import os
 import sys
-import time
 import torch
-import random
 import numpy as np
 import torchvision
-import torch.nn as nn
-import torch.optim as optim
-from sklearn import metrics
-import torch.nn.functional as F
 
-
+import utils
 from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
+from utils import face_metrics
 from utils import cfg
-from utils import optims
 
 import model as mlib
 from parser_cfg import training_args
 
 torch.backends.cudnn.bencmark = True
-
-from tqdm import tqdm
 
 
 class Trainer:
@@ -48,15 +40,20 @@ class Trainer:
 
     def _model_loader(self):
         self.model["backbone"] = mlib.model_dict[self.model_args.backbone]()
-        if self.args.resume:
-            model_dict = torch.load(args.resume, map_location=self.device)
-            self.start_epoch = model_dict["epoch"]
-            self.model["backbone"].load_state_dict(model_dict["backbone"])
-
         self.model["uncertain"] = mlib.UncertaintyHead(self.model_args.in_feats)
 
+        self.start_epoch = 0
         if self.args.resume:
+            model_dict = torch.load(self.args.resume, map_location=self.device)
+            self.start_epoch = model_dict["epoch"]
+            self.model["backbone"].load_state_dict(model_dict["backbone"])
             self.model["uncertain"].load_state_dict(model_dict["uncertain"])
+
+        if self.args.pretrained_backbone and self.args.resume is None:
+            backbone_dict = torch.load(
+                self.args.pretrained_backbone, map_location=self.device
+            )
+            self.model["backbone"].load_state_dict(backbone_dict)
 
         self.model["criterion"] = mlib.criterions_dict[self.model_args.criterion.name](
             mean=self.model_args.criterion.mean
@@ -66,7 +63,7 @@ class Trainer:
             for p in self.model["backbone"].parameters():
                 p.requires_grad = False
 
-        self.model["optimizer"] = optims.optimizers_map[self.optim_args.name](
+        self.model["optimizer"] = utils.optimizers_map[self.optim_args.name](
             [{"params": self.model["uncertain"].parameters()}],
             lr=self.optim_args.base_lr,
             weight_decay=self.optim_args.weight_decay,
@@ -90,6 +87,14 @@ class Trainer:
 
     def _model_train(self, epoch=0):
 
+        face_metrics.tpr_pfr(
+            self.model,
+            "/gpfs/gpfs0/r.karimov/casia/list_casia_mtcnncaffe_aligned_nooverlap.txt",
+            "/trinity/home/r.karimov/Probabilistic-Face-Embeddings/data/lfw_mtcnncaffe_aligned",
+            device=self.device,
+            debug=True,
+        )
+
         if self.args.freeze_backbone:
             self.model["backbone"].eval()
         self.model["uncertain"].train()
@@ -102,7 +107,7 @@ class Trainer:
             img = torch.from_numpy(batch["image"]).permute(0, 3, 1, 2).to(self.device)
             gty = torch.from_numpy(batch["label"]).to(self.device)
 
-            feature, sig_feat = self.model["backbone"](img)
+            feature, sig_feat, angle_x = self.model["backbone"](img)
             log_sig_sq = self.model["uncertain"](sig_feat)
             loss = self.model["criterion"](feature, log_sig_sq, gty)
 

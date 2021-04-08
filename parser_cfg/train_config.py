@@ -1,5 +1,5 @@
 import exman
-import os.path as osp
+
 
 def training_args():
 
@@ -24,9 +24,13 @@ def training_args():
 
     parser.add_argument("--workers", type=int, default=0)
 
+    parser.add_argument("--resume", type=str, default=None)  # checkpoint
     parser.add_argument(
-        "--resume", type=str, default=None
-    )  # checkpoint
+        "--pretrained-backbone",
+        type=str,
+        default=None,
+        help="Pretrained backbone weights",
+    )
 
     parser.add_argument("--freeze-backbone", type=bool, default=True)
 
