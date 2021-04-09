@@ -17,6 +17,11 @@ class AngleLoss(nn.Module):
         self.lamb = 1500.0
 
     def forward(self, input, target):
+
+        import pdb
+
+        pdb.set_trace()
+
         self.it += 1
         cos_theta, phi_theta = input
         target = target.view(-1, 1)
@@ -27,7 +32,9 @@ class AngleLoss(nn.Module):
         index = Variable(index)
 
         self.lamb = max(self.LambdaMin, self.LambdaMax / (1 + 0.1 * self.it))
+
         output = cos_theta * 1.0
+
         output[index] -= cos_theta[index] * (1.0 + 0) / (1 + self.lamb)
         output[index] += phi_theta[index] * (1.0 + 0) / (1 + self.lamb)
 

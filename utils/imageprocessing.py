@@ -204,7 +204,7 @@ register = {
 }
 
 
-def preprocess(images, center_crop, is_training=False):
+def preprocess(images, center_crop_size, align: tuple = None, *, is_training=False):
     if type(images[0]) == str:
         image_paths = images
         images = []
@@ -219,12 +219,12 @@ def preprocess(images, center_crop, is_training=False):
 
     # Process images
     preprocess_train = [
-        ["center_crop", center_crop],
+        ["center_crop", center_crop_size],
         ["random_flip"],
         ["standardize", "mean_scale"],
     ]
     preprocess_test = [
-        ["center_crop", center_crop],
+        ["center_crop", center_crop_size],
         ["standardize", "mean_scale"],
     ]
     proc_funcs = preprocess_train if is_training else preprocess_test

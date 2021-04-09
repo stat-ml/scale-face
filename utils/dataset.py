@@ -4,31 +4,32 @@ import pandas as pd
 import multiprocessing as mp
 import ctypes
 from multiprocessing import Process, Queue, Condition, Lock
+from typing import Callable, Optional, List
 
 queue_timeout = 600
 
 
 class Dataset(object):
-    def __init__(self, path=None, prefix=None):
-        if path is not None:
-            self.init_from_path(path)
-        else:
-            self.data = pd.DataFrame([], columns=["path", "abspath", "label", "name"])
-
-        self.prefix = prefix
-        self.base_seed = 0
+    def __init__(
+        self, path: str, preprocess_func: Optional[Callable] = None, seed: int = 0
+    ):
+        self.init_from_path(path)
+        self.base_seed = seed
         self.batch_queue = None
         self.batch_workers = None
+        self._preprocess_func = preprocess_func
 
-    def __getitem__(self, key):
-        return self.data[key]
+    def __getitem__(self, ind: int) -> np.ndarray:
+        abspath: List = [self.data.iloc[ind]["abspath"]]
+        image = self._preprocess_func(abspath)[0]
+        return image
 
-    def __setitem__(self, key, value):
-        self.data[key] = value
-        return self.data[key]
-
-    def _delitem(self, key):
-        self.data.__delitem__(key)
+    def get_item_by_the_path(self, path: str) -> np.ndarray:
+        abspath: List = list(self.data.query(f"path == '{path}'")["abspath"])[0:1]
+        if len(abspath) == 0:
+            raise NotImplementedError
+        image = self._preprocess_func(abspath)[0]
+        return image
 
     @property
     def num_classes(self):
@@ -63,7 +64,6 @@ class Dataset(object):
                 It should be either a folder, .txt or .hdf5 file"
                 % path
             )
-        # print('%d images of %d classes loaded' % (len(self.images), self.num_classes))
 
     def init_from_folder(self, folder):
         folder = os.path.abspath(os.path.expanduser(folder))
@@ -86,7 +86,6 @@ class Dataset(object):
         self.data = pd.DataFrame(
             {"path": paths, "abspath": abspaths, "label": labels, "name": names}
         )
-        self.prefix = folder
 
     def init_from_list(self, filename, folder_depth=2):
         with open(filename, "r") as f:
@@ -109,7 +108,6 @@ class Dataset(object):
         self.data = pd.DataFrame(
             {"path": paths, "abspath": abspaths, "label": labels, "name": names}
         )
-        self.prefix = abspaths[0].split("/")[:-folder_depth]
 
     def __len__(self):
         return len(self.data["path"])
@@ -152,7 +150,6 @@ class Dataset(object):
         batch = {}
         for column in self.data.columns:
             batch[column] = self.data[column].values[indices]
-
         return batch
 
     def get_batch_in_range(self, l, r):
@@ -164,15 +161,15 @@ class Dataset(object):
             batch[column] = self.data[column].values[indices]
         return batch
 
-    def start_batch_queue(self, batch_format, proc_func=None, maxsize=1, num_threads=3):
+    def start_batch_queue(self, batch_format, maxsize=1, num_threads=3):
         self.batch_queue = Queue(maxsize=maxsize)
 
         def batch_queue_worker(seed):
             np.random.seed(seed + self.base_seed)
             while True:
                 batch = self.get_batch(batch_format)
-                if proc_func is not None:
-                    batch["image"] = proc_func(batch["abspath"])
+                if self._preprocess_func is not None:
+                    batch["image"] = self._preprocess_func(batch["abspath"])
                 self.batch_queue.put(batch)
 
         self.batch_workers = []
@@ -182,9 +179,7 @@ class Dataset(object):
             worker.start()
             self.batch_workers.append(worker)
 
-    def start_sequential_batch_queue(
-        self, batch_size, proc_func=None, maxsize=1, num_threads=3
-    ):
+    def start_sequential_batch_queue(self, batch_size, maxsize=1, num_threads=3):
         self.batch_queue = Queue(maxsize=maxsize)
 
         def batch_queue_worker(seed, lock, cur_idx):
@@ -198,8 +193,8 @@ class Dataset(object):
                     break
                 cur_idx.value += batch_size
                 lock.release()
-                if proc_func is not None:
-                    batch["image"] = proc_func(batch["abspath"])
+                if self._preprocess_func is not None:
+                    batch["image"] = self._preprocess_func(batch["abspath"])
                 self.batch_queue.put(batch)
 
         self.batch_workers = []

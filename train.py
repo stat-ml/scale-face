@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import torchvision
 
+import model.losses
 import utils
 from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
@@ -32,7 +33,6 @@ class Trainer:
         self.device = (
             "cuda" if (self.env_args.use_gpu and torch.cuda.is_available) else "cpu"
         )
-
         # create directory for experiment
 
         self.checkpoints_path = self.args.root / "checkpoints"
@@ -81,12 +81,15 @@ class Trainer:
             "size": self.args.batch_size,
             "num_classes": self.args.num_classes_batch,
         }
-        self.trainset = Dataset(self.dataset_args.path)
-        proc_func = lambda images: preprocess(images, self.dataset_args.in_size, True)
-        self.trainset.start_batch_queue(batch_format, proc_func=proc_func)
+        train_proc_func = lambda images: preprocess(
+            images, self.dataset_args.in_size, is_training=True
+        )
+        self.trainset = Dataset(self.dataset_args.path, preprocess_func=train_proc_func)
+        self.trainset.start_batch_queue(batch_format)
 
     def _model_train(self, epoch=0):
 
+        """
         face_metrics.tpr_pfr(
             self.model,
             "/gpfs/gpfs0/r.karimov/casia/list_casia_mtcnncaffe_aligned_nooverlap.txt",
@@ -94,6 +97,7 @@ class Trainer:
             device=self.device,
             debug=True,
         )
+        """
 
         if self.args.freeze_backbone:
             self.model["backbone"].eval()
@@ -108,6 +112,11 @@ class Trainer:
             gty = torch.from_numpy(batch["label"]).to(self.device)
 
             feature, sig_feat, angle_x = self.model["backbone"](img)
+            loss = model.losses.AngleLoss()
+            loss(angle_x, gty)
+            import pdb
+
+            pdb.set_trace()
             log_sig_sq = self.model["uncertain"](sig_feat)
             loss = self.model["criterion"](feature, log_sig_sq, gty)
 

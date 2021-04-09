@@ -37,14 +37,14 @@ class AngleLinear(nn.Module):
         ]
 
     def forward(self, input):
-        x = input  # size=(B,F)    F is feature len
-        w = self.weight  # size=(F,Classnum) F=in_features Classnum=out_features
+        x = input
+        w = self.weight
 
         ww = w.renorm(2, 1, 1e-5).mul(1e5)
-        xlen = x.pow(2).sum(1).pow(0.5)  # size=B
-        wlen = ww.pow(2).sum(0).pow(0.5)  # size=Classnum
+        xlen = x.pow(2).sum(1).pow(0.5)
+        wlen = ww.pow(2).sum(0).pow(0.5)
 
-        cos_theta = x.mm(ww)  # size=(B,Classnum)
+        cos_theta = x.mm(ww)
         cos_theta = cos_theta / xlen.view(-1, 1) / wlen.view(1, -1)
         cos_theta = cos_theta.clamp(-1, 1)
 
@@ -62,7 +62,7 @@ class AngleLinear(nn.Module):
         cos_theta = cos_theta * xlen.view(-1, 1)
         phi_theta = phi_theta * xlen.view(-1, 1)
         output = (cos_theta, phi_theta)
-        return output  # size=(B,Classnum,2)
+        return output
 
 
 class sphere20a(nn.Module):
@@ -139,6 +139,8 @@ class sphere20a(nn.Module):
         x = self.relu4_1(self.conv4_1(x))
         x = x + self.relu4_3(self.conv4_3(self.relu4_2(self.conv4_2(x))))
         x = x.view(x.size(0), -1)
+        if self.feature:
+            return x
         xa = self.fc5(x)
         angle_x = self.fc6(xa)
         return xa, x, angle_x
