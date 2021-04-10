@@ -113,11 +113,11 @@ def tpr_pfr(
     return TPRs
 
 
-def accuracy_lfw_6000_pairs(model: nn.Model, device=None):
+def accuracy_lfw_6000_pairs(model: nn.Module, device=None):
     """
-        #TODO: need to understand this protocol
-        #TODO: any paper to link
-        This is the implementation of accuracy on 6000 pairs
+    #TODO: need to understand this protocol
+    #TODO: any paper to link
+    This is the implementation of accuracy on 6000 pairs
     """
 
     if device is None:
@@ -127,7 +127,7 @@ def accuracy_lfw_6000_pairs(model: nn.Model, device=None):
         folds = []
         base = list(range(n))
         for i in range(n_folds):
-            test = base[i * n // n_folds: (i + 1) * n // n_folds]
+            test = base[i * n // n_folds : (i + 1) * n // n_folds]
             train = list(set(base) - set(test))
             folds.append([train, test])
         return folds
@@ -153,14 +153,14 @@ def accuracy_lfw_6000_pairs(model: nn.Model, device=None):
                 best_threshold = threshold
         return best_threshold
 
-    lfw_prefix = "/gpfs/gpfs0/r.karimov/lfw/data_"
+    lfw_prefix = "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
 
     predicts = []
 
     from utils.imageprocessing import preprocess
 
     proc_func = lambda images: preprocess(images, [112, 96], is_training=False)
-    lfw_set = Dataset("/gpfs/gpfs0/r.karimov/lfw/data_", preprocess_func=proc_func)
+    lfw_set = Dataset("/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo", preprocess_func=proc_func)
 
     with open("/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt") as f:
         pairs_lines = f.readlines()[1:]
@@ -184,15 +184,21 @@ def accuracy_lfw_6000_pairs(model: nn.Model, device=None):
             # FIXME: mtcncaffe and spherenet alignments are not the same
             continue
 
-        img_batch = torch.from_numpy(np.concatenate((img1[None], img1[None]), axis=0)).permute(0, 3, 1, 2).to(device)
+        img_batch = (
+            torch.from_numpy(np.concatenate((img1[None], img2[None]), axis=0))
+            .permute(0, 3, 1, 2)
+            .to(device)
+        )
+        # TODO: for some reason spherenet is good on BGR??
         output = model(img_batch)
+
         f1, f2 = output
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
         predicts.append("{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag))
 
     accuracy = []
     thd = []
-    folds = KFold(n=10, n_folds=10, shuffle=False)
+    folds = KFold(n=6000, n_folds=10, shuffle=False)
     thresholds = np.arange(-1.0, 1.0, 0.005)
 
     predicts = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))
@@ -201,4 +207,3 @@ def accuracy_lfw_6000_pairs(model: nn.Model, device=None):
         accuracy.append(eval_acc(best_thresh, predicts[test]))
         thd.append(best_thresh)
     return np.mean(accuracy)
-

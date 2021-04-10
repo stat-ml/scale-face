@@ -28,8 +28,9 @@ class Dataset(object):
         abspath: List = list(self.data.query(f"path == '{path}'")["abspath"])[0:1]
         if len(abspath) == 0:
             raise NotImplementedError
-        image = self._preprocess_func(abspath)[0]
-        return image
+        if self._preprocess_func:
+            image = self._preprocess_func(abspath)
+        return image[0]
 
     @property
     def num_classes(self):
@@ -130,7 +131,6 @@ class Dataset(object):
         return indices
 
     def get_batch_indices(self, batch_format):
-        indices_batch = []
         batch_size = batch_format["size"]
 
         num_classes = batch_format["num_classes"]

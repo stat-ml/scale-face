@@ -204,12 +204,14 @@ register = {
 }
 
 
-def preprocess(images, center_crop_size, align: tuple = None, *, is_training=False):
+def preprocess(images, center_crop_size, mode="RGB", align: tuple = None, *, is_training=False):
+    """
+        #TODO: docs, describe mode parameter
+    """
+    #TODO: this is not preprocess actually
     if type(images[0]) == str:
         image_paths = images
         images = []
-        channels = 3
-        mode = "RGB" if channels == 3 else "I"
         for image_path in image_paths:
             images.append(imageio.imread(image_path, pilmode=mode))
         images = np.stack(images, axis=0)

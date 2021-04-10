@@ -46,7 +46,7 @@ predicts = []
 import model
 
 net = model.SphereNet20(feature=True)
-#net.load_state_dict(torch.load("checkpoints/sphere20a_20171020.pth"))
+net.load_state_dict(torch.load("checkpoints/sphere20a_20171020.pth"))
 net.cuda()
 net.eval()
 
@@ -59,6 +59,7 @@ with open("/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt") as f:
     pairs_lines = f.readlines()[1:]
 
 from tqdm import tqdm
+
 cx = 0
 for i in tqdm(range(6000)):
     p = pairs_lines[i].replace("\n", "").split("\t")
@@ -79,16 +80,24 @@ for i in tqdm(range(6000)):
         # FIXME: mtcncaffe and spherenet alignments are not the same
         continue
 
-    img_batch = torch.from_numpy(np.concatenate((img1[None], img1[None]), axis=0)).permute(0, 3, 1, 2).cuda()
+    img_batch = (
+        torch.from_numpy(np.concatenate((img1[None], img1[None]), axis=0))
+        .permute(0, 3, 1, 2)
+        .cuda()
+    )
     output = net(img_batch)
+    # print(output, sameflag)
     f1, f2 = output
     cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
     predicts.append("{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag))
-
+    # print(predicts)
+    # f cx > 5:
+    # break
+    # cx += 1
 
 accuracy = []
 thd = []
-folds = KFold(n=10, n_folds=10, shuffle=False)
+folds = KFold(n=4230, n_folds=10, shuffle=False)
 thresholds = np.arange(-1.0, 1.0, 0.005)
 
 predicts = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))
