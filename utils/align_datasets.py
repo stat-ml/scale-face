@@ -32,6 +32,7 @@ def align(src_img, src_pts, ref_pts, image_size, scale=1.0, transpose_input=Fals
         s = s.reshape([2, -1]).T
     tfm = get_similarity_transform_for_cv2(s, r)
     import pdb
+
     pdb.set_trace()
     dst_img = cv2.warpAffine(src_img, tfm, image_size)
     return dst_img
@@ -64,9 +65,7 @@ def align_dataset_from_list(
             img_path = os.path.join(prefix, img_path)
         img = imageio.imread(img_path)
         print("\n", img_path)
-        img_new = align(
-            img, src_pts, ref_pts, image_size, scale, transpose_input
-        )
+        img_new = align(img, src_pts, ref_pts, image_size, scale, transpose_input)
 
         if visualize:
             # break the iteration if visualize flag is True

@@ -1,0 +1,5 @@
+name: "accuracy_lfw_6000_pairs"
+lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+N: 6000
+n_folds: 10

@@ -1,13 +1,17 @@
-title: "spherenet_base"
+title: "spherenet_pfe"
 backbone:
     name: "spherenet20"
     learnable: true
-head: null
+head:
+    name: "pfe_head"
+    in_feats: 512
+    learnable: true
 criterion:
-    name: "angle_loss"
+    name: "mlsloss"
+    mean: false
 optimizer:
     name: "sgd"
-    lr: 0.001
+    base_lr: 0.001
     weight_decay: 0.0005
     momentum: 0.9
     nesterov: true

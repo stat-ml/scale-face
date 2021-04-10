@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
-import torch.nn.functional as F
 from torch.nn import Parameter
 import math
+from model import FaceModule
 
 
 def myphi(x, m):
@@ -65,9 +65,9 @@ class AngleLinear(nn.Module):
         return output
 
 
-class sphere20a(nn.Module):
-    def __init__(self, classnum=10574, feature=False):
-        super(sphere20a, self).__init__()
+class sphere20a(FaceModule):
+    def __init__(self, classnum=10574, feature=False, **kwargs):
+        super().__init__(**kwargs)
         self.classnum = classnum
         self.feature = feature
         # input = B*3*112*96
@@ -122,7 +122,7 @@ class sphere20a(nn.Module):
         self.fc5 = nn.Linear(512 * 7 * 6, 512)
         self.fc6 = AngleLinear(512, self.classnum)
 
-    def forward(self, x):
+    def forward(self, x) -> dict:
         x = self.relu1_1(self.conv1_1(x))
         x = x + self.relu1_3(self.conv1_3(self.relu1_2(self.conv1_2(x))))
 
@@ -143,7 +143,12 @@ class sphere20a(nn.Module):
             return x
         xa = self.fc5(x)
         angle_x = self.fc6(xa)
-        return xa, x, angle_x
+        output = {
+            "feature": xa,
+            "logits": x,
+            "angle_x": angle_x,
+        }
+        return output
 
 
 SphereNet20 = sphere20a

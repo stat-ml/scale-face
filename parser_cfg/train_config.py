@@ -22,6 +22,10 @@ def training_args():
         "--dataset-config", type=str, default=None, help="Dataset configuration"
     )
 
+    parser.add_argument(
+        "--evaluation-configs", nargs="+", default=[], help="Evaluation configs"
+    )
+
     parser.add_argument("--workers", type=int, default=0)
 
     parser.add_argument("--resume", type=str, default=None)  # checkpoint
@@ -39,10 +43,10 @@ def training_args():
     parser.add_argument("--batch-size", type=int, default=256)
     parser.add_argument("--num-classes-batch", type=int, default=64)
 
-    parser.add_argument(
-        "--print_freq", type=int, default=20
-    )  # v0 : <64， 166> | <128, 83>
+    parser.add_argument("--print_freq", type=int, default=20)
     parser.add_argument("--save_freq", type=int, default=1)  # TODO
+
+    parser.add_argument("--debug", action="store_true")
 
     args = parser.parse_args()
 

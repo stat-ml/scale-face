@@ -9,6 +9,17 @@ from utils.imageprocessing import preprocess
 
 _neg_inf = -1e6
 
+FACE_METRICS = dict()
+
+
+def _register_metric(function):
+    FACE_METRICS[function.__name__] = function
+
+    def wrap_function(*args, **kwargs):
+        return function(*args, **kwargs)
+
+    return wrap_function
+
 
 def _collect_outputs(model, set, device, debug=False):
     features, log_sig_sq, gtys, angles_xs = [], [], [], []
@@ -61,6 +72,7 @@ def _calculate_tpr(threshold_value, features_query, features_distractor, gtys_qu
     return final_mask.sum() / R
 
 
+@_register_metric
 def tpr_pfr(
     model: dict,
     query_path: str,
@@ -109,11 +121,19 @@ def tpr_pfr(
                 threshold_value, features_query, features_distractor, gtys_query
             )
         )
-    print(TPRs)
     return TPRs
 
 
-def accuracy_lfw_6000_pairs(model: nn.Module, device=None):
+@_register_metric
+def accuracy_lfw_6000_pairs(
+    model: nn.Module,
+    lfw_path: str,
+    lfw_pairs_txt_path: str,
+    device=None,
+    *,
+    N=6000,
+    n_folds=10,
+):
     """
     #TODO: need to understand this protocol
     #TODO: any paper to link
@@ -123,7 +143,7 @@ def accuracy_lfw_6000_pairs(model: nn.Module, device=None):
     if device is None:
         device = torch.device("cpu")
 
-    def KFold(n=10, n_folds=10, shuffle=False):
+    def KFold(n, n_folds=n_folds, shuffle=False):
         folds = []
         base = list(range(n))
         for i in range(n_folds):
@@ -153,19 +173,12 @@ def accuracy_lfw_6000_pairs(model: nn.Module, device=None):
                 best_threshold = threshold
         return best_threshold
 
-    lfw_prefix = "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
-
     predicts = []
-
-    from utils.imageprocessing import preprocess
-
     proc_func = lambda images: preprocess(images, [112, 96], is_training=False)
-    lfw_set = Dataset("/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo", preprocess_func=proc_func)
+    lfw_set = Dataset(lfw_path, preprocess_func=proc_func)
 
-    with open("/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt") as f:
-        pairs_lines = f.readlines()[1:]
-
-    for i in tqdm(range(6000)):
+    pairs_lines = open(lfw_pairs_txt_path).readlines()[1:]
+    for i in tqdm(range(N)):
         p = pairs_lines[i].replace("\n", "").split("\t")
 
         if 3 == len(p):
@@ -198,7 +211,7 @@ def accuracy_lfw_6000_pairs(model: nn.Module, device=None):
 
     accuracy = []
     thd = []
-    folds = KFold(n=6000, n_folds=10, shuffle=False)
+    folds = KFold(n=N, n_folds=n_folds, shuffle=False)
     thresholds = np.arange(-1.0, 1.0, 0.005)
 
     predicts = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))

@@ -1,26 +1,26 @@
-import torch.nn as nn
+import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
 
+from model import FaceModule
 
-class AngleLoss(nn.Module):
+
+class AngleLoss(FaceModule):
     """
     https://arxiv.org/pdf/1704.08063.pdf
     """
 
-    def __init__(self, gamma=0):
-        super(AngleLoss, self).__init__()
+    def __init__(self, gamma=0, **kwargs):
+        super(AngleLoss, self).__init__(kwargs)
         self.gamma = gamma
         self.it = 0
         self.LambdaMin = 5.0
         self.LambdaMax = 1500.0
         self.lamb = 1500.0
 
-    def forward(self, input, target):
-
-        import pdb
-
-        pdb.set_trace()
+    def forward(self, **kwargs):
+        target = kwargs.get("gty")
+        input = kwargs.get("angle_x")
 
         self.it += 1
         cos_theta, phi_theta = input
@@ -47,3 +47,67 @@ class AngleLoss(nn.Module):
         loss = loss.mean()
 
         return loss
+
+
+class MLSLoss(FaceModule):
+    """
+    TODO: docs
+    """
+
+    def __init__(self, mean=False, **kwargs):
+
+        super(MLSLoss, self).__init__(kwargs)
+        self.mean = mean
+
+    def negMLS(self, mu_X, sigma_sq_X):
+        if self.mean:
+            XX = torch.mul(mu_X, mu_X).sum(dim=1, keepdim=True)
+            YY = torch.mul(mu_X.T, mu_X.T).sum(dim=0, keepdim=True)
+            XY = torch.mm(mu_X, mu_X.T)
+            mu_diff = XX + YY - 2 * XY
+            sig_sum = sigma_sq_X.mean(dim=1, keepdim=True) + sigma_sq_X.T.sum(
+                dim=0, keepdim=True
+            )
+            diff = mu_diff / (1e-8 + sig_sum) + mu_X.size(1) * torch.log(sig_sum)
+            return diff
+        else:
+            mu_diff = mu_X.unsqueeze(1) - mu_X.unsqueeze(0)
+            sig_sum = sigma_sq_X.unsqueeze(1) + sigma_sq_X.unsqueeze(0)
+            diff = torch.mul(mu_diff, mu_diff) / (1e-10 + sig_sum) + torch.log(
+                sig_sum
+            )  # BUG
+            diff = diff.sum(dim=2, keepdim=False)
+            return diff
+
+    def forward(self, mu_X, log_sigma_sq, gty):
+
+        mu_X = F.normalize(mu_X)  # if mu_X was not normalized by l2
+        non_diag_mask = (1 - torch.eye(mu_X.size(0))).int()
+        if gty.device.type == "cuda":
+            non_diag_mask = non_diag_mask.cuda(0)
+        sig_X = torch.exp(log_sigma_sq)
+        loss_mat = self.negMLS(mu_X, sig_X)
+        gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
+        pos_mask = (non_diag_mask * gty_mask) > 0
+        pos_loss = loss_mat[pos_mask].mean()
+        return pos_loss
+
+    def forward_masked(self, mu_X, log_sigma_sq, gty, mask):
+
+        mu_X = F.normalize(mu_X)  # if mu_X was not normalized by l2
+        non_diag_mask = (1 - torch.eye(mu_X.size(0))).int()
+        if gty.device.type == "cuda":
+            non_diag_mask = non_diag_mask.cuda(0)
+        sig_X = torch.exp(log_sigma_sq)
+        loss_mat = self.negMLS(mu_X, sig_X)
+        in_class = torch.zeros_like(loss_mat, dtype=torch.long)
+        in_class[: in_class.shape[0] // 2, : in_class.shape[0] // 2] = 1
+
+        out_class = torch.zeros_like(loss_mat, dtype=torch.long)
+        out_class[: out_class.shape[0] // 2, out_class.shape[0] // 2 :] = 1
+
+        ln = gty.shape[0]
+
+        pos_loss_in = loss_mat[:ln, :ln].mean()
+        pos_loss_out = loss_mat[:ln, ln:].mean()
+        return pos_loss_in, pos_loss_out

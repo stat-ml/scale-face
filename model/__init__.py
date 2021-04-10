@@ -1,12 +1,12 @@
-from .mls_loss import MLSLoss
+from .base import FaceModule
+from .losses import MLSLoss, AngleLoss
 from .spherenet import SphereNet20
-from .resnet import resnet_zoo
-from .mobilenet import MobileFace
-from .uncertainty_head import UncertaintyHead
-from .losses import AngleLoss
+from .heads import PFEHead
 
 model_dict = {
     "spherenet20": SphereNet20,
 }
 
-criterions_dict = {"mlsloss": MLSLoss}
+criterions_dict = {"mlsloss": MLSLoss, "angle_loss": AngleLoss}
+
+heads = {"pfe_head": PFEHead}

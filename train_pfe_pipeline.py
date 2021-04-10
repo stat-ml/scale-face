@@ -8,13 +8,21 @@ import model.losses
 import utils
 from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
-from utils import face_metrics
+from utils import FACE_METRICS
 from utils import cfg
 
 import model as mlib
 from parser_cfg import training_args
 
 torch.backends.cudnn.bencmark = True
+
+
+def _set_evaluation_metric_yaml(yaml_path: str):
+    config = cfg.load_config(yaml_path)
+    metric_name = config.name
+    config.pop("name")
+    metric = lambda model: FACE_METRICS[metric_name](model, **config)
+    return metric
 
 
 class Trainer:
@@ -25,6 +33,9 @@ class Trainer:
         self.optim_args = cfg.load_config(args.optimizer_config)
         self.dataset_args = cfg.load_config(args.dataset_config)
         self.env_args = cfg.load_config(args.env_config)
+
+        self.backbone = None
+        self.head = None
 
         self.model = dict()
         self.data = dict()
@@ -38,43 +49,72 @@ class Trainer:
         self.checkpoints_path = self.args.root / "checkpoints"
         os.makedirs(self.checkpoints_path)
 
+        # set evaluation metrics
+        self.evaluation_metrics = []
+        if len(self.args.evaluation_configs) > 0:
+            for item in self.args.evaluation_configs:
+                self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
+
     def _model_loader(self):
-        self.model["backbone"] = mlib.model_dict[self.model_args.backbone]()
-        self.model["uncertain"] = mlib.UncertaintyHead(self.model_args.in_feats)
+        self.backbone = mlib.model_dict[self.model_args.backbone.name](
+            **utils.pop_element(self.model_args.backbone, "name"),
+        )
+
+        if self.model_args.head:
+            self.head = mlib.heads[self.model_args.head.name](
+                **utils.pop_element(self.model_args.head, "name"),
+            )
+
+        self.criterion = mlib.criterions_dict[self.model_args.criterion.name](
+            **utils.pop_element(self.model_args.criterion, "name"),
+        )
 
         self.start_epoch = 0
         if self.args.resume:
             model_dict = torch.load(self.args.resume, map_location=self.device)
             self.start_epoch = model_dict["epoch"]
-            self.model["backbone"].load_state_dict(model_dict["backbone"])
-            self.model["uncertain"].load_state_dict(model_dict["uncertain"])
+            self.backbone.load_state_dict(model_dict["backbone"])
+            self.head.load_state_dict(model_dict["head"])
 
         if self.args.pretrained_backbone and self.args.resume is None:
             backbone_dict = torch.load(
                 self.args.pretrained_backbone, map_location=self.device
             )
-            self.model["backbone"].load_state_dict(backbone_dict)
+            self.backbone.load_state_dict(backbone_dict)
 
-        self.model["criterion"] = mlib.criterions_dict[self.model_args.criterion.name](
-            mean=self.model_args.criterion.mean
+        # TODO: we can write nn.Module wrapper to deal with parametrization like
+        # freeze and etc.
+
+        if self.model_args.backbone.learnable is False:
+            for p in self.backbone.parameters():
+                p.requires_grad = False
+            self.backbone.eval()
+
+        if self.model_args.head and self.model_args.head.learnable is False:
+            for p in self.head.parameters():
+                p.requires_grad = False
+            self.head.eval()
+
+        learnable_parameters = (
+            list(self.backbone.parameters())
+            if self.model_args.backbone.learnable is True
+            else []
+        )
+        learnable_parameters += (
+            list(self.head.parameters())
+            if self.model_args.head and self.model_args.head.learnable is True
+            else []
         )
 
-        if self.args.freeze_backbone:
-            for p in self.model["backbone"].parameters():
-                p.requires_grad = False
-
-        self.model["optimizer"] = utils.optimizers_map[self.optim_args.name](
-            [{"params": self.model["uncertain"].parameters()}],
-            lr=self.optim_args.base_lr,
-            weight_decay=self.optim_args.weight_decay,
-            momentum=self.optim_args.momentum,
-            nesterov=self.optim_args.nesterov,
+        self.optimizer = utils.optimizers_map[self.model_args.optimizer.name](
+            [{"params": learnable_parameters}],
+            **utils.pop_element(self.model_args.optimizer, "name"),
         )
 
         if self.device:
-            self.model["backbone"] = self.model["backbone"].to(self.device)
-            self.model["uncertain"] = self.model["uncertain"].to(self.device)
-            self.model["criterion"] = self.model["criterion"].to(self.device)
+            self.backbone = self.backbone.to(self.device)
+            if self.head:
+                self.head = self.head.to(self.device)
 
     def _data_loader(self):
         batch_format = {
@@ -88,40 +128,27 @@ class Trainer:
         self.trainset.start_batch_queue(batch_format)
 
     def _model_train(self, epoch=0):
-
-        """
-        face_metrics.tpr_pfr(
-            self.model,
-            "/gpfs/gpfs0/r.karimov/casia/list_casia_mtcnncaffe_aligned_nooverlap.txt",
-            "/trinity/home/r.karimov/Probabilistic-Face-Embeddings/data/lfw_mtcnncaffe_aligned",
-            device=self.device,
-            debug=True,
-        )
-        """
-
-        if self.args.freeze_backbone:
-            self.model["backbone"].eval()
-        self.model["uncertain"].train()
+        if self.model_args.backbone.learnable is True:
+            self.backbone.train()
+        if self.model_args.head and self.model_args.head.learnable is True:
+            self.head.train()
 
         loss_recorder, batch_acc = [], []
         for idx in range(self.args.iterations):
-            self.model["optimizer"].zero_grad()
+            self.optimizer.zero_grad()
 
             batch = self.trainset.pop_batch_queue()
             img = torch.from_numpy(batch["image"]).permute(0, 3, 1, 2).to(self.device)
             gty = torch.from_numpy(batch["label"]).to(self.device)
 
-            feature, sig_feat, angle_x = self.model["backbone"](img)
-            loss = model.losses.AngleLoss()
-            loss(angle_x, gty)
-            import pdb
-
-            pdb.set_trace()
-            log_sig_sq = self.model["uncertain"](sig_feat)
-            loss = self.model["criterion"](feature, log_sig_sq, gty)
+            outputs = {"gty": gty}
+            outputs.update(self.backbone(img))
+            if self.head:
+                outputs.update(self.head(**outputs))
+            loss = self.criterion(**outputs)
 
             loss.backward()
-            self.model["optimizer"].step()
+            self.optimizer.step()
 
             loss_recorder.append(loss.item())
 
@@ -136,6 +163,9 @@ class Trainer:
                         np.mean(loss_recorder),
                     )
                 )
+            if self.args.debug:
+                # break loop if debug flag is True
+                break
         train_loss = np.mean(loss_recorder)
         print("train_loss : %.4f" % train_loss)
         return train_loss
@@ -144,6 +174,10 @@ class Trainer:
         for epoch in range(self.start_epoch, self.args.epochs):
             train_loss = self._model_train(epoch)
 
+            import pdb
+
+            pdb.set_trace()
+
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss
@@ -151,8 +185,8 @@ class Trainer:
                 torch.save(
                     {
                         "epoch": epoch,
-                        "backbone": self.model["backbone"].state_dict(),
-                        "uncertain": self.model["uncertain"].state_dict(),
+                        "backbone": self.backbone.state_dict(),
+                        "head": self.head.state_dict(),
                         "train_loss": min_train_loss,
                     },
                     filename,
@@ -164,8 +198,8 @@ class Trainer:
                 torch.save(
                     {
                         "epoch": epoch,
-                        "backbone": self.model["backbone"].state_dict(),
-                        "uncertain": self.model["uncertain"].state_dict(),
+                        "backbone": self.backbone.state_dict(),
+                        "head": self.head.state_dict(),
                         "train_loss": train_loss,
                     },
                     savename,
