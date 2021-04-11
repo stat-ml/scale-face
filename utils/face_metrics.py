@@ -19,8 +19,11 @@ def _register_board(function):
         output_dict = function(*args, **kwargs)
         if "board" in kwargs and kwargs["board"] is True:
             for key, value in output_dict.items():
-                board_writer.add_scalar(f"validation/{function.__name__}/{key}", value, board_iter)
+                board_writer.add_scalar(
+                    f"validation/{function.__name__}/{key}", value, board_iter
+                )
         return output_dict
+
     return wrap_function
 
 

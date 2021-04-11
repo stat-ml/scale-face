@@ -148,7 +148,6 @@ class Trainer:
         for _metric in self.evaluation_metrics:
             _metric(self.backbone, board=True, board_writer=self.board)
 
-
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable is True:
             self.backbone.train()
