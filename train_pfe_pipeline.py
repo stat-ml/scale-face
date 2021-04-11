@@ -27,6 +27,8 @@ def _set_evaluation_metric_yaml(yaml_path: str):
 
 
 class Trainer:
+    _INF = -1e10
+
     def __init__(self, args, board):
         self.args = args
         # Load configurations
@@ -38,6 +40,8 @@ class Trainer:
 
         self.backbone = None
         self.head = None
+        self.backbone_criterion = None
+        self.head_criterion = None
 
         self.model = dict()
         self.data = dict()
@@ -62,15 +66,22 @@ class Trainer:
         self.backbone = mlib.model_dict[self.model_args.backbone.name](
             **utils.pop_element(self.model_args.backbone, "name"),
         )
+        if self.model_args.backbone.criterion:
+            self.backbone_criterion = mlib.criterions_dict[
+                self.model_args.backbone.criterion.name
+            ](
+                **utils.pop_element(self.model_args.backbone.criterion, "name"),
+            )
 
         if self.model_args.head:
             self.head = mlib.heads[self.model_args.head.name](
                 **utils.pop_element(self.model_args.head, "name"),
             )
-
-        self.criterion = mlib.criterions_dict[self.model_args.criterion.name](
-            **utils.pop_element(self.model_args.criterion, "name"),
-        )
+            self.head_criterion = mlib.criterions_dict[
+                self.model_args.head.criterion.name
+            ](
+                **utils.pop_element(self.model_args.head.criterion, "name"),
+            )
 
         self.start_epoch = 0
         if self.args.resume:
@@ -130,6 +141,14 @@ class Trainer:
         self.trainset = Dataset(self.dataset_args.path, preprocess_func=train_proc_func)
         self.trainset.start_batch_queue(batch_format)
 
+    def _model_evaluate(self, epoch=0):
+        self.backbone.eval()
+        if self.model_args.head:
+            self.head.eval()
+        for _metric in self.evaluation_metrics:
+            _metric(self.backbone, board=True, board_writer=self.board)
+
+
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable is True:
             self.backbone.train()
@@ -150,18 +169,25 @@ class Trainer:
             outputs.update(self.backbone(img))
             if self.head:
                 outputs.update(self.head(**outputs))
-
-            loss = self.criterion(**outputs)
+                loss = self.head_criterion(**outputs)
+            else:
+                loss = self.backbone_criterion(**outputs)
 
             for metric in self.evaluation_configs:
                 if metric.type == "lfw":
                     visual_img = utils.visualize_ambiguity_dilemma_lfw(
                         self.backbone,
-                        self.criterion,
+                        self.backbone_criterion,
                         metric.lfw_path,
+                        pfe_head=self.head,
+                        criterion_head=self.head_criterion,
                         board=True,
                     )
-                    self.board.add_image("ambiguity_dilemma_lfw", visual_img.transpose(2, 0, 1), _global_iteration)
+                    self.board.add_image(
+                        "ambiguity_dilemma_lfw",
+                        visual_img.transpose(2, 0, 1),
+                        _global_iteration,
+                    )
 
             loss.backward()
             self.optimizer.step()
@@ -180,7 +206,7 @@ class Trainer:
                     )
                 )
                 self.board.add_scalar(
-                    f"train/{self.criterion}_loss_mean",
+                    f"train/{self.head_criterion if self.head else self.backbone_criterion}_loss_mean",
                     np.mean(loss_recorder),
                     _global_iteration,
                 )
@@ -192,8 +218,10 @@ class Trainer:
         return train_loss
 
     def _main_loop(self):
+        min_train_loss = self.__class__._INF
         for epoch in range(self.start_epoch, self.args.epochs):
             train_loss = self._model_train(epoch)
+            self._model_evaluate(epoch)
 
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
@@ -203,7 +231,7 @@ class Trainer:
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.state_dict(),
+                        "head": self.head.state_dict() if self.head else None,
                         "train_loss": min_train_loss,
                     },
                     filename,
@@ -216,7 +244,7 @@ class Trainer:
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.state_dict(),
+                        "head": self.head.state_dict() if self.head else None,
                         "train_loss": train_loss,
                     },
                     savename,
@@ -238,7 +266,8 @@ class Trainer:
         print("-" * 52)
         print("- Backbone   : {}".format(self.backbone))
         print("- Head   : {}".format(self.head))
-        print("- Criterion   : {}".format(self.criterion))
+        print("- Backbone Criterion   : {}".format(self.backbone_criterion))
+        print("- Head Criterion   : {}".format(self.head_criterion))
         print("-" * 52)
 
 

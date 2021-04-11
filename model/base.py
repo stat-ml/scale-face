@@ -2,7 +2,7 @@ import torch.nn
 
 
 class FaceModule(torch.nn.Module):
-    def __init__(self, learnable: bool = True):
+    def __init__(self, learnable: bool = True, **kwargs):
         super().__init__()
         self.learnable = learnable
 

@@ -15,7 +15,8 @@ class PFEHead(FaceModule):
         self.gamma = Parameter(torch.Tensor([1.0]))
         self.beta = Parameter(torch.Tensor([0.0]))
 
-    def forward(self, x):
+    def forward(self, **kwargs):
+        x = kwargs["bottleneck_feature"]
         x = self.relu(self.bn1(self.fc1(x)))
         x = self.bn2(self.fc2(x))
         x = self.gamma * x + self.beta

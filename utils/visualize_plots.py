@@ -165,7 +165,11 @@ def visualize_ambiguity_dilemma_lfw(
     fig, ax = plt.subplots(1, 2 if pfe_head else 1, figsize=(15, 5))
     sns.set_theme(style="darkgrid")
     sns.lineplot(
-        x="kernel_size", y="values", hue="od", data=pd_data_deterministic, ax=ax[0] if pfe_head else ax
+        x="kernel_size",
+        y="values",
+        hue="od",
+        data=pd_data_deterministic,
+        ax=ax[0] if pfe_head else ax,
     )
     if pfe_head:
         ax[0].set_title("Deterministic features")

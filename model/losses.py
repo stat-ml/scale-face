@@ -80,7 +80,7 @@ class MLSLoss(FaceModule):
             return diff
 
     def forward(self, **kwargs):
-        mu_X, gty, log_sigma = kwargs["logits"], kwargs["gty"], kwargs["log_sigma"]
+        mu_X, gty, log_sigma = kwargs["feature"], kwargs["gty"], kwargs["log_sigma"]
         mu_X = F.normalize(mu_X)  # if mu_X was not normalized by l2
         non_diag_mask = (1 - torch.eye(mu_X.size(0))).int()
         if gty.device.type == "cuda":

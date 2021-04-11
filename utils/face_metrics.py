@@ -12,6 +12,18 @@ _neg_inf = -1e6
 FACE_METRICS = dict()
 
 
+def _register_board(function):
+    def wrap_function(*args, **kwargs):
+        board_writer = kwargs["board_writer"]
+        board_iter = kwargs["board_iter"]
+        output_dict = function(*args, **kwargs)
+        if "board" in kwargs and kwargs["board"] is True:
+            for key, value in output_dict.items():
+                board_writer.add_scalar(f"validation/{function.__name__}/{key}", value, board_iter)
+        return output_dict
+    return wrap_function
+
+
 def _register_metric(function):
     FACE_METRICS[function.__name__] = function
 
@@ -72,6 +84,7 @@ def _calculate_tpr(threshold_value, features_query, features_distractor, gtys_qu
     return final_mask.sum() / R
 
 
+@_register_board
 @_register_metric
 def tpr_pfr(
     model: dict,
@@ -84,6 +97,7 @@ def tpr_pfr(
     device=None,
     debug=False,
 ) -> List[torch.Tensor]:
+    """
     if device is None:
         device = torch.device("cpu")
     # load LFW dataset (distractor)
@@ -122,8 +136,11 @@ def tpr_pfr(
             )
         )
     return TPRs
+    """
+    raise NotImplementedError
 
 
+@_register_board
 @_register_metric
 def accuracy_lfw_6000_pairs(
     model: nn.Module,
@@ -133,6 +150,7 @@ def accuracy_lfw_6000_pairs(
     *,
     N=6000,
     n_folds=10,
+    **kwargs,
 ):
     """
     #TODO: need to understand this protocol
@@ -219,4 +237,4 @@ def accuracy_lfw_6000_pairs(
         best_thresh = find_best_threshold(thresholds, predicts[train])
         accuracy.append(eval_acc(best_thresh, predicts[test]))
         thd.append(best_thresh)
-    return np.mean(accuracy)
+    return {"accuracy", np.mean(accuracy)}

@@ -2,9 +2,9 @@ title: "spherenet_base"
 backbone:
     name: "spherenet20"
     learnable: true
+    criterion:
+        name: "angle_loss"
 head: null
-criterion:
-    name: "angle_loss"
 optimizer:
     name: "sgd"
     lr: 0.001
