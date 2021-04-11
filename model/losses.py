@@ -79,35 +79,15 @@ class MLSLoss(FaceModule):
             diff = diff.sum(dim=2, keepdim=False)
             return diff
 
-    def forward(self, mu_X, log_sigma_sq, gty):
-
+    def forward(self, **kwargs):
+        mu_X, gty, log_sigma = kwargs["logits"], kwargs["gty"], kwargs["log_sigma"]
         mu_X = F.normalize(mu_X)  # if mu_X was not normalized by l2
         non_diag_mask = (1 - torch.eye(mu_X.size(0))).int()
         if gty.device.type == "cuda":
             non_diag_mask = non_diag_mask.cuda(0)
-        sig_X = torch.exp(log_sigma_sq)
+        sig_X = torch.exp(log_sigma)
         loss_mat = self.negMLS(mu_X, sig_X)
         gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
         pos_mask = (non_diag_mask * gty_mask) > 0
         pos_loss = loss_mat[pos_mask].mean()
         return pos_loss
-
-    def forward_masked(self, mu_X, log_sigma_sq, gty, mask):
-
-        mu_X = F.normalize(mu_X)  # if mu_X was not normalized by l2
-        non_diag_mask = (1 - torch.eye(mu_X.size(0))).int()
-        if gty.device.type == "cuda":
-            non_diag_mask = non_diag_mask.cuda(0)
-        sig_X = torch.exp(log_sigma_sq)
-        loss_mat = self.negMLS(mu_X, sig_X)
-        in_class = torch.zeros_like(loss_mat, dtype=torch.long)
-        in_class[: in_class.shape[0] // 2, : in_class.shape[0] // 2] = 1
-
-        out_class = torch.zeros_like(loss_mat, dtype=torch.long)
-        out_class[: out_class.shape[0] // 2, out_class.shape[0] // 2 :] = 1
-
-        ln = gty.shape[0]
-
-        pos_loss_in = loss_mat[:ln, :ln].mean()
-        pos_loss_out = loss_mat[:ln, ln:].mean()
-        return pos_loss_in, pos_loss_out

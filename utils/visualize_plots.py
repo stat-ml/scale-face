@@ -40,10 +40,11 @@ def visualizer_decorator(function):
 @visualizer_decorator
 def visualize_ambiguity_dilemma_lfw(
     pfe_backbone: torch.nn.Module,
-    pfe_head: torch.nn.Module,
-    criterion: torch.nn.Module,
+    criterion_backbone: torch.nn.Module,
     lfw_path: str,
     *,
+    pfe_head: torch.nn.Module = None,
+    criterion_head=None,
     number_of_iters: int = 10,
     in_size: tuple = (112, 96),
     device=None,
@@ -53,7 +54,7 @@ def visualize_ambiguity_dilemma_lfw(
     if device is None:
         device = "cpu"
 
-    paths_full = Dataset(lfw_path)["abspath"]
+    paths_full = Dataset(lfw_path).data["abspath"]
     linspace_size = 20
     kernel_values = np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int)
 
@@ -91,23 +92,25 @@ def visualize_ambiguity_dilemma_lfw(
                 dim=0,
             )
 
-            feature1, sig_feat1 = pfe_backbone(image_batch1.to(device))
-            feature2, sig_feat2 = pfe_backbone(image_batch2.to(device))
+            outputs1 = {"gty": torch.ones(2, device=device, dtype=torch.int64)}
+            outputs1.update(pfe_backbone(image_batch1.to(device)))
 
-            log_sig_sq1 = pfe_head(sig_feat1)
-            log_sig_sq2 = pfe_head(sig_feat2)
+            outputs2 = {"gty": torch.ones(2, device=device, dtype=torch.int64)}
+            outputs2.update(pfe_backbone(image_batch2.to(device)))
 
-            dist1 = torch.norm(feature1[0] - feature1[1]).item()
-            dist2 = torch.norm(feature2[0] - feature2[1]).item()
-
+            dist1, dist2 = criterion_backbone(**outputs1), criterion_backbone(
+                **outputs1
+            )
             determinist_distances["original_vs_distorted"][i][idx] = dist1
             determinist_distances["impostor"][i][idx] = dist2
 
-            dist1 = criterion(feature2, log_sig_sq1, torch.ones(2).to(device)).item()
-            dist2 = criterion(feature2, log_sig_sq2, torch.ones(2).to(device)).item()
+            if pfe_head:
+                outputs1.update(pfe_head(**outputs1))
+                outputs2.update(pfe_head(**outputs2))
 
-            pfe_distances["original_vs_distorted"][i][idx] = dist1
-            pfe_distances["impostor"][i][idx] = dist2
+                dist1, dist2 = criterion_head(**outputs1), criterion_head(**outputs1)
+                pfe_distances["original_vs_distorted"][i][idx] = dist1
+                pfe_distances["impostor"][i][idx] = dist2
 
     # TODO: less verbose here
     all_size = linspace_size * number_of_iters
@@ -132,41 +135,44 @@ def visualize_ambiguity_dilemma_lfw(
         "values": list(determinist_distances["original_vs_distorted"].flatten())
         + list(determinist_distances["impostor"].flatten()),
     }
-    data2 = {
-        "od": ["Original vs distorted"] * all_size + ["Impostor"] * all_size,
-        "kernel_size": list(
-            np.array(
-                [
-                    np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int32)
-                    for i in range(number_of_iters)
-                ]
-            ).flatten()
-        )
-        + list(
-            np.array(
-                [
-                    np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int32)
-                    for i in range(number_of_iters)
-                ]
-            ).flatten()
-        ),
-        "values": list(pfe_distances["original_vs_distorted"].flatten())
-        + list(pfe_distances["impostor"].flatten()),
-    }
+    if pfe_head:
+        data2 = {
+            "od": ["Original vs distorted"] * all_size + ["Impostor"] * all_size,
+            "kernel_size": list(
+                np.array(
+                    [
+                        np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int32)
+                        for i in range(number_of_iters)
+                    ]
+                ).flatten()
+            )
+            + list(
+                np.array(
+                    [
+                        np.linspace(1, min(in_size) - 5, linspace_size).astype(np.int32)
+                        for i in range(number_of_iters)
+                    ]
+                ).flatten()
+            ),
+            "values": list(pfe_distances["original_vs_distorted"].flatten())
+            + list(pfe_distances["impostor"].flatten()),
+        }
+        pd_data_pfe = pd.DataFrame.from_dict(data2)
 
     pd_data_deterministic = pd.DataFrame.from_dict(data1)
-    pd_data_pfe = pd.DataFrame.from_dict(data2)
 
     plt.figure()
-    fig, ax = plt.subplots(1, 2, figsize=(15, 5))
+    fig, ax = plt.subplots(1, 2 if pfe_head else 1, figsize=(15, 5))
     sns.set_theme(style="darkgrid")
     sns.lineplot(
-        x="kernel_size", y="values", hue="od", data=pd_data_deterministic, ax=ax[0]
+        x="kernel_size", y="values", hue="od", data=pd_data_deterministic, ax=ax[0] if pfe_head else ax
     )
-    sns.lineplot(x="kernel_size", y="values", hue="od", data=pd_data_pfe, ax=ax[1])
-
-    ax[0].set_title("Deterministic features")
-    ax[1].set_title("MLS features")
+    if pfe_head:
+        ax[0].set_title("Deterministic features")
+        ax[1].set_title("MLS features")
+        sns.lineplot(x="kernel_size", y="values", hue="od", data=pd_data_pfe, ax=ax[1])
+    else:
+        ax.set_title("Deterministic features")
 
     return fig
 

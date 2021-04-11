@@ -4,15 +4,16 @@ import torch
 import numpy as np
 import torchvision
 
-import model.losses
 import utils
 from utils.dataset import Dataset
 from utils.imageprocessing import preprocess
 from utils import FACE_METRICS
 from utils import cfg
+from torch.utils.tensorboard import SummaryWriter
 
 import model as mlib
 from parser_cfg import training_args
+
 
 torch.backends.cudnn.bencmark = True
 
@@ -26,9 +27,10 @@ def _set_evaluation_metric_yaml(yaml_path: str):
 
 
 class Trainer:
-    def __init__(self, args):
+    def __init__(self, args, board):
         self.args = args
         # Load configurations
+        self.board = board
         self.model_args = cfg.load_config(args.model_config)
         self.optim_args = cfg.load_config(args.optimizer_config)
         self.dataset_args = cfg.load_config(args.dataset_config)
@@ -50,10 +52,11 @@ class Trainer:
         os.makedirs(self.checkpoints_path)
 
         # set evaluation metrics
-        self.evaluation_metrics = []
+        self.evaluation_metrics, self.evaluation_configs = [], []
         if len(self.args.evaluation_configs) > 0:
             for item in self.args.evaluation_configs:
                 self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
+                self.evaluation_configs.append(cfg.load_config(item))
 
     def _model_loader(self):
         self.backbone = mlib.model_dict[self.model_args.backbone.name](
@@ -135,6 +138,7 @@ class Trainer:
 
         loss_recorder, batch_acc = [], []
         for idx in range(self.args.iterations):
+            _global_iteration = epoch * self.args.iterations + idx
             self.optimizer.zero_grad()
 
             batch = self.trainset.pop_batch_queue()
@@ -142,17 +146,29 @@ class Trainer:
             gty = torch.from_numpy(batch["label"]).to(self.device)
 
             outputs = {"gty": gty}
+
             outputs.update(self.backbone(img))
             if self.head:
                 outputs.update(self.head(**outputs))
+
             loss = self.criterion(**outputs)
+
+            for metric in self.evaluation_configs:
+                if metric.type == "lfw":
+                    visual_img = utils.visualize_ambiguity_dilemma_lfw(
+                        self.backbone,
+                        self.criterion,
+                        metric.lfw_path,
+                        board=True,
+                    )
+                    self.board.add_image("ambiguity_dilemma_lfw", visual_img.transpose(2, 0, 1), _global_iteration)
 
             loss.backward()
             self.optimizer.step()
 
             loss_recorder.append(loss.item())
 
-            if (idx + 1) % self.args.print_freq == 0:
+            if (idx + 1) % self.args.print_freq == 0 or self.args.debug:
                 print(
                     "epoch : %2d|%2d, iter : %2d|%2d, loss : %.4f"
                     % (
@@ -162,6 +178,11 @@ class Trainer:
                         self.args.iterations,
                         np.mean(loss_recorder),
                     )
+                )
+                self.board.add_scalar(
+                    f"train/{self.criterion}_loss_mean",
+                    np.mean(loss_recorder),
+                    _global_iteration,
                 )
             if self.args.debug:
                 # break loop if debug flag is True
@@ -173,10 +194,6 @@ class Trainer:
     def _main_loop(self):
         for epoch in range(self.start_epoch, self.args.epochs):
             train_loss = self._model_train(epoch)
-
-            import pdb
-
-            pdb.set_trace()
 
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
@@ -206,8 +223,8 @@ class Trainer:
                 )
 
     def train_runner(self):
-        self._report_settings()
         self._model_loader()
+        self._report_settings()
         self._data_loader()
         self._main_loop()
 
@@ -219,8 +236,14 @@ class Trainer:
         print("- TorchVison: {}".format(torchvision.__version__))
         print("- USE_GPU   : {}".format(self.device))
         print("-" * 52)
+        print("- Backbone   : {}".format(self.backbone))
+        print("- Head   : {}".format(self.head))
+        print("- Criterion   : {}".format(self.criterion))
+        print("-" * 52)
 
 
 if __name__ == "__main__":
-    faceu = Trainer(training_args())
+    args = training_args()
+    writer = SummaryWriter(args.root)
+    faceu = Trainer(args, writer)
     faceu.train_runner()

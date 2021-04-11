@@ -65,7 +65,7 @@ class AngleLinear(nn.Module):
         return output
 
 
-class sphere20a(FaceModule):
+class SphereNet20(FaceModule):
     def __init__(self, classnum=10574, feature=False, **kwargs):
         super().__init__(**kwargs)
         self.classnum = classnum
@@ -149,6 +149,3 @@ class sphere20a(FaceModule):
             "angle_x": angle_x,
         }
         return output
-
-
-SphereNet20 = sphere20a

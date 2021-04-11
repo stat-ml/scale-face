@@ -29,6 +29,7 @@ def training_args():
     parser.add_argument("--workers", type=int, default=0)
 
     parser.add_argument("--resume", type=str, default=None)  # checkpoint
+
     parser.add_argument(
         "--pretrained-backbone",
         type=str,
@@ -36,7 +37,7 @@ def training_args():
         help="Pretrained backbone weights",
     )
 
-    parser.add_argument("--freeze-backbone", type=bool, default=True)
+    parser.add_argument("--freeze-backbone", action="store_true")
 
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=3000)
