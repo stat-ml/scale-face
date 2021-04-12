@@ -4,15 +4,15 @@ import torch
 import numpy as np
 import torchvision
 
-import utils
-from utils.dataset import Dataset
-from utils.imageprocessing import preprocess
-from utils import FACE_METRICS
-from utils import cfg
+from face_lib.utils import Dataset
+from face_lib.utils import preprocess
+from face_lib.utils import FACE_METRICS
+from face_lib.utils import cfg
 from torch.utils.tensorboard import SummaryWriter
+import torch.distributed as dist
 
-import model as mlib
-from parser_cfg import training_args
+from face_lib import models as mlib, utils
+from face_lib.parser_cfg import training_args
 
 
 torch.backends.cudnn.bencmark = True
@@ -61,6 +61,22 @@ class Trainer:
             for item in self.args.evaluation_configs:
                 self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
                 self.evaluation_configs.append(cfg.load_config(item))
+
+        # Set up distributed train
+        if self.args.is_distributed:
+            world_size = int(os.environ["WORLD_SIZE"])
+            rank = int(os.environ["RANK"])
+            dist_url = "tcp://{}:{}".format(
+                os.environ["MASTER_ADDR"], os.environ["MASTER_PORT"]
+            )
+            dist.init_process_group(
+                backend=self.args.distr_backend,
+                init_method=dist_url,
+                rank=rank,
+                world_size=world_size,
+            )
+            self.local_rank = args.local_rank
+            torch.cuda.set_device(self.local_rank)
 
     def _model_loader(self):
         self.backbone = mlib.model_dict[self.model_args.backbone.name](
@@ -140,6 +156,23 @@ class Trainer:
         )
         self.trainset = Dataset(self.dataset_args.path, preprocess_func=train_proc_func)
         self.trainset.start_batch_queue(batch_format)
+
+        # FIXME: simple duck typing doesnt help us with the sampling
+        #  issues of our Casia dataset sampler
+        if self.args.is_distributed:
+            self.train_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.trainset, shuffle=True
+            )
+
+        self.train_loader = DataLoaderX(
+            local_rank=local_rank,
+            dataset=trainset,
+            batch_size=cfg.batch_size,
+            sampler=train_sampler,
+            num_workers=0,
+            pin_memory=True,
+            drop_last=True,
+        )
 
     def _model_evaluate(self, epoch=0):
         self.backbone.eval()

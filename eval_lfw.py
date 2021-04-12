@@ -1,10 +1,8 @@
-import os
 import torch
-from torch.autograd import Variable
 
 torch.backends.cudnn.bencmark = True
 import numpy as np
-from utils import dataset
+from face_lib.utils import dataset
 
 
 def KFold(n=10, n_folds=10, shuffle=False):
@@ -43,14 +41,14 @@ def find_best_threshold(thresholds, predicts):
 lfw_prefix = "/gpfs/gpfs0/r.karimov/lfw/data_"
 
 predicts = []
-import model
+from face_lib import models
 
-net = model.SphereNet20(feature=True)
+net = models.SphereNet20(feature=True)
 net.load_state_dict(torch.load("checkpoints/sphere20a_20171020.pth"))
 net.cuda()
 net.eval()
 
-from utils.imageprocessing import preprocess
+from face_lib.utils import preprocess
 
 proc_func = lambda images: preprocess(images, [112, 96], is_training=False)
 lfw_set = dataset.Dataset("/gpfs/gpfs0/r.karimov/lfw/data_", preprocess_func=proc_func)

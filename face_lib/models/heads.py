@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import Parameter
-from model import FaceModule
+from face_lib.models import FaceModule
 
 
 class PFEHead(FaceModule):

@@ -17,3 +17,4 @@ optimizer:
     weight_decay: 0.0005
     momentum: 0.9
     nesterov: true
+scheduler: null

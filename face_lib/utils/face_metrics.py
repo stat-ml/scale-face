@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from utils.dataset import Dataset
-from utils.imageprocessing import preprocess
+from face_lib.utils.dataset import Dataset
+from face_lib.utils.imageprocessing import preprocess
 
 _neg_inf = -1e6
 

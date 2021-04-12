@@ -2,3 +2,4 @@ exman
 torch
 easydict
 opencv-python
+mxnet

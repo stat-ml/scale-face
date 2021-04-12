@@ -5,8 +5,8 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from utils.dataset import Dataset
-from utils.imageprocessing import preprocess
+from face_lib.utils.dataset import Dataset
+from face_lib.utils.imageprocessing import preprocess
 
 
 __all__ = ["visualize_ambiguity_dilemma_lfw", "visualize_low_high_similarity_pairs"]

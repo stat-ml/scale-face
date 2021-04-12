@@ -38,6 +38,8 @@ def training_args():
     )
 
     parser.add_argument("--freeze-backbone", action="store_true")
+    parser.add_argument("--is-distributed", action="store_true")
+    parser.add_argument("--distr-backend", type=str, default="nccl")
 
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--iterations", type=int, default=3000)

@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import Parameter
 import math
-from model import FaceModule
+from face_lib.models import FaceModule
 
 
 def myphi(x, m):

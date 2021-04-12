@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import Union, Tuple, List, Optional
 
-from utils import get_similarity_transform_for_cv2
+from face_lib.utils import get_similarity_transform_for_cv2
 
 REF_PTS_ST = np.array(
     [
