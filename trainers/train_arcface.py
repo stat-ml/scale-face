@@ -4,6 +4,7 @@ import logging
 import torch
 import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
+
 sys.path.append("..")
 import face_lib.models
 from face_lib.utils import DataLoaderX, MXFaceDataset, cfg

@@ -3,78 +3,26 @@ import sys
 import torch
 import numpy as np
 import torchvision
-sys.path.append("..")
-from face_lib.utils import Dataset, FACE_METRICS, cfg
-from torch.utils.tensorboard import SummaryWriter
-import torch.distributed as dist
-
+sys.path.append(".")
+from face_lib.utils import Dataset, cfg, FACE_METRICS
+from face_lib.utils.imageprocessing import preprocess
 from face_lib import models as mlib, utils
 from face_lib.parser_cfg import training_args
+from face_lib.trainer import TrainerBase
 
+from torch.utils.tensorboard import SummaryWriter
 
 torch.backends.cudnn.bencmark = True
 
 
-def _set_evaluation_metric_yaml(yaml_path: str):
-    config = cfg.load_config(yaml_path)
+def _set_evaluation_metric_yaml(config: dict):
     metric_name = config.name
     config.pop("name")
     metric = lambda model: FACE_METRICS[metric_name](model, **config)
     return metric
 
 
-class Trainer:
-    _INF = -1e10
-
-    def __init__(self, args, board):
-        self.args = args
-        # Load configurations
-        self.board = board
-        self.model_args = cfg.load_config(args.model_config)
-        self.optim_args = cfg.load_config(args.optimizer_config)
-        self.dataset_args = cfg.load_config(args.dataset_config)
-        self.env_args = cfg.load_config(args.env_config)
-
-        self.backbone = None
-        self.head = None
-        self.backbone_criterion = None
-        self.head_criterion = None
-
-        self.model = dict()
-        self.data = dict()
-
-        # TODO: add distributed
-        self.device = (
-            "cuda" if (self.env_args.use_gpu and torch.cuda.is_available) else "cpu"
-        )
-        # create directory for experiment
-
-        self.checkpoints_path = self.args.root / "checkpoints"
-        os.makedirs(self.checkpoints_path)
-
-        # set evaluation metrics
-        self.evaluation_metrics, self.evaluation_configs = [], []
-        if len(self.args.evaluation_configs) > 0:
-            for item in self.args.evaluation_configs:
-                self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
-                self.evaluation_configs.append(cfg.load_config(item))
-
-        # Set up distributed train
-        if self.args.is_distributed:
-            world_size = int(os.environ["WORLD_SIZE"])
-            rank = int(os.environ["RANK"])
-            dist_url = "tcp://{}:{}".format(
-                os.environ["MASTER_ADDR"], os.environ["MASTER_PORT"]
-            )
-            dist.init_process_group(
-                backend=self.args.distr_backend,
-                init_method=dist_url,
-                rank=rank,
-                world_size=world_size,
-            )
-            self.local_rank = args.local_rank
-            torch.cuda.set_device(self.local_rank)
-
+class Trainer(TrainerBase):
     def _model_loader(self):
         self.backbone = mlib.model_dict[self.model_args.backbone.name](
             **utils.pop_element(self.model_args.backbone, "name"),
@@ -103,9 +51,9 @@ class Trainer:
             self.backbone.load_state_dict(model_dict["backbone"])
             self.head.load_state_dict(model_dict["head"])
 
-        if self.args.pretrained_backbone and self.args.resume is None:
+        if self.model_args.pretrained_backbone and self.args.resume is None:
             backbone_dict = torch.load(
-                self.args.pretrained_backbone, map_location=self.device
+                self.model_args.pretrained_backbone, map_location=self.device
             )
             self.backbone.load_state_dict(backbone_dict)
 
@@ -143,40 +91,35 @@ class Trainer:
             if self.head:
                 self.head = self.head.to(self.device)
 
+        # set evaluation metrics
+        self.evaluation_metrics, self.evaluation_configs = [], []
+        if len(self.model_args.evaluation_configs) > 0:
+            for item in self.model_args.evaluation_configs:
+                self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
+                self.evaluation_configs.append(item)
+
     def _data_loader(self):
         batch_format = {
-            "size": self.args.batch_size,
-            "num_classes": self.args.num_classes_batch,
+            "size": self.model_args.batch_size,
+            "num_classes": self.model_args.num_classes_batch,
         }
         train_proc_func = lambda images: preprocess(
-            images, self.dataset_args.in_size, is_training=True
+            images, self.model_args.in_size, is_training=True
         )
-        self.trainset = Dataset(self.dataset_args.path, preprocess_func=train_proc_func)
+        self.trainset = Dataset(
+            self.model_args.path_list, preprocess_func=train_proc_func
+        )
         self.trainset.start_batch_queue(batch_format)
 
-        # FIXME: simple duck typing doesnt help us with the sampling
-        #  issues of our Casia dataset sampler
-        if self.args.is_distributed:
-            self.train_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.trainset, shuffle=True
-            )
-
-        self.train_loader = DataLoaderX(
-            local_rank=local_rank,
-            dataset=trainset,
-            batch_size=cfg.batch_size,
-            sampler=train_sampler,
-            num_workers=0,
-            pin_memory=True,
-            drop_last=True,
-        )
-
     def _model_evaluate(self, epoch=0):
+        """
         self.backbone.eval()
         if self.model_args.head:
             self.head.eval()
         for _metric in self.evaluation_metrics:
             _metric(self.backbone, board=True, board_writer=self.board)
+        """
+        pass
 
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable is True:
@@ -185,8 +128,8 @@ class Trainer:
             self.head.train()
 
         loss_recorder, batch_acc = [], []
-        for idx in range(self.args.iterations):
-            _global_iteration = epoch * self.args.iterations + idx
+        for idx in range(self.model_args.iterations):
+            _global_iteration = epoch * self.model_args.iterations + idx
             self.optimizer.zero_grad()
 
             batch = self.trainset.pop_batch_queue()
@@ -196,6 +139,7 @@ class Trainer:
             outputs = {"gty": gty}
 
             outputs.update(self.backbone(img))
+
             if self.head:
                 outputs.update(self.head(**outputs))
                 loss = self.head_criterion(**outputs)
@@ -211,6 +155,7 @@ class Trainer:
                         pfe_head=self.head,
                         criterion_head=self.head_criterion,
                         board=True,
+                        device=self.device,
                     )
                     self.board.add_image(
                         "ambiguity_dilemma_lfw",
@@ -220,17 +165,16 @@ class Trainer:
 
             loss.backward()
             self.optimizer.step()
-
             loss_recorder.append(loss.item())
 
-            if (idx + 1) % self.args.print_freq == 0 or self.args.debug:
+            if (idx + 1) % self.model_args.logging.print_freq == 0 or self.args.debug:
                 print(
                     "epoch : %2d|%2d, iter : %2d|%2d, loss : %.4f"
                     % (
                         epoch,
-                        self.args.epochs,
+                        self.model_args.epochs,
                         idx,
-                        self.args.iterations,
+                        self.model_args.iterations,
                         np.mean(loss_recorder),
                     )
                 )
@@ -248,7 +192,7 @@ class Trainer:
 
     def _main_loop(self):
         min_train_loss = self.__class__._INF
-        for epoch in range(self.start_epoch, self.args.epochs):
+        for epoch in range(self.start_epoch, self.model_args.epochs):
             train_loss = self._model_train(epoch)
             self._model_evaluate(epoch)
 
@@ -266,7 +210,7 @@ class Trainer:
                     filename,
                 )
 
-            if epoch % self.args.save_freq == 0:
+            if epoch % self.model_args.logging.save_freq == 0:
                 filename = "epoch_%d_train_loss_%.4f.pth.tar" % (epoch, train_loss)
                 savename = os.path.join(self.checkpoints_path, filename)
                 torch.save(
@@ -278,12 +222,6 @@ class Trainer:
                     },
                     savename,
                 )
-
-    def train_runner(self):
-        self._model_loader()
-        self._report_settings()
-        self._data_loader()
-        self._main_loop()
 
     def _report_settings(self):
         str = "-" * 16

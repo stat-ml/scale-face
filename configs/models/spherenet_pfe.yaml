@@ -17,4 +17,22 @@ optimizer:
     weight_decay: 0.0005
     momentum: 0.9
     nesterov: true
+pretrained_backbone: checkpoints/sphere20a_20171020.pth
 scheduler: null
+batch_size: 256
+num_classes_batch: 4
+is_distributed: false
+iterations: 1000
+epochs: 3
+path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
+in_size: [112, 96]
+logging:
+    print_freq: 100
+    save_freq: 1
+evaluation_configs:
+    - name: "accuracy_lfw_6000_pairs"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+      N: 6000
+      n_folds: 10

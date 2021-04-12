@@ -52,6 +52,7 @@ class AngleLoss(FaceModule):
         self.lamb = 1500.0
 
     def forward(self, **kwargs):
+
         target = kwargs.get("gty")
         input = kwargs.get("angle_x")
 
@@ -67,7 +68,6 @@ class AngleLoss(FaceModule):
         self.lamb = max(self.LambdaMin, self.LambdaMax / (1 + 0.1 * self.it))
 
         output = cos_theta * 1.0
-
         output[index] -= cos_theta[index] * (1.0 + 0) / (1 + self.lamb)
         output[index] += phi_theta[index] * (1.0 + 0) / (1 + self.lamb)
 
@@ -78,7 +78,6 @@ class AngleLoss(FaceModule):
 
         loss = -1 * (1 - pt) ** self.gamma * logpt
         loss = loss.mean()
-
         return loss
 
 

@@ -5,14 +5,6 @@ import torch.distributed as dist
 from face_lib.utils import cfg, FACE_METRICS
 
 
-def _set_evaluation_metric_yaml(yaml_path: str):
-    config = cfg.load_config(yaml_path)
-    metric_name = config.name
-    config.pop("name")
-    metric = lambda model: FACE_METRICS[metric_name](model, **config)
-    return metric
-
-
 class TrainerBase(metaclass=abc.ABCMeta):
     _INF = -1e10
 
@@ -30,9 +22,7 @@ class TrainerBase(metaclass=abc.ABCMeta):
         self.model = dict()
         self.data = dict()
 
-        self.device = (
-            "cuda" if torch.cuda.is_available else "cpu"
-        )
+        self.device = "cuda" if torch.cuda.is_available else "cpu"
         # create directory for experiment
 
         self.checkpoints_path = self.args.root / "checkpoints"

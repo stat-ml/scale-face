@@ -12,13 +12,6 @@ def training_args():
 
     parser.add_argument("--resume", type=str, default=None)  # checkpoint
 
-    parser.add_argument(
-        "--pretrained-backbone",
-        type=str,
-        default=None,
-        help="Pretrained backbone weights",
-    )
-
     parser.add_argument("--debug", action="store_true")
 
     args = parser.parse_args()
