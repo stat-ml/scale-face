@@ -21,9 +21,6 @@ class TrainerBase(metaclass=abc.ABCMeta):
         # Load configurations
         self.board = board
         self.model_args = cfg.load_config(args.model_config)
-        self.optim_args = cfg.load_config(args.optimizer_config)
-        self.dataset_args = cfg.load_config(args.dataset_config)
-        self.env_args = cfg.load_config(args.env_config)
 
         self.backbone = None
         self.head = None
@@ -34,22 +31,15 @@ class TrainerBase(metaclass=abc.ABCMeta):
         self.data = dict()
 
         self.device = (
-            "cuda" if (self.env_args.use_gpu and torch.cuda.is_available) else "cpu"
+            "cuda" if torch.cuda.is_available else "cpu"
         )
         # create directory for experiment
 
         self.checkpoints_path = self.args.root / "checkpoints"
         os.makedirs(self.checkpoints_path)
 
-        # set evaluation metrics
-        self.evaluation_metrics, self.evaluation_configs = [], []
-        if len(self.args.evaluation_configs) > 0:
-            for item in self.args.evaluation_configs:
-                self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
-                self.evaluation_configs.append(cfg.load_config(item))
-
         # Set up distributed train
-        if self.args.is_distributed:
+        if self.model_args.is_distributed:
             self.world_size = int(os.environ["WORLD_SIZE"])
             self.rank = int(os.environ["RANK"])
             dist_url = "tcp://{}:{}".format(

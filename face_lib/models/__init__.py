@@ -1,5 +1,5 @@
 from .base import FaceModule
-from .losses import MLSLoss, AngleLoss, ArcFace
+from .losses import MLSLoss, AngleLoss, ArcFace, CosFace
 from .spherenet import SphereNet20
 from .heads import PFEHead
 from .iresnet import iresnet18, iresnet34, iresnet50, iresnet100

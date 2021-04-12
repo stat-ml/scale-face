@@ -9,3 +9,25 @@ optimizer:
     name: "partial_fc_sgd_default"
 scheduler:
     name: "partial_fc_default_scheduler"
+num_classes: 85742
+sample_rate: 1
+embedding_size: 512
+batch_size: 64
+opt_backbone:
+    name: "sgd"
+    lr: 0.1
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+opt_pfc:
+    name: "sgd"
+    lr: 0.1
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+num_epoch: 20
+val_targets:
+    - lfw
+fp16: false
+rec: /gpfs/gpfs0/r.karimov/ms1m
+is_distributed: true

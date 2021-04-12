@@ -3,11 +3,8 @@ import sys
 import torch
 import numpy as np
 import torchvision
-
-from face_lib.utils import Dataset
-from face_lib.utils import preprocess
-from face_lib.utils import FACE_METRICS
-from face_lib.utils import cfg
+sys.path.append("..")
+from face_lib.utils import Dataset, FACE_METRICS, cfg
 from torch.utils.tensorboard import SummaryWriter
 import torch.distributed as dist
 

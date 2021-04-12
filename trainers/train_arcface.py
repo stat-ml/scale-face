@@ -1,9 +1,10 @@
+import sys
 import os
 import logging
 import torch
 import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
-
+sys.path.append("..")
 import face_lib.models
 from face_lib.utils import DataLoaderX, MXFaceDataset, cfg
 from face_lib import models as mlib, utils
@@ -37,33 +38,38 @@ class Trainer(TrainerBase):
             local_rank=self.local_rank,
             world_size=self.world_size,
             resume=args.resume,
-            batch_size=cfg.batch_size,
+            batch_size=self.model_args.batch_size,
             margin_softmax=margin_softmax,
-            num_classes=cfg.num_classes,
-            sample_rate=cfg.sample_rate,
-            embedding_size=cfg.embedding_size,
-            prefix=cfg.output,
+            num_classes=self.model_args.num_classes,
+            sample_rate=self.model_args.sample_rate,
+            embedding_size=self.model_args.embedding_size,
+            prefix=self.args.root / "output",
         )
 
         self.opt_backbone = torch.optim.SGD(
             params=[{"params": self.backbone.parameters()}],
-            lr=cfg.lr / 512 * cfg.batch_size * self.world_size,
-            momentum=0.9,
-            weight_decay=cfg.weight_decay,
+            lr=self.model_args.opt_backbone.lr
+            / 512
+            * self.model_args.batch_size
+            * self.world_size,
+            momentum=self.model_args.opt_backbone.momentum,
+            weight_decay=self.model_args.opt_backbone.weight_decay,
         )
+
         self.opt_pfc = torch.optim.SGD(
             params=[{"params": self.module_partial_fc.parameters()}],
-            lr=cfg.lr / 512 * cfg.batch_size * self.world_size,
-            momentum=0.9,
-            weight_decay=cfg.weight_decay,
+            lr=self.model_args.opt_pfc.lr
+            / 512
+            * self.model_args.batch_size
+            * self.world_size,
+            momentum=self.model_args.opt_pfc.momentum,
+            weight_decay=self.model_args.opt_pfc.weight_decay,
         )
 
         self.scheduler_backbone = torch.optim.lr_scheduler.LambdaLR(
-            optimizer=self.opt_backbone, lr_lambda=cfg.lr_func
+            optimizer=self.opt_backbone
         )
-        self.scheduler_pfc = torch.optim.lr_scheduler.LambdaLR(
-            optimizer=self.opt_pfc, lr_lambda=cfg.lr_func
-        )
+        self.scheduler_pfc = torch.optim.lr_scheduler.LambdaLR(optimizer=self.opt_pfc)
 
     def _data_loader(self):
         self.trainset = MXFaceDataset(self.dataset_args.path)
@@ -73,26 +79,34 @@ class Trainer(TrainerBase):
         self.train_loader = DataLoaderX(
             local_rank=self.local_rank,
             dataset=self.trainset,
-            batch_size=cfg.batch_size,
-            sampler=self.train_sampler if self.args.is_distributed else None,
+            batch_size=self.model_args.batch_size,
+            sampler=self.train_sampler if self.model_args.is_distributed else None,
             num_workers=0,
             pin_memory=True,
             drop_last=True,
         )
         self.total_step = int(
-            len(self.trainset) / cfg.batch_size / self.world_size * cfg.num_epoch
+            len(self.trainset)
+            / self.model_args.batch_size
+            / self.world_size
+            * self.model_args.num_epoch
         )
         if self.rank is 0:
             logging.info("Total Step is: %d" % self.total_step)
 
         self.callback_verification = face_lib.utils.CallBackVerification(
-            2000, self.rank, cfg.val_targets, cfg.rec
+            2000, self.rank, self.model_args.val_targets, self.model_args.rec
         )
         self.callback_logging = face_lib.utils.CallBackLogging(
-            50, self.rank, self.total_step, cfg.batch_size, self.world_size, None
+            50,
+            self.rank,
+            self.total_step,
+            self.model_args.batch_size,
+            self.world_size,
+            None,
         )
         self.callback_checkpoint = face_lib.utils.CallBackModelCheckpoint(
-            self.rank, cfg.output
+            self.rank, self.args.root / "output"
         )
 
     def _main_loop(self):
@@ -100,12 +114,14 @@ class Trainer(TrainerBase):
         global_step = 0
         grad_scaler = (
             face_lib.utils.MaxClipGradScaler(
-                cfg.batch_size, 128 * cfg.batch_size, growth_interval=100
+                self.model_args.batch_size,
+                128 * self.model_args.batch_size,
+                growth_interval=100,
             )
-            if cfg.fp16
+            if self.model_args.fp16
             else None
         )
-        for epoch in range(self.start_epoch, cfg.num_epoch):
+        for epoch in range(self.start_epoch, self.model_args.num_epoch):
             self.train_sampler.set_epoch(epoch)
             for step, (img, label) in enumerate(self.train_loader):
                 global_step += 1
@@ -113,7 +129,7 @@ class Trainer(TrainerBase):
                 x_grad, loss_v = self.module_partial_fc.forward_backward(
                     label, features, self.opt_pfc
                 )
-                if cfg.fp16:
+                if self.model_args.fp16:
                     features.backward(grad_scaler.scale(x_grad))
                     grad_scaler.unscale_(self.opt_backbone)
                     torch.nn.utils.clip_grad_norm_(
@@ -133,7 +149,9 @@ class Trainer(TrainerBase):
                 self.opt_backbone.zero_grad()
                 self.opt_pfc.zero_grad()
                 loss.update(loss_v, 1)
-                self.callback_logging(global_step, loss, epoch, cfg.fp16, grad_scaler)
+                self.callback_logging(
+                    global_step, loss, epoch, self.model_args.fp16, grad_scaler
+                )
                 self.callback_verification(global_step, self.backbone)
             self.callback_checkpoint(global_step, self.backbone, self.module_partial_fc)
             self.scheduler_backbone.step()
