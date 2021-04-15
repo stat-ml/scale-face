@@ -103,11 +103,13 @@ class MLSLoss(FaceModule):
             diff = mu_diff / (1e-8 + sig_sum) + mu_X.size(1) * torch.log(sig_sum)
             return diff
         else:
-            mu_diff = mu_X.unsqueeze(1) - mu_X.unsqueeze(0)
+            func = lambda f1, f2: torch.einsum("ij,dj->idj", f1, f2) / \
+                                  (f1.norm(dim=-1)[:,None] @ f2.norm(dim=-1)[None] + 1e-5)[...,None]
+
             sig_sum = sigma_sq_X.unsqueeze(1) + sigma_sq_X.unsqueeze(0)
-            diff = torch.mul(mu_diff, mu_diff) / (1e-10 + sig_sum) + torch.log(
+            diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + torch.log(
                 sig_sum
-            )  # BUG
+            )
             diff = diff.sum(dim=2, keepdim=False)
             return diff
 
@@ -121,5 +123,5 @@ class MLSLoss(FaceModule):
         loss_mat = self.negMLS(mu_X, sig_X)
         gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
         pos_mask = (non_diag_mask * gty_mask) > 0
-        pos_loss = loss_mat[pos_mask].mean()
+        pos_loss = loss_mat[pos_mask].mean();
         return pos_loss
