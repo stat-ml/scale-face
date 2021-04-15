@@ -101,7 +101,7 @@ class Trainer(TrainerBase):
     def _data_loader(self):
         batch_format = {
             "size": self.model_args.batch_size,
-            "num_classes": self.model_args.num_classes_batch,
+            "num_classes": self.model_args.batch_size // self.model_args.num_classes_batch,
         }
         train_proc_func = lambda images: preprocess(
             images, self.model_args.in_size, is_training=True
@@ -110,6 +110,13 @@ class Trainer(TrainerBase):
             self.model_args.path_list, preprocess_func=train_proc_func
         )
         self.trainset.start_batch_queue(batch_format)
+        """
+        utils.visualize_in_out_class_distribution(self.backbone,
+                                                  self.backbone_criterion,
+                                                  self.trainset,
+                                                  board=True,
+                                                  device=self.device, )
+        """
 
     def _model_evaluate(self, epoch=0):
         """
@@ -122,6 +129,9 @@ class Trainer(TrainerBase):
         pass
 
     def _model_train(self, epoch=0):
+        #utils.inference_example(self.backbone)
+
+
         if self.model_args.backbone.learnable is True:
             self.backbone.train()
         if self.model_args.head and self.model_args.head.learnable is True:
@@ -145,24 +155,6 @@ class Trainer(TrainerBase):
                 loss = self.head_criterion(**outputs)
             else:
                 loss = self.backbone_criterion(**outputs)
-
-            for metric in self.evaluation_configs:
-                if metric.type == "lfw":
-                    visual_img = utils.visualize_ambiguity_dilemma_lfw(
-                        self.backbone,
-                        self.backbone_criterion,
-                        metric.lfw_path,
-                        pfe_head=self.head,
-                        criterion_head=self.head_criterion,
-                        board=True,
-                        device=self.device,
-                    )
-                    self.board.add_image(
-                        "ambiguity_dilemma_lfw",
-                        visual_img.transpose(2, 0, 1),
-                        _global_iteration,
-                    )
-
             loss.backward()
             self.optimizer.step()
             loss_recorder.append(loss.item())
@@ -183,6 +175,25 @@ class Trainer(TrainerBase):
                     np.mean(loss_recorder),
                     _global_iteration,
                 )
+
+                if (idx + 1) % (self.model_args.logging.print_freq * 20) == 0:
+                    for metric in self.evaluation_configs:
+                        if metric.type == "lfw":
+                            visual_img = utils.visualize_ambiguity_dilemma_lfw(
+                                self.backbone,
+                                self.backbone_criterion,
+                                metric.lfw_path,
+                                pfe_head=self.head,
+                                criterion_head=self.head_criterion,
+                                board=True,
+                                device=self.device,
+                            )
+                            self.board.add_image(
+                                "ambiguity_dilemma_lfw",
+                                visual_img.transpose(2, 0, 1),
+                                _global_iteration,
+                            )
+
             if self.args.debug:
                 # break loop if debug flag is True
                 break
@@ -192,6 +203,7 @@ class Trainer(TrainerBase):
 
     def _main_loop(self):
         min_train_loss = self.__class__._INF
+
         for epoch in range(self.start_epoch, self.model_args.epochs):
             train_loss = self._model_train(epoch)
             self._model_evaluate(epoch)
