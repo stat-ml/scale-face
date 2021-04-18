@@ -16,8 +16,14 @@ exts = ["jpg", "png"]
 for ext in exts:
     all_files.extend(glob.glob(str(PosixPath(args.path)/"*"/f"*.{ext}")))
 
+all_faces = []
+
 for item in all_files:
+    print(item)
     img = cv2.cvtColor(cv2.imread(item), cv2.COLOR_BGR2RGB)
     faces = detector.detect_faces(img)
-    import pdb
-    pdb.set_trace()
+    all_faces.append(faces)
+
+import pickle
+with open("all_faces.pkl", "wb") as f:
+    pickle.dump(all_faces, f)
