@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from face_lib.utils.dataset import Dataset
 from face_lib.utils.imageprocessing import preprocess
+from face_lib.models import MLS
 
 _neg_inf = -1e6
 
@@ -146,7 +147,8 @@ def tpr_pfr(
 @_register_board
 @_register_metric
 def accuracy_lfw_6000_pairs(
-    model: nn.Module,
+    backbone: nn.Module,
+    head: nn.Module,
     lfw_path: str,
     lfw_pairs_txt_path: str,
     device=None,
@@ -173,22 +175,22 @@ def accuracy_lfw_6000_pairs(
             folds.append([train, test])
         return folds
 
-    def eval_acc(threshold, diff):
+    def eval_acc(threshold, diff, indx):
         y_true = []
         y_predict = []
         for d in diff:
-            same = 1 if float(d[2]) > threshold else 0
+            same = 1 if float(d[indx]) > threshold else 0
             y_predict.append(same)
-            y_true.append(int(d[3]))
+            y_true.append(int(d[-1]))
         y_true = np.array(y_true)
         y_predict = np.array(y_predict)
         accuracy = 1.0 * np.count_nonzero(y_true == y_predict) / len(y_true)
         return accuracy
 
-    def find_best_threshold(thresholds, predicts):
+    def find_best_threshold(thresholds, predicts, indx):
         best_threshold = best_acc = 0
         for threshold in thresholds:
-            accuracy = eval_acc(threshold, predicts)
+            accuracy = eval_acc(threshold, predicts, indx)
             if accuracy >= best_acc:
                 best_acc = accuracy
                 best_threshold = threshold
@@ -199,6 +201,7 @@ def accuracy_lfw_6000_pairs(
     lfw_set = Dataset(lfw_path, preprocess_func=proc_func)
 
     pairs_lines = open(lfw_pairs_txt_path).readlines()[1:]
+    mls_values = []
     for i in tqdm(range(N), desc="Evaluating on LFW 6000 pairs: "):
         p = pairs_lines[i].replace("\n", "").split("\t")
 
@@ -225,19 +228,39 @@ def accuracy_lfw_6000_pairs(
         )
 
         # TODO: for some reason spherenet is good on BGR??
-        output = model(img_batch)["feature"]
-        f1, f2 = output
+        output = backbone(img_batch)
+
+        f1, f2 = output["feature"]
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
-        predicts.append("{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag))
+        if head:
+            output.update(head(**output))
+            mls = MLS()(**output)[0, 1]
+            predicts.append(
+                "{}\t{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, mls, sameflag)
+            )
+            mls_values.append(mls.item())
+        else:
+            predicts.append(
+                "{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag)
+            )
 
-    accuracy = []
-    thd = []
-    folds = KFold(n=N, n_folds=n_folds, shuffle=False)
-    thresholds = np.arange(-1.0, 1.0, 0.005)
+    def calculate_accuracy(indx, thresholds, predicts):
+        accuracy = []
+        folds = KFold(n=N, n_folds=n_folds, shuffle=False)
+        predicts_ = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))
+        for idx, (train, test) in enumerate(folds):
+            best_thresh = find_best_threshold(thresholds, predicts_[train], indx)
+            accuracy.append(eval_acc(best_thresh, predicts_[test], indx))
+        return accuracy
 
-    predicts = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))
-    for idx, (train, test) in enumerate(folds):
-        best_thresh = find_best_threshold(thresholds, predicts[train])
-        accuracy.append(eval_acc(best_thresh, predicts[test]))
-        thd.append(best_thresh)
-    return {"accuracy", np.mean(accuracy)}
+    accuracy_backbone = calculate_accuracy(2, np.arange(-1.0, 1.0, 0.005), predicts)
+
+    if head:
+        accuracy_head = calculate_accuracy(
+            3, np.linspace(np.min(mls_values), np.max(mls_values), 400), predicts
+        )
+
+    return {
+        "accuracy_backbone": np.mean(accuracy_backbone),
+        "accuracy_head": np.mean(accuracy_head),
+    }

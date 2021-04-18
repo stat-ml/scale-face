@@ -95,7 +95,7 @@ class MLS(nn.Module):
         )
 
         sig_sum = sigma_sq_X.unsqueeze(1) + sigma_sq_X.unsqueeze(0)
-        diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + 0.5 * torch.log(sig_sum)
+        diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + torch.log(sig_sum)
         diff = diff.sum(dim=2, keepdim=False)
         return -diff
 

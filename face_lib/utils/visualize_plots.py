@@ -126,7 +126,9 @@ def visualize_ambiguity_dilemma_lfw(
 
                 sigmas_mean = outputs1["log_sigma"].mean(dim=-1)
 
-                dist1, dist2 = criterion_head(**outputs1), criterion_head(**outputs2)
+                dist1, dist2 = criterion_head(device, **outputs1), criterion_head(
+                    device, **outputs2
+                )
 
                 pfe_distances["original_vs_distorted"][i][idx] = dist1
                 pfe_distances["impostor"][i][idx] = dist2

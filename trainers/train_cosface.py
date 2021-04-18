@@ -18,8 +18,10 @@ torch.backends.cudnn.bencmark = True
 
 def _set_evaluation_metric_yaml(config: dict):
     metric_name = config.name
+    name_elem = config["name"]
     config.pop("name")
     metric = lambda model: FACE_METRICS[metric_name](model, **config)
+    config["name"] = name_elem
     return metric
 
 
@@ -113,11 +115,13 @@ class Trainer(TrainerBase):
         )
         self.trainset.start_batch_queue(batch_format)
 
+    @torch.no_grad()
     def _model_evaluate(self, epoch=0):
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
                 utils.accuracy_lfw_6000_pairs(
                     self.backbone,
+                    self.head,
                     metric.lfw_path,
                     metric.lfw_pairs_txt_path,
                     N=metric.N,
@@ -149,7 +153,7 @@ class Trainer(TrainerBase):
 
             if self.head:
                 outputs.update(self.head(**outputs))
-                loss = self.head_criterion(**outputs)
+                loss = self.head_criterion(device=self.device, **outputs)
             else:
                 loss = self.backbone_criterion(**outputs)
             loss.backward()
@@ -175,7 +179,7 @@ class Trainer(TrainerBase):
 
                 if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
                     for metric in self.evaluation_configs:
-                        if metric.name == "accuracy_lfw_6000_pairs":
+                        if metric.name == "lfw_dilemma":
                             visual_img = utils.visualize_ambiguity_dilemma_lfw(
                                 self.backbone,
                                 self.backbone_criterion,
@@ -185,7 +189,14 @@ class Trainer(TrainerBase):
                                 board=True,
                                 device=self.device,
                             )
+                            self.board.add_image(
+                                "ambiguity_dilemma_lfw",
+                                visual_img.transpose(2, 0, 1),
+                                _global_iteration,
+                            )
                         if metric.name == "lfw_dilemma":
+                            pass
+                            """
                             utils.visualize_low_high_similarity_pairs(
                                 self.backbone,
                                 self.backbone_criterion,
@@ -196,13 +207,7 @@ class Trainer(TrainerBase):
                                 board=True,
                                 device=self.device,
                             )
-
-                            self.board.add_image(
-                                "ambiguity_dilemma_lfw",
-                                visual_img.transpose(2, 0, 1),
-                                _global_iteration,
-                            )
-
+                            """
             if self.args.debug:
                 # break loop if debug flag is True
                 break
