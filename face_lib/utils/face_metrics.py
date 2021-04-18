@@ -14,10 +14,10 @@ FACE_METRICS = dict()
 
 def _register_board(function):
     def wrap_function(*args, **kwargs):
-        board_writer = kwargs["board_writer"]
-        board_iter = kwargs["board_iter"]
         output_dict = function(*args, **kwargs)
         if "board" in kwargs and kwargs["board"] is True:
+            board_writer = kwargs["board_writer"]
+            board_iter = kwargs["board_iter"]
             for key, value in output_dict.items():
                 board_writer.add_scalar(
                     f"validation/{function.__name__}/{key}", value, board_iter
@@ -199,7 +199,7 @@ def accuracy_lfw_6000_pairs(
     lfw_set = Dataset(lfw_path, preprocess_func=proc_func)
 
     pairs_lines = open(lfw_pairs_txt_path).readlines()[1:]
-    for i in tqdm(range(N)):
+    for i in tqdm(range(N), desc="Evaluating on LFW 6000 pairs: "):
         p = pairs_lines[i].replace("\n", "").split("\t")
 
         if 3 == len(p):
@@ -223,9 +223,9 @@ def accuracy_lfw_6000_pairs(
             .permute(0, 3, 1, 2)
             .to(device)
         )
-        # TODO: for some reason spherenet is good on BGR??
-        output = model(img_batch)
 
+        # TODO: for some reason spherenet is good on BGR??
+        output = model(img_batch)["feature"]
         f1, f2 = output
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
         predicts.append("{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag))

@@ -137,6 +137,7 @@ class SphereNet20(FaceModule):
 
         x = self.relu4_1(self.conv4_1(x))
         x = x + self.relu4_3(self.conv4_3(self.relu4_2(self.conv4_2(x))))
+
         bottleneck_feature = x.view(x.size(0), -1)
         feature = self.fc5(bottleneck_feature)
         angle_x = self.fc6(feature)

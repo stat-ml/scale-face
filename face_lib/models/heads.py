@@ -12,11 +12,12 @@ class PFEHead(FaceModule):
         self.relu = nn.ReLU(in_feat)
         self.fc2 = nn.Linear(in_feat, in_feat)
         self.bn2 = nn.BatchNorm1d(in_feat, affine=False)
-        self.gamma = Parameter(torch.Tensor([1.0]))
-        self.beta = Parameter(torch.Tensor([0.0]))
+        self.gamma = Parameter(torch.Tensor([1e-4]))
+        self.beta = Parameter(torch.Tensor([-7.0]))
 
     def forward(self, **kwargs):
-        x = kwargs["bottleneck_feature"]
+        x: torch.Tensor = kwargs["bottleneck_feature"]
+        x = x / x.norm(dim=-1, keepdim=True)
         x = self.relu(self.bn1(self.fc1(x)))
         x = self.bn2(self.fc2(x))
         x = self.gamma * x + self.beta

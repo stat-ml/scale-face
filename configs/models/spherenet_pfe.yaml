@@ -1,7 +1,7 @@
 title: "spherenet_pfe"
 backbone:
     name: "spherenet20"
-    learnable: true
+    learnable: false
     criterion:
         name: "angle_loss"
 head:
@@ -22,17 +22,24 @@ scheduler: null
 batch_size: 256
 num_classes_batch: 4
 is_distributed: false
-iterations: 1000
+iterations: 2000
 epochs: 3
 path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
 in_size: [112, 96]
 logging:
-    print_freq: 100
+    print_freq: 10
     save_freq: 1
 evaluation_configs:
-    - name: "accuracy_lfw_6000_pairs"
+    - name: "lfw_dilemma"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+    - name: "low_high_similarity"
       type: "lfw"
       lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
       lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+    - name: "lfw_6000_pairs"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt"
       N: 6000
       n_folds: 10

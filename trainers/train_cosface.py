@@ -3,6 +3,7 @@ import sys
 import torch
 import numpy as np
 import torchvision
+
 sys.path.append(".")
 from face_lib.utils import Dataset, cfg, FACE_METRICS
 from face_lib.utils.imageprocessing import preprocess
@@ -101,7 +102,8 @@ class Trainer(TrainerBase):
     def _data_loader(self):
         batch_format = {
             "size": self.model_args.batch_size,
-            "num_classes": self.model_args.batch_size // self.model_args.num_classes_batch,
+            "num_classes": self.model_args.batch_size
+            // self.model_args.num_classes_batch,
         }
         train_proc_func = lambda images: preprocess(
             images, self.model_args.in_size, is_training=True
@@ -110,28 +112,23 @@ class Trainer(TrainerBase):
             self.model_args.path_list, preprocess_func=train_proc_func
         )
         self.trainset.start_batch_queue(batch_format)
-        """
-        utils.visualize_in_out_class_distribution(self.backbone,
-                                                  self.backbone_criterion,
-                                                  self.trainset,
-                                                  board=True,
-                                                  device=self.device, )
-        """
 
     def _model_evaluate(self, epoch=0):
-        """
-        self.backbone.eval()
-        if self.model_args.head:
-            self.head.eval()
-        for _metric in self.evaluation_metrics:
-            _metric(self.backbone, board=True, board_writer=self.board)
-        """
-        pass
+        for metric in self.evaluation_configs:
+            if metric.name == "lfw_6000_pairs":
+                utils.accuracy_lfw_6000_pairs(
+                    self.backbone,
+                    metric.lfw_path,
+                    metric.lfw_pairs_txt_path,
+                    N=metric.N,
+                    n_folds=metric.n_folds,
+                    device=self.device,
+                    board=True,
+                    board_writer=self.board,
+                    board_iter=epoch,
+                )
 
     def _model_train(self, epoch=0):
-        #utils.inference_example(self.backbone)
-
-
         if self.model_args.backbone.learnable is True:
             self.backbone.train()
         if self.model_args.head and self.model_args.head.learnable is True:
@@ -176,9 +173,9 @@ class Trainer(TrainerBase):
                     _global_iteration,
                 )
 
-                if (idx + 1) % (self.model_args.logging.print_freq * 20) == 0:
+                if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
                     for metric in self.evaluation_configs:
-                        if metric.type == "lfw":
+                        if metric.name == "accuracy_lfw_6000_pairs":
                             visual_img = utils.visualize_ambiguity_dilemma_lfw(
                                 self.backbone,
                                 self.backbone_criterion,
@@ -188,6 +185,18 @@ class Trainer(TrainerBase):
                                 board=True,
                                 device=self.device,
                             )
+                        if metric.name == "lfw_dilemma":
+                            utils.visualize_low_high_similarity_pairs(
+                                self.backbone,
+                                self.backbone_criterion,
+                                metric.lfw_path,
+                                metric.lfw_pairs_txt_path,
+                                pfe_head=self.head,
+                                criterion_head=self.head_criterion,
+                                board=True,
+                                device=self.device,
+                            )
+
                             self.board.add_image(
                                 "ambiguity_dilemma_lfw",
                                 visual_img.transpose(2, 0, 1),
@@ -205,8 +214,8 @@ class Trainer(TrainerBase):
         min_train_loss = self.__class__._INF
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
-            train_loss = self._model_train(epoch)
             self._model_evaluate(epoch)
+            train_loss = self._model_train(epoch)
 
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))

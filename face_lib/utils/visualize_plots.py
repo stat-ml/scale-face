@@ -7,6 +7,8 @@ import pandas as pd
 
 from face_lib.utils.dataset import Dataset
 from face_lib.utils.imageprocessing import preprocess
+from face_lib.models import MLS
+from tqdm import tqdm
 
 
 __all__ = ["visualize_ambiguity_dilemma_lfw", "visualize_low_high_similarity_pairs"]
@@ -35,6 +37,19 @@ def visualizer_decorator(function):
         return fig
 
     return wrap_function
+
+
+@visualizer_decorator
+def visualize_in_out_class_distribution(
+    pfe_backbone: torch.nn.Module,
+    criterion_backbone: torch.nn.Module,
+    pfe_head: torch.nn.Module,
+    criterion_head,
+    in_size: tuple = (112, 96),
+    device=None,
+    **kwargs,  # TODO: can we get rid of this dict?
+):
+    ...
 
 
 @visualizer_decorator
@@ -98,9 +113,10 @@ def visualize_ambiguity_dilemma_lfw(
             outputs2 = {"gty": torch.ones(2, device=device, dtype=torch.int64)}
             outputs2.update(pfe_backbone(image_batch2.to(device)))
 
-            dist1, dist2 = criterion_backbone(**outputs1), criterion_backbone(
-                **outputs1
-            )
+            func = lambda f: f[0].dot(f[1]) / (f[0].norm() * f[1].norm() + 1e-5)
+            features1, features2 = outputs1["feature"], outputs2["feature"]
+            dist1, dist2 = func(features1), func(features2)
+
             determinist_distances["original_vs_distorted"][i][idx] = dist1
             determinist_distances["impostor"][i][idx] = dist2
 
@@ -108,7 +124,10 @@ def visualize_ambiguity_dilemma_lfw(
                 outputs1.update(pfe_head(**outputs1))
                 outputs2.update(pfe_head(**outputs2))
 
-                dist1, dist2 = criterion_head(**outputs1), criterion_head(**outputs1)
+                sigmas_mean = outputs1["log_sigma"].mean(dim=-1)
+
+                dist1, dist2 = criterion_head(**outputs1), criterion_head(**outputs2)
+
                 pfe_distances["original_vs_distorted"][i][idx] = dist1
                 pfe_distances["impostor"][i][idx] = dist2
 
@@ -187,10 +206,52 @@ def visualize_low_high_similarity_pairs(
     pfe_head: torch.nn.Module,
     criterion: torch.nn.Module,
     lfw_path: str,
+    lfw_pairs_txt_path: str,
     *,
     number_of_iters: int = 10,
     in_size: tuple = (112, 96),
     device=None,
     **kwargs,  # TODO: can we get rid of this dict?
 ):
-    raise NotImplementedError
+
+    if device is None:
+        device = torch.device("cpu")
+    N = 6000
+    predicts = []
+    proc_func = lambda images: preprocess(images, [112, 96], is_training=False)
+    lfw_set = Dataset(lfw_path, preprocess_func=proc_func)
+
+    pairs_lines = open(lfw_pairs_txt_path).readlines()[1:]
+    for i in tqdm(range(N)):
+        p = pairs_lines[i].replace("\n", "").split("\t")
+
+        if 3 == len(p):
+            sameflag = 1
+            name1 = p[0] + "/" + p[0] + "_" + "{:04}.jpg".format(int(p[1]))
+            name2 = p[0] + "/" + p[0] + "_" + "{:04}.jpg".format(int(p[2]))
+        if 4 == len(p):
+            sameflag = 0
+            name1 = p[0] + "/" + p[0] + "_" + "{:04}.jpg".format(int(p[1]))
+            name2 = p[2] + "/" + p[2] + "_" + "{:04}.jpg".format(int(p[3]))
+
+        try:
+            img1 = lfw_set.get_item_by_the_path(name1)
+            img2 = lfw_set.get_item_by_the_path(name2)
+        except:
+            # FIXME: mtcncaffe and spherenet alignments are not the same
+            continue
+
+        img_batch = (
+            torch.from_numpy(np.concatenate((img1[None], img2[None]), axis=0))
+            .permute(0, 3, 1, 2)
+            .to(device)
+        )
+
+        outputs = {}
+        outputs.update(pfe_backbone(img_batch))
+        outputs.update(pfe_head(**outputs))
+
+        f1, f2 = outputs["feature"]
+        cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
+
+        predicts.append("{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, sameflag))
