@@ -1,1 +1,3 @@
 black
+joblib
+tensorflow
