@@ -4,7 +4,7 @@ import torch
 from . import *
 from .utils import harmonic_mean
 from .matlab_cp2tform import get_similarity_transform_for_cv2
-from .align_datasets import align_dataset_from_list
+from .align_datasets import align_dataset_from_list, align_image
 from .face_metrics import accuracy_lfw_6000_pairs, FACE_METRICS
 from .visualize_plots import (
     visualize_ambiguity_dilemma_lfw,

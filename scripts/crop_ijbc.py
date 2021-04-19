@@ -2,8 +2,7 @@ import os
 import sys
 import argparse
 import numpy as np
-from scipy import misc
-import cv2  # Some images can not be read by misc, use opencv instead
+import cv2
 import joblib
 
 from tqdm import tqdm
@@ -84,7 +83,8 @@ def main(args):
                 else:
                     print("%s not found in the input directory, skipped" % (impath))
                     return
-
+            if impath[-4:] == ".mp4":
+                return 0
             img = cv2.imread(impath, flags=1)
 
             if img.ndim == 0:
@@ -95,10 +95,13 @@ def main(args):
                 if square_crop:
                     bbox = square_bbox(bbox)
                 bbox = pad_bbox(bbox, padding_ratio)
-                img = crop(img, bbox)
+                try:
+                    img = crop(img, bbox)
+                except:
+                    return 0
 
                 impath_new = os.path.join(args.save_prefix, imname)
-                if os.path.isdir(os.path.dirname(impath_new)) == False:
+                if not os.path.isdir(os.path.dirname(impath_new)):
                     os.makedirs(os.path.dirname(impath_new))
                 if target_size:
                     img = cv2.resize(img, target_size)
@@ -106,7 +109,7 @@ def main(args):
                 return 1
 
     count = joblib.Parallel(n_jobs=1)(
-        joblib.delayed(_f)(i, line) for i, line in tqdm(enumerate(lines))
+        joblib.delayed(_f)(i, line) for i, line in tqdm(enumerate(lines[141296:]))
     )
     count = np.array(count)
 
