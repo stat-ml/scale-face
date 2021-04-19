@@ -20,7 +20,9 @@ REF_PTS_ST = np.array(
 )
 
 
-def align_image(src_img, src_pts, image_size, ref_pts=REF_PTS_ST, scale=1.0, transpose_input=False):
+def align_image(
+    src_img, src_pts, image_size, ref_pts=REF_PTS_ST, scale=1.0, transpose_input=False
+):
     w, h = image_size = tuple(image_size)
     scale_ = max(w, h) * scale
     cx_ref = cy_ref = 0.0
