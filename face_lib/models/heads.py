@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.nn import Parameter
 from face_lib.models import FaceModule
 
@@ -23,3 +24,25 @@ class PFEHead(FaceModule):
         x = self.gamma * x + self.beta
         x = torch.log(1e-6 + torch.exp(x))
         return {"log_sigma": x}
+
+class PFEHeadAdjustable(nn.Module):
+    def __init__(self, in_feat=512, out_feat=512):
+        super(PFEHeadAdjustable, self).__init__()
+        self.fc1 = Parameter(torch.Tensor(out_feat, in_feat))
+        self.bn1 = nn.BatchNorm1d(out_feat, affine=True)
+        self.relu = nn.ReLU(out_feat)
+        self.fc2 = Parameter(torch.Tensor(out_feat, out_feat))
+        self.bn2 = nn.BatchNorm1d(out_feat, affine=False)
+        self.gamma = Parameter(torch.Tensor([1.0]))
+        self.beta = Parameter(torch.Tensor([0.0]))
+
+        nn.init.kaiming_normal_(self.fc1)
+        nn.init.kaiming_normal_(self.fc2)
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = self.relu(self.bn1(F.linear(x, F.normalize(self.fc1))))
+        x = self.bn2(F.linear(x, F.normalize(self.fc2)))  # 2*log(sigma)
+        x = self.gamma * x + self.beta
+        x = torch.log(1e-6 + torch.exp(x))  # log(sigma^2)
+        return x
