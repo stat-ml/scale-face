@@ -69,9 +69,9 @@ def _f(item):
     return 0
 
 
-failed_examples = joblib.Parallel(n_jobs=args.cpus or CPU_COUNT, backend="multiprocessing")(
-    (joblib.delayed(_f)(item) for i, item in tqdm(enumerate(all_files)))
-)
+failed_examples = joblib.Parallel(
+    n_jobs=args.cpus or CPU_COUNT, backend="multiprocessing"
+)((joblib.delayed(_f)(item) for i, item in tqdm(enumerate(all_files))))
 failed_examples = np.array(failed_examples)
 
 with open("failed_ijbc_indices_pickled", "wb") as f:

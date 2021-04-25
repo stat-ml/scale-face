@@ -117,6 +117,9 @@ class Trainer(TrainerBase):
 
     @torch.no_grad()
     def _model_evaluate(self, epoch=0):
+        self.backbone.eval()
+        if self.model_args.head:
+            self.head.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
                 utils.accuracy_lfw_6000_pairs(
