@@ -16,7 +16,7 @@ class CDataset(Dataset):
 
     def __getitem__(self, idx):
         img_raw = cv2.cvtColor(
-            cv2.imread(self.all_files[np.random.choice(len(self), 1)[0]]),
+            cv2.imread(self.all_files[idx]),
             cv2.IMREAD_COLOR,
         )
         img = np.float32(img_raw)

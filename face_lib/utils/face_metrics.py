@@ -235,6 +235,7 @@ def accuracy_lfw_6000_pairs(
         if head:
             output.update(head(**output))
             mls = MLS()(**output)[0, 1]
+
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance, mls, sameflag)
             )
@@ -259,6 +260,9 @@ def accuracy_lfw_6000_pairs(
         accuracy_head = calculate_accuracy(
             3, np.linspace(np.min(mls_values), np.max(mls_values), 400), predicts
         )
+
+    print("head:", np.mean(accuracy_head))
+    print("backbone:", np.mean(accuracy_backbone))
 
     return {
         "accuracy_backbone": np.mean(accuracy_backbone),

@@ -222,9 +222,8 @@ class Trainer(TrainerBase):
         min_train_loss = self.__class__._INF
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
-            self._model_evaluate(epoch)
             train_loss = self._model_train(epoch)
-
+            self._model_evaluate(epoch)
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss
