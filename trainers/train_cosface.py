@@ -117,6 +117,9 @@ class Trainer(TrainerBase):
 
     @torch.no_grad()
     def _model_evaluate(self, epoch=0):
+        self.backbone.eval()
+        if self.model_args.head:
+            self.head.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
                 utils.accuracy_lfw_6000_pairs(
@@ -219,9 +222,8 @@ class Trainer(TrainerBase):
         min_train_loss = self.__class__._INF
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
-            self._model_evaluate(epoch)
             train_loss = self._model_train(epoch)
-
+            self._model_evaluate(epoch)
             if min_train_loss > train_loss:
                 print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss

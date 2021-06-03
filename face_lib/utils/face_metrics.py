@@ -250,6 +250,7 @@ def accuracy_lfw_6000_pairs(
         if head:
             output.update(head(**output))
             mls = MLS()(**output)[0, 1]
+
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance.cpu(), mls.cpu(), sameflag)
             )
@@ -263,7 +264,6 @@ def accuracy_lfw_6000_pairs(
         accuracy = []
         folds = KFold(n=N, n_folds=n_folds, shuffle=False)
         predicts_ = np.array(list(map(lambda line: line.strip("\n").split(), predicts)))
-        print (len(predicts_))
         for idx, (train, test) in enumerate(folds):
             best_thresh = find_best_threshold(thresholds, predicts_[train], indx)
             accuracy.append(eval_acc(best_thresh, predicts_[test], indx))
