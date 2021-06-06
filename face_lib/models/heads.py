@@ -7,10 +7,10 @@ from face_lib.models import FaceModule
 
 class PFEHead(FaceModule):
     def __init__(self, in_feat=512, **kwargs):
-        super(PFEHead, self).__init__(kwargs)
+        super(PFEHead, self).__init__(**kwargs)
         self.fc1 = nn.Linear(in_feat * 6 * 7, in_feat)
         self.bn1 = nn.BatchNorm1d(in_feat, affine=True)
-        self.relu = nn.ReLU(in_feat)
+        self.relu = nn.ReLU()
         self.fc2 = nn.Linear(in_feat, in_feat)
         self.bn2 = nn.BatchNorm1d(in_feat, affine=False)
         self.gamma = Parameter(torch.Tensor([1e-4]))
@@ -25,12 +25,13 @@ class PFEHead(FaceModule):
         x = torch.log(1e-6 + torch.exp(x))
         return {"log_sigma": x}
 
-class PFEHeadAdjustable(nn.Module):
-    def __init__(self, in_feat=512, out_feat=512):
-        super(PFEHeadAdjustable, self).__init__()
+
+class PFEHeadAdjustable(FaceModule):
+    def __init__(self, in_feat=512, out_feat=512, **kwargs):
+        super(PFEHeadAdjustable, self).__init__(**kwargs)
         self.fc1 = Parameter(torch.Tensor(out_feat, in_feat))
         self.bn1 = nn.BatchNorm1d(out_feat, affine=True)
-        self.relu = nn.ReLU(out_feat)
+        self.relu = nn.ReLU()
         self.fc2 = Parameter(torch.Tensor(out_feat, out_feat))
         self.bn2 = nn.BatchNorm1d(out_feat, affine=False)
         self.gamma = Parameter(torch.Tensor([1.0]))

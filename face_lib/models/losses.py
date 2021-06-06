@@ -85,8 +85,7 @@ class MLS(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, cos_func=False, **kwargs):
-        mu_X, log_sigma = kwargs["feature"], kwargs["log_sigma"]
+    def forward(self, mu_X, log_sigma, cos_func=False, **kwargs):
         mu_X = F.normalize(mu_X)
         sigma_sq_X = torch.exp(log_sigma)
         if cos_func:
@@ -113,10 +112,9 @@ class MLSLoss(FaceModule):
         super(MLSLoss, self).__init__(kwargs)
         self.mean = mean
 
-    def forward(self, device, **kwargs):
-        mu_X, gty, log_sigma = kwargs["feature"], kwargs["gty"], kwargs["log_sigma"]
+    def forward(self, device, mu_X, gty, log_sigma):
         non_diag_mask = (1 - torch.eye(mu_X.size(0))).int().to(gty.device)
-        loss_mat = -MLS()(**kwargs)
+        loss_mat = -MLS()(mu_X, log_sigma)
         gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
         pos_mask = (non_diag_mask * gty_mask) > 0
         pos_loss = loss_mat[pos_mask].mean()

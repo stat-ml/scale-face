@@ -237,7 +237,7 @@ def accuracy_lfw_6000_pairs(
             .permute(0, 3, 1, 2)
             .to(device)
         )
-        
+
         # TODO: for some reason spherenet is good on BGR??
         output = backbone(img_batch.to(device))
         

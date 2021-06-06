@@ -11,17 +11,17 @@ from .visualize_plots import (
     visualize_in_out_class_distribution,
 )
 from .dataset import Dataset, MXFaceDataset, DataLoaderX
-# from .utils_callback import (
-#     CallBackVerification,
-#     CallBackLogging,
-#     CallBackModelCheckpoint,
-# )
+from .utils_callback import (
+    CallBackVerification,
+    CallBackLogging,
+    CallBackModelCheckpoint,
+)
 from .utils_logging import AverageMeter
 from .utils_amp import MaxClipGradScaler
 from .utils_inference import inference_example
 
 optimizers_map = {"sgd": torch.optim.SGD}
-
+scheduler_map = {"multistep_lr": torch.optim.lr_scheduler.MultiStepLR}
 
 def pop_element(obj: dict, key: str):
     obj.pop(key)
