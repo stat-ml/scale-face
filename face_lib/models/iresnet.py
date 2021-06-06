@@ -87,6 +87,7 @@ class IResNet(nn.Module):
         width_per_group=64,
         replace_stride_with_dilation=None,
         fp16=False,
+        learnable=True,
     ):
         super(IResNet, self).__init__()
         self.fp16 = fp16
@@ -137,6 +138,10 @@ class IResNet(nn.Module):
             for m in self.modules():
                 if isinstance(m, IBasicBlock):
                     nn.init.constant_(m.bn2.weight, 0)
+
+        if learnable is False:
+            for p in self.modules():
+                p.requires_grad=False
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
         downsample = None

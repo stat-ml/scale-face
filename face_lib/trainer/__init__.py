@@ -2,11 +2,11 @@ import os
 import abc
 import torch
 import torch.distributed as dist
-from face_lib.utils import cfg, FACE_METRICS
+from face_lib.utils import cfg
 
 
 class TrainerBase(metaclass=abc.ABCMeta):
-    _INF = -1e10
+    _INF = 1e10
 
     def __init__(self, args, board):
         self.args = args
@@ -36,7 +36,7 @@ class TrainerBase(metaclass=abc.ABCMeta):
                 os.environ["MASTER_ADDR"], os.environ["MASTER_PORT"]
             )
             dist.init_process_group(
-                backend=self.args.distr_backend,
+                backend="nccl",
                 init_method=dist_url,
                 rank=self.rank,
                 world_size=self.world_size,
@@ -50,6 +50,13 @@ class TrainerBase(metaclass=abc.ABCMeta):
         self._report_settings()
         self._data_loader()
         self._main_loop()
+
+    @abc.abstractmethod
+    def _model_loader(self):
+        """
+        TODO: docs
+        """
+        ...
 
     @abc.abstractmethod
     def _data_loader(self):

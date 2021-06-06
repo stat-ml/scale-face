@@ -18,4 +18,7 @@ criterions_dict = {
     "cosface": CosFace,
 }
 
-heads = {"pfe_head": PFEHead}
+heads = {
+    "pfe_head": PFEHead,
+    "pfe_head_adjustable": PFEHeadAdjustable,
+}

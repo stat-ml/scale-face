@@ -1,12 +1,13 @@
 import os
 import sys
 import torch
+import torch.distributed as dist
 import numpy as np
 import torchvision
 
 sys.path.append(".")
-from face_lib.utils import Dataset, cfg, FACE_METRICS
-from face_lib.utils.imageprocessing import preprocess
+from face_lib.datasets import MS1MDatasetPFE, DataLoaderX, ms1m_collate_fn
+from face_lib.utils import FACE_METRICS
 from face_lib import models as mlib, utils
 from face_lib.parser_cfg import training_args
 from face_lib.trainer import TrainerBase
@@ -27,15 +28,9 @@ def _set_evaluation_metric_yaml(config: dict):
 
 class Trainer(TrainerBase):
     def _model_loader(self):
-        self.backbone = mlib.model_dict[self.model_args.backbone.name](
+        self.backbone = mlib.model_dict[self.model_args.backbone["name"]](
             **utils.pop_element(self.model_args.backbone, "name"),
         )
-        if self.model_args.backbone.criterion:
-            self.backbone_criterion = mlib.criterions_dict[
-                self.model_args.backbone.criterion.name
-            ](
-                **utils.pop_element(self.model_args.backbone.criterion, "name"),
-            )
 
         if self.model_args.head:
             self.head = mlib.heads[self.model_args.head.name](
@@ -73,26 +68,34 @@ class Trainer(TrainerBase):
                 p.requires_grad = False
             self.head.eval()
 
-        learnable_parameters = (
-            list(self.backbone.parameters())
-            if self.model_args.backbone.learnable is True
-            else []
-        )
-        learnable_parameters += (
-            list(self.head.parameters())
-            if self.model_args.head and self.model_args.head.learnable is True
-            else []
-        )
+        learnable_parameters = []
+        if self.model_args.backbone.learnable is True:
+            learnable_parameters += list(self.backbone.parameters())
+        if self.model_args.head and self.model_args.head.learnable is True:
+            learnable_parameters += list(self.head.parameters())
 
         self.optimizer = utils.optimizers_map[self.model_args.optimizer.name](
             [{"params": learnable_parameters}],
             **utils.pop_element(self.model_args.optimizer, "name"),
         )
 
+        self.scheduler = utils.scheduler_map[self.model_args.scheduler.name](
+            self.optimizer,
+            **utils.pop_element(self.model_args.scheduler, "name")
+        )
+
         if self.device:
             self.backbone = self.backbone.to(self.device)
             if self.head:
                 self.head = self.head.to(self.device)
+
+        if self.model_args.is_distributed:
+            for p in self.head.parameters():
+                dist.broadcast(p, 0)
+            self.head = self.head = torch.nn.parallel.DistributedDataParallel(
+                module=self.head, broadcast_buffers=False,
+                device_ids=[self.local_rank])
+            self.head.train()
 
         # set evaluation metrics
         self.evaluation_metrics, self.evaluation_configs = [], []
@@ -101,19 +104,26 @@ class Trainer(TrainerBase):
                 self.evaluation_metrics.append(_set_evaluation_metric_yaml(item))
                 self.evaluation_configs.append(item)
 
+        print("Model loading was finished")
+
     def _data_loader(self):
-        batch_format = {
-            "size": self.model_args.batch_size,
-            "num_classes": self.model_args.batch_size
-            // self.model_args.num_classes_batch,
-        }
-        train_proc_func = lambda images: preprocess(
-            images, self.model_args.in_size, is_training=True
-        )
-        self.trainset = Dataset(
-            self.model_args.path_list, preprocess_func=train_proc_func
-        )
-        self.trainset.start_batch_queue(batch_format)
+        if self.model_args.dataset.name == 'ms1m':
+            self.trainset = MS1MDatasetPFE(
+                root_dir=self.model_args.dataset.path,
+                num_face_pb=self.model_args.dataset.num_face_pb,
+                local_rank=self.rank)
+
+            train_sampler = torch.utils.data.distributed.DistributedSampler(
+                self.trainset, shuffle=True)
+
+            self.trainloader = DataLoaderX(
+                local_rank=self.rank, dataset=self.trainset,
+                batch_size=self.model_args.dataset.batch_size, sampler=train_sampler,
+                num_workers=0, pin_memory=True, drop_last=True, collate_fn=ms1m_collate_fn)
+        else:
+            raise NotImplementedError("Dataset is not implemented")
+
+        print("Data loading was finished ...")
 
     @torch.no_grad()
     def _model_evaluate(self, epoch=0):
@@ -122,99 +132,62 @@ class Trainer(TrainerBase):
             self.head.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
-                utils.accuracy_lfw_6000_pairs(
-                    self.backbone,
-                    self.head,
-                    metric.lfw_path,
-                    metric.lfw_pairs_txt_path,
-                    N=metric.N,
-                    n_folds=metric.n_folds,
-                    device=self.device,
-                    board=True,
-                    board_writer=self.board,
-                    board_iter=epoch,
-                )
+                pass
+                # Calculating accuracy does not seem reasonable in terms of PFE
+                # utils.accuracy_lfw_6000_pairs(
+                #     self.backbone,
+                #     self.head,
+                #     metric.lfw_path,
+                #     metric.lfw_pairs_txt_path,
+                #     N=metric.N,
+                #     n_folds=metric.n_folds,
+                #     device=self.device,
+                #     board=True,
+                #     board_writer=self.board,
+                #     board_iter=epoch,
+                # )
 
     def _model_train(self, epoch=0):
-        if self.model_args.backbone.learnable is True:
+        if self.model_args.backbone.learnable:
             self.backbone.train()
-        if self.model_args.head and self.model_args.head.learnable is True:
+        else:
+            self.backbone.eval()
+        if self.model_args.head.learnable:
             self.head.train()
+        else:
+            self.head.eval()
+        self.head_criterion.train()
 
         loss_recorder, batch_acc = [], []
-        for idx in range(self.model_args.iterations):
-            _global_iteration = epoch * self.model_args.iterations + idx
+        for idx, (img, gty) in enumerate(self.trainloader):
+
+            img.requires_grad = False
+            gty.requires_grad = False
+            if self.device:
+                img = img.to(self.device)
+                gty = gty.to(self.device)
+
+            feature, sig_feat = self.backbone(img)
+            log_sig_sq = self.head(sig_feat)
+            loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
+
             self.optimizer.zero_grad()
-
-            batch = self.trainset.pop_batch_queue()
-            img = torch.from_numpy(batch["image"]).permute(0, 3, 1, 2).to(self.device)
-            gty = torch.from_numpy(batch["label"]).to(self.device)
-
-            outputs = {"gty": gty}
-
-            outputs.update(self.backbone(img))
-
-            if self.head:
-                outputs.update(self.head(**outputs))
-                loss = self.head_criterion(device=self.device, **outputs)
-            else:
-                loss = self.backbone_criterion(**outputs)
             loss.backward()
             self.optimizer.step()
-            loss_recorder.append(loss.item())
 
-            if (idx + 1) % self.model_args.logging.print_freq == 0 or self.args.debug:
+            loss_recorder.append(loss.item())
+            train_loss = float(np.mean(loss_recorder))
+            if (idx + 1) % self.model_args.logging.print_freq == 0:
                 print(
-                    "epoch : %2d|%2d, iter : %2d|%2d, loss : %.4f"
+                    "epoch : %2d|%2d, iter : %4d|%4d,  loss : %.4f"
                     % (
                         epoch,
                         self.model_args.epochs,
-                        idx,
-                        self.model_args.iterations,
-                        np.mean(loss_recorder),
+                        idx + 1,
+                        len(self.trainloader),
+                        train_loss,
                     )
                 )
-                self.board.add_scalar(
-                    f"train/{self.head_criterion if self.head else self.backbone_criterion}_loss_mean",
-                    np.mean(loss_recorder),
-                    _global_iteration,
-                )
-
-                if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
-                    for metric in self.evaluation_configs:
-                        if metric.name == "lfw_dilemma":
-                            visual_img = utils.visualize_ambiguity_dilemma_lfw(
-                                self.backbone,
-                                self.backbone_criterion,
-                                metric.lfw_path,
-                                pfe_head=self.head,
-                                criterion_head=self.head_criterion,
-                                board=True,
-                                device=self.device,
-                            )
-                            self.board.add_image(
-                                "ambiguity_dilemma_lfw",
-                                visual_img.transpose(2, 0, 1),
-                                _global_iteration,
-                            )
-                        if metric.name == "lfw_dilemma":
-                            pass
-                            """
-                            utils.visualize_low_high_similarity_pairs(
-                                self.backbone,
-                                self.backbone_criterion,
-                                metric.lfw_path,
-                                metric.lfw_pairs_txt_path,
-                                pfe_head=self.head,
-                                criterion_head=self.head_criterion,
-                                board=True,
-                                device=self.device,
-                            )
-                            """
-            if self.args.debug:
-                # break loop if debug flag is True
-                break
-        train_loss = np.mean(loss_recorder)
         print("train_loss : %.4f" % train_loss)
         return train_loss
 
@@ -222,34 +195,41 @@ class Trainer(TrainerBase):
         min_train_loss = self.__class__._INF
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
+            print(f"{('*' * 16)}Epoch {epoch}{('*' * 16)}")
             train_loss = self._model_train(epoch)
             self._model_evaluate(epoch)
+
             if min_train_loss > train_loss:
-                print("%snew SOTA was found%s" % ("*" * 16, "*" * 16))
+                print("%sNew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss
-                filename = os.path.join(self.checkpoints_path, "sota.pth.tar")
+                filename = os.path.join(self.checkpoints_path, "sota.pth")
                 torch.save(
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.state_dict() if self.head else None,
+                        "head": self.head.module.state_dict() if \
+                            self.model_args.is_distributed else \
+                            self.head.state_dict(),
                         "train_loss": min_train_loss,
                     },
                     filename,
                 )
 
             if epoch % self.model_args.logging.save_freq == 0:
-                filename = "epoch_%d_train_loss_%.4f.pth.tar" % (epoch, train_loss)
+                filename = "epoch_%d_train_loss_%.4f.pth" % (epoch, train_loss)
                 savename = os.path.join(self.checkpoints_path, filename)
                 torch.save(
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.state_dict() if self.head else None,
+                        "head": self.head.module.state_dict() if \
+                            self.model_args.is_distributed else \
+                            self.head.state_dict(),
                         "train_loss": train_loss,
                     },
                     savename,
                 )
+        print("Finished training")
 
     def _report_settings(self):
         str = "-" * 16
@@ -259,7 +239,7 @@ class Trainer(TrainerBase):
         print("- TorchVison: {}".format(torchvision.__version__))
         print("- USE_GPU   : {}".format(self.device))
         print("-" * 52)
-        print("- Backbone   : {}".format(self.backbone))
+        print("- Backbone   : {}".format(self.backbone.__class__))
         print("- Head   : {}".format(self.head))
         print("- Backbone Criterion   : {}".format(self.backbone_criterion))
         print("- Head Criterion   : {}".format(self.head_criterion))
