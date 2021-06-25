@@ -16,6 +16,8 @@ def training_args():
 
     parser.add_argument("--debug", action="store_true")
 
+    parser.add_argument('--local_rank', type=int, default=0, help='local_rank')
+
     args = parser.parse_args()
 
     return args

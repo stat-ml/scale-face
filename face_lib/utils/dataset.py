@@ -80,6 +80,7 @@ class Dataset(object):
     def __init__(
         self, path: str, preprocess_func: Optional[Callable] = None, seed: int = 0
     ):
+        self.path = path
         self.init_from_path(path)
         self.base_seed = seed
         self.batch_queue = None
