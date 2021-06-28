@@ -1,0 +1,48 @@
+title: "spherenet_prob"
+backbone:
+    name: "spherenet20"
+    learnable: false
+    fusion: true
+    criterion:
+        name: "angle_loss"
+head:
+    name: "prob_head"
+    in_feats: 512
+    learnable: true
+    criterion:
+        name: "probloss"
+        m: 3
+        lambda_c: 0.1
+        lambda_id: 0.1
+optimizer:
+    name: "sgd"
+    lr: 0.001
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+pretrained_backbone: checkpoints/sphere20a_20171020.pth
+scheduler: null
+batch_size: 256
+num_classes_batch: 4
+is_distributed: false
+iterations: 2000
+epochs: 3
+path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
+in_size: [112, 96]
+logging:
+    print_freq: 10
+    save_freq: 1
+evaluation_configs:
+    - name: "lfw_dilemma"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+    - name: "low_high_similarity"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+    - name: "lfw_6000_pairs"
+      type: "lfw"
+      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt"
+      N: 6000
+      n_folds: 10
