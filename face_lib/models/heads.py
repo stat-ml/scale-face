@@ -72,7 +72,7 @@ class ProbHead(FaceModule):
 
 class ProbHeadIres(FaceModule):
     def __init__(self, in_feat=512, **kwargs):
-        super(ProbHeadIres, self).__init__(kwargs)
+        super(ProbHeadIres, self).__init__(**kwargs)
         # TODO: remove hard coding here
         self.fc1 = nn.Linear(in_feat * 7 * 7, in_feat)
         self.bn1 = nn.BatchNorm1d(in_feat, affine=True)
