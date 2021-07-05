@@ -169,9 +169,9 @@ class Trainer(TrainerBase):
 
             feature, sig_feat = self.backbone(img)
 
-            sig_feat = {"bottleneck_feature", sig_feat}
+            sig_feat_dict = {"bottleneck_feature" :  sig_feat}
 
-            log_sig_sq = self.head(sig_feat)
+            log_sig_sq = self.head(sig_feat_dict)
 
             # Create argument dict for ProbLoss
             outputs = {"gty": gty}
