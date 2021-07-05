@@ -69,6 +69,7 @@ class ProbHead(FaceModule):
         x = torch.log(1e-6 + torch.exp(x))
         return {"log_sigma": x}
 
+
 class ProbHeadIres(FaceModule):
     def __init__(self, in_feat=512, **kwargs):
         super(ProbHeadIres, self).__init__(kwargs)

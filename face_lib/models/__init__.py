@@ -1,7 +1,7 @@
 from .base import FaceModule
 from .losses import MLSLoss, AngleLoss, ArcFace, CosFace, MLS, ProbLoss
 from .spherenet import SphereNet20
-from .heads import PFEHead, PFEHeadAdjustable, ProbHead
+from .heads import PFEHead, PFEHeadAdjustable, ProbHeadIres
 from .iresnet import iresnet18, iresnet34, iresnet50, iresnet100
 from .partial_fc import PartialFC
 
@@ -22,5 +22,5 @@ criterions_dict = {
 heads = {
     "pfe_head": PFEHead,
     "pfe_head_adjustable": PFEHeadAdjustable,
-    "prob_head": ProbHead
+    "prob_head": ProbHeadIres
 }
