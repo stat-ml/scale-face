@@ -169,6 +169,12 @@ class Trainer(TrainerBase):
 
             feature, sig_feat = self.backbone(img)
             log_sig_sq = self.head(sig_feat)
+
+            # Create argument dict for ProbLoss
+            outputs = {"gty": gty}
+            outputs.update("feature", feature)
+            outputs.update(log_sig_sq)
+
             loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
 
             self.optimizer.zero_grad()

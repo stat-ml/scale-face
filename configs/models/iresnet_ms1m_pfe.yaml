@@ -3,12 +3,12 @@ backbone:
     name: "iresnet50"
     learnable: false
 head:
-    name: "pfe_head_adjustable"
-    in_feat: 25088
+    name: "prob_head"
+    in_feat: 512
     out_feat: 512
     learnable: true
     criterion:
-        name: "mlsloss"
+        name: "probloss"
         mean: false
 optimizer:
     name: "sgd"
@@ -22,11 +22,11 @@ scheduler:
     gamma: 0.1
 dataset:
     name: "ms1m"
-    path: "/gpfs/gpfs0/r.karimov/ms1m/"
+    path: "/media/ramil/TOSHIBA EXT/dataset_storage"
     batch_size: 64
     num_face_pb: 4
-pretrained_backbone: /gpfs/gpfs0/r.karimov/models/backbone/ms1mv3_arcface_r50/backbone.pth
-batch_size: 256
+pretrained_backbone: /home/ramil/Documents/face_huawei/models_storage/backbone.pth
+batch_size: 4
 num_classes_batch: 4
 is_distributed: true
 iterations: 2000

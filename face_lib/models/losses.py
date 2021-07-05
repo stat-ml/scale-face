@@ -119,3 +119,66 @@ class MLSLoss(FaceModule):
         pos_mask = (non_diag_mask * gty_mask) > 0
         pos_loss = loss_mat[pos_mask].mean()
         return pos_loss
+
+class ProbConstraintLoss(FaceModule):
+    def __init__(self):
+        super(ProbConstraintLoss, self).__init__()
+
+    def forward(self, **kwargs):
+        log_sigma = kwargs["log_sigma"]
+        log_sigma_mean = log_sigma.mean(0)
+        loss = torch.norm(log_sigma / log_sigma_mean - 1.0, p=1, dim=-1).mean()
+        return loss
+
+
+class ProbTripletLoss(FaceModule):
+    def __init__(self):
+        super(ProbTripletLoss, self).__init__()
+
+    def forward(self, **kwargs):
+        mu_X, log_sigma = kwargs["feature"], kwargs["log_sigma"]
+        sigma_sq_X = torch.exp(log_sigma)
+        sig_sum = sigma_sq_X.unsqueeze(1) + sigma_sq_X.unsqueeze(0)
+        func = lambda f1, f2: (f1.unsqueeze(1) - f2.unsqueeze(0)) ** 2
+        diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + torch.log(sig_sum)
+        return diff
+
+
+class ProbLoss(FaceModule):
+    """
+    TODO: docs
+    """
+
+    def __init__(self, m=3, lambda_c=0.1, lambda_id=0.1, **kwargs):
+        super(ProbLoss, self).__init__(kwargs)
+        self.m = m
+        self.lambda_c = lambda_c
+        self.lambda_id = lambda_id
+
+    def forward(self, device, **kwargs):
+        mu_X, gty, log_sigma = kwargs["feature"], kwargs["gty"], kwargs["log_sigma"]
+        non_diag_mask = (1 - torch.eye(mu_X.size(0))).int().to(gty.device)
+        gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
+        nty_mask = (1 - gty_mask).int()
+        pos_mask = (non_diag_mask * gty_mask) > 0
+        neg_mask = (non_diag_mask * nty_mask) > 0
+
+        loss_mls = -MLS()(**kwargs)
+        loss_mls = loss_mls[pos_mask].mean()
+
+        loss_c = self.lambda_c * ProbConstraintLoss()(**kwargs)
+
+        loss_triplet = ProbTripletLoss()(**kwargs)
+
+        triplet_loss = torch.cat(
+            (loss_triplet[pos_mask], -loss_triplet[neg_mask]), dim=0
+        ) + self.m
+
+        triplet_loss = (
+            self.lambda_id
+            * torch.max(
+                torch.zeros(1, device=triplet_loss.device), triplet_loss
+            ).mean()
+        )
+
+        return loss_mls + loss_c + triplet_loss
