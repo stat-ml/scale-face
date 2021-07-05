@@ -163,7 +163,7 @@ class ProbLoss(FaceModule):
         pos_mask = (non_diag_mask * gty_mask) > 0
         neg_mask = (non_diag_mask * nty_mask) > 0
 
-        loss_mls = -MLS()(**kwargs)
+        loss_mls = -MLS()(mu_X, log_sigma)
         loss_mls = loss_mls[pos_mask].mean()
 
         loss_c = self.lambda_c * ProbConstraintLoss()(**kwargs)
