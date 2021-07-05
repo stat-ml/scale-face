@@ -171,9 +171,9 @@ class Trainer(TrainerBase):
 
             print(sig_feat.view(sig_feat.size(0), -1).size())
             print(sig_feat.size())
-            sig_feat_dict = {"bottleneck_feature":  sig_feat.view(sig_feat.size(0), -1)}
+            sig_feat_dict = {"bottleneck_feature":  sig_feat}
 
-            log_sig_sq = self.head(sig_feat_dict)
+            log_sig_sq = self.head(**sig_feat_dict)
 
             # Create argument dict for ProbLoss
             outputs = {"gty": gty}
