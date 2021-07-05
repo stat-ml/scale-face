@@ -177,7 +177,7 @@ class Trainer(TrainerBase):
 
             # Create argument dict for ProbLoss
             outputs = {"gty": gty}
-            outputs.update({"feature", feature})
+            outputs.update({"feature":  feature})
             outputs.update(log_sig_sq)
 
             loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
