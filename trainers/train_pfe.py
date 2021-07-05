@@ -180,7 +180,7 @@ class Trainer(TrainerBase):
             outputs.update({"feature":  feature})
             outputs.update(log_sig_sq)
 
-            loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
+            loss = self.head_criterion.forward(device = self.device, **outputs)
 
             self.optimizer.zero_grad()
             loss.backward()
