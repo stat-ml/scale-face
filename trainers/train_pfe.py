@@ -168,6 +168,9 @@ class Trainer(TrainerBase):
                 gty = gty.to(self.device)
 
             feature, sig_feat = self.backbone(img)
+
+            sig_feat = {"bottleneck_feature", sig_feat}
+
             log_sig_sq = self.head(sig_feat)
 
             # Create argument dict for ProbLoss
