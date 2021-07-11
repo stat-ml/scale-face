@@ -247,7 +247,7 @@ def accuracy_lfw_6000_pairs(
             f1, f2 = output[0]
             
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
-        if head:
+        if False:
             output.update(head(**output))
             mls = MLS()(**output)[0, 1]
 
