@@ -30,7 +30,7 @@ batch_size: 256
 num_classes_batch: 4
 is_distributed: true
 iterations: 2000
-epochs: 1
+epochs: 3
 path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
 in_size: [112, 112]
 logging:
