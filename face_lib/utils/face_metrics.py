@@ -256,7 +256,7 @@ def accuracy_lfw_6000_pairs(
         if head:
             log_sig_sq = head(**sig_feat_dict)
             output.update(log_sig_sq)
-            mls = MLS()(**output)[0, 1]
+            mls = MLS_lfw()(**output)[0, 1]
 
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance.cpu(), mls.cpu(), sameflag)
