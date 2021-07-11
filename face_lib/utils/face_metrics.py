@@ -245,7 +245,7 @@ def accuracy_lfw_6000_pairs(
 
         # Create argument dict for ProbLoss
         output = {"feature": feature}
-        output.update(log_sig_sq)
+
         
         if isinstance(output, dict):
             f1, f2 = output["feature"]
