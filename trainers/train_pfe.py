@@ -130,6 +130,9 @@ class Trainer(TrainerBase):
         self.backbone.eval()
         if self.model_args.head:
             self.head.eval()
+
+        print(self.evaluation_configs)
+        
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
                 pass
