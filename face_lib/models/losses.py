@@ -85,7 +85,8 @@ class MLS(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, mu_X, log_sigma, cos_func=False, **kwargs):
+    def forward(self, cos_func=False, **kwargs):
+        mu_X, log_sigma = kwargs["feature"], kwargs["log_sigma"]
         mu_X = F.normalize(mu_X)
         sigma_sq_X = torch.exp(log_sigma)
         if cos_func:
