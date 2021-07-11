@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from face_lib.utils.dataset import Dataset
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.models import MLS
+from face_lib.models import MLS, MLS_lfw
 
 _neg_inf = -1e6
 

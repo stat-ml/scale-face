@@ -85,6 +85,28 @@ class MLS(nn.Module):
     def __init__(self):
         super().__init__()
 
+    def forward(self, mu_X, log_sigma, cos_func=False, **kwargs):
+        mu_X = F.normalize(mu_X)
+        sigma_sq_X = torch.exp(log_sigma)
+        if cos_func:
+            func = (
+                lambda f1, f2: -torch.einsum("ij,dj->idj", f1, f2)
+                / (f1.norm(dim=-1)[:, None] @ f2.norm(dim=-1)[None] + 1e-5)[..., None]
+            )
+        else:
+            func = lambda f1, f2: (f1.unsqueeze(1) - f2.unsqueeze(0)) ** 2
+
+        sig_sum = sigma_sq_X.unsqueeze(1) + sigma_sq_X.unsqueeze(0)
+
+        diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + torch.log(sig_sum)
+        diff = diff.sum(dim=2, keepdim=False)
+        return -diff
+
+
+class MLS_lfw(nn.Module):
+    def __init__(self):
+        super().__init__()
+
     def forward(self, cos_func=False, **kwargs):
         mu_X, log_sigma = kwargs["feature"], kwargs["log_sigma"]
         mu_X = F.normalize(mu_X)
@@ -102,7 +124,6 @@ class MLS(nn.Module):
         diff = func(mu_X, mu_X) / (1e-10 + sig_sum) + torch.log(sig_sum)
         diff = diff.sum(dim=2, keepdim=False)
         return -diff
-
 
 class MLSLoss(FaceModule):
     """
