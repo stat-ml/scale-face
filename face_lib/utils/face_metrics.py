@@ -239,7 +239,13 @@ def accuracy_lfw_6000_pairs(
         )
 
         # TODO: for some reason spherenet is good on BGR??
-        output = backbone(img_batch.to(device))
+        feature, sig_feat = backbone(img_batch.to(device))
+
+        sig_feat_dict = {"bottleneck_feature": sig_feat}
+
+        # Create argument dict for ProbLoss
+        output = {"feature": feature}
+        output.update(log_sig_sq)
         
         if isinstance(output, dict):
             f1, f2 = output["feature"]
@@ -247,8 +253,9 @@ def accuracy_lfw_6000_pairs(
             f1, f2 = output[0]
             
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
-        if False:
-            output.update(head(**output))
+        if head:
+            log_sig_sq = head(**sig_feat_dict)
+            output.update(log_sig_sq)
             mls = MLS()(**output)[0, 1]
 
             predicts.append(
