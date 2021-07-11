@@ -134,18 +134,18 @@ class Trainer(TrainerBase):
             if metric.name == "lfw_6000_pairs":
                 pass
                 # Calculating accuracy does not seem reasonable in terms of PFE
-                # utils.accuracy_lfw_6000_pairs(
-                #     self.backbone,
-                #     self.head,
-                #     metric.lfw_path,
-                #     metric.lfw_pairs_txt_path,
-                #     N=metric.N,
-                #     n_folds=metric.n_folds,
-                #     device=self.device,
-                #     board=True,
-                #     board_writer=self.board,
-                #     board_iter=epoch,
-                # )
+                utils.accuracy_lfw_6000_pairs(
+                    self.backbone,
+                    self.head,
+                    metric.lfw_path,
+                    metric.lfw_pairs_txt_path,
+                    N=metric.N,
+                    n_folds=metric.n_folds,
+                    device=self.device,
+                    board=True,
+                    board_writer=self.board,
+                    board_iter=epoch,
+                )
 
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable:
