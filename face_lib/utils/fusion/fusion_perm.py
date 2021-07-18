@@ -23,7 +23,6 @@ from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.utils.face_metrics import accuracy_lfw_6000_pairs
 
 def l2_normalize(x, axis=None, eps=1e-8):
     x = x / (eps + np.linalg.norm(x, axis=axis))
@@ -146,13 +145,13 @@ def extract_features(
         # mu[start_idx:end_idx], sigma_sq[start_idx:end_idx] = self.sess.run([self.mu, self.sigma_sq],
         #                                                                    feed_dict=feed_dict)
         # process_images_batch(model, images_batch, proc_func)
-
         batch = proc_func(images_batch)
         batch = (
             torch.from_numpy(batch)
             .permute(0, 3, 1, 2)
             .to(device)
         )
+        batch = batch[:, [2, 1, 0], :, :]
         feature, sig_feat = model["backbone"](batch)
         log_sig_sq = model["head"](sig_feat)
         mu.append(np.array(feature.detach().cpu()))
@@ -221,21 +220,6 @@ def main(args):
         proc_func=proc_func,
         verbose=True,
         device=device,)
-
-
-    # lfw_path = "/gpfs/gpfs0/r.karimov/lfw/data_aligned_112_112"
-    # lfw_pairs_txt_path = "/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt"
-    # lfw_res = accuracy_lfw_6000_pairs(
-    #     model["backbone"],
-    #     model["head"],
-    #     lfw_path,
-    #     lfw_pairs_txt_path,
-    #     N=6000,
-    #     n_folds=10,
-    #     device=torch.device("cuda:0"))
-
-    # print("LFW res : ", lfw_res)
-    # raise RuntimeError("==DEBUG==")
 
     # mu = np.random.randn(len(tester.image_paths), 512)
     # sigma_sq = np.random.randn(len(tester.image_paths), 512)
