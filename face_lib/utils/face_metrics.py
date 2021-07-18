@@ -164,7 +164,6 @@ def accuracy_lfw_6000_pairs(
     This is the implementation of accuracy on 6000 pairs
     """
 
-    global name2
     if device is None:
         device = torch.device("cpu")
 
@@ -227,16 +226,15 @@ def accuracy_lfw_6000_pairs(
 
             img1 = cv2.resize(img1, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
             img2 = cv2.resize(img2, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
-
-        #             print (img1.min(), img2.max())
+#             print (img1.min(), img2.max())
         except Exception as e:
             # FIXME: mtcncaffe and spherenet alignments are not the same
             continue
 
         img_batch = (
             torch.from_numpy(np.concatenate((img1[None], img2[None]), axis=0))
-                .permute(0, 3, 1, 2)
-                .to(device)
+            .permute(0, 3, 1, 2)
+            .to(device)
         )
 
         # TODO: for some reason spherenet is good on BGR??
@@ -258,8 +256,6 @@ def accuracy_lfw_6000_pairs(
         if head:
 
             log_sig_sq = head(sig_feat)
-            # output.update(head(**output))
-            # mls = MLS()(**output)[0, 1]
             mls = MLS()(output, log_sig_sq, cos_func=False)[0, 1]
 
             predicts.append(

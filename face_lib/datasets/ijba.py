@@ -26,15 +26,15 @@ import sys
 import os
 import numpy as np
 # import utils
-from pathlib import Path
+# from pathlib import Path
 
 from collections import namedtuple
 
 # sys.path.append("../..")
-path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
-print("\n\npath : ", path)
-sys.path.insert(0, path)
-import utils.fusion.metrics as metrics
+# path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+# print("\n\npath : ", path)
+# sys.path.insert(0, path)
+import face_lib.utils.fusion_metrics as metrics
 
 VerificationFold = namedtuple('VerificationFold',
                               ['train_indices', 'test_indices', 'train_templates', 'templates1', 'templates2'])

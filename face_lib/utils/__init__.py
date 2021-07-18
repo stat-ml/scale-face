@@ -11,6 +11,8 @@ from .visualize_plots import (
     visualize_in_out_class_distribution,
 )
 from .dataset import Dataset, MXFaceDataset, DataLoaderX
+from .fusion import eval_fusion_ijb
+
 from .utils_callback import (
     CallBackVerification,
     CallBackLogging,

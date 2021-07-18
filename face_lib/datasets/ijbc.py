@@ -1,28 +1,14 @@
-"""
-Main file for evaluation on IJB-A and IJB-B protocols.
-More instructions can be found in README.md file.
-2017 Yichun Shi
-"""
-
-import sys
 import os
 import numpy as np
-from pathlib import Path
-# import utils
 
-# from evaluation import metrics
 from collections import namedtuple
 
-# sys.path.append("../..")
-# import utils.metrics as metrics
+import face_lib.utils.fusion_metrics as metrics
 
+VerificationFold = namedtuple(
+    'VerificationFold',
+    ['train_indices', 'test_indices', 'train_templates', 'templates1','templates2'])
 
-path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
-sys.path.insert(0, path)
-import utils.fusion.metrics as metrics
-
-# Configuration
-VerificationFold = namedtuple('VerificationFold', ['train_indices', 'test_indices', 'train_templates', 'templates1','templates2'])
 
 class Template:
     def __init__(self, template_id, label, indices, medias):
@@ -33,10 +19,6 @@ class Template:
         
 
 def build_subject_dict(image_list):
-    # print("Image list :", len(image_list))
-    # for i in range(10):
-    #     print(f"\t[{i}] : {image_list[i]}")
-
     subject_dict = {}
     for i, line in enumerate(image_list):
         subject_id, image = tuple(line.split('/')[-2:])
@@ -48,6 +30,7 @@ def build_subject_dict(image_list):
             subject_dict[subject_id] = {}
         subject_dict[subject_id][image] = i
     return subject_dict
+
 
 def build_templates(subject_dict, meta_file):
     with open(meta_file, 'r') as f:
@@ -61,7 +44,7 @@ def build_templates(subject_dict, meta_file):
     template_indices = None
     template_medias = None
     count = 0
-    print("Meta list : ", meta_list[:10])
+    # print("Meta list : ", meta_list[:10])
     for line in meta_list:
         temp_id, subject_id, image, media = tuple(line.split(',')[0:4])
         temp_id = int(temp_id)
@@ -89,6 +72,7 @@ def build_templates(subject_dict, meta_file):
     templates.append(Template(template_id, template_label, template_indices, template_medias))
     return templates
 
+
 def read_pairs(pair_file):
     with open(pair_file, 'r') as f:
         pairs = f.readlines()
@@ -96,6 +80,7 @@ def read_pairs(pair_file):
         pairs = [pair.split(',') for pair in pairs]
         pairs = [(int(pair[0]), int(pair[1])) for pair in pairs]
     return pairs
+
 
 class IJBCTest:
 
@@ -107,17 +92,17 @@ class IJBCTest:
         self.verification_G1_templates = None
         self.verification_G2_templates = None
 
-        print("Subject dict : ", len(self.subject_dict))
+        print("Number of identities : ", len(self.subject_dict))
 
-        sum_dct_len = 0
-        for key, val in self.subject_dict.items():
-           sum_dct_len += len(val)
-        print(f"\tMean dict size : {sum_dct_len / len(self.subject_dict)}")
-        i = 0
-        for key, val in self.subject_dict.items():
-            print(f"\t\t[{key}] : {val}")
-            i += 1
-            if i == 10 : break
+        # sum_dct_len = 0
+        # for key, val in self.subject_dict.items():
+        #    sum_dct_len += len(val)
+        # print(f"\tMean dict size : {sum_dct_len / len(self.subject_dict)}")
+        # i = 0
+        # for key, val in self.subject_dict.items():
+        #     print(f"\t\t[{key}] : {val}")
+        #     i += 1
+        #     if i == 10 : break
 
     def init_verification_proto(self, protofolder):
         self.verification_folds = []
@@ -148,9 +133,8 @@ class IJBCTest:
     
         self.verification_templates = np.concatenate([
             self.verification_G1_templates, self.verification_G2_templates])
-        print("Verification templates : ", self.verification_templates.shape)
+        # print("Verification templates : ", self.verification_templates.shape)
         print('{} templates are initialized.'.format(len(self.verification_templates)))
-
 
     def init_proto(self, protofolder):
         self.init_verification_proto(protofolder)
@@ -162,25 +146,13 @@ class IJBCTest:
         templates1 = self.verification_G1_templates
         templates2 = self.verification_G2_templates
 
-        print("Temp1 : ", len(templates1), "temp2 : ", len(templates2))
-        nans1 = sum(temp.feature is None for temp in templates1)
-        nans2 = sum(temp.feature is None for temp in templates2)
-        print(f"Nans :")
-        print(f"1 : {nans1} / {len(templates1)}")
-        print(f"2 : {nans2} / {len(templates2)}")
-
         not_nan_1 = np.array([template.feature is not None for template in templates1])
         not_nan_2 = np.array([template.feature is not None for template in templates2])
         not_nan = not_nan_1 & not_nan_2
 
-        print(f"Ignored {not_nan.shape[0] - not_nan.sum()} / {not_nan.shape[0]}")
-        print("Length before : ", len(templates1), len(templates2))
+        print(f"Ignored {not_nan.shape[0] - not_nan.sum()} / {not_nan.shape[0]} # bad templates")
         templates1 = templates1[not_nan]
         templates2 = templates2[not_nan]
-        print("Length after : ", len(templates1), len(templates2))
-
-        # print("Features1 : ", templates1.shape, templates1[0].feature)
-        # print("Features2 : ", templates2.shape, templates2[0].feature)
 
         features1 = [t.feature for t in templates1]
         features2 = [t.feature for t in templates2]
@@ -192,16 +164,16 @@ class IJBCTest:
 
         # idx = [0, 12, 1222, 12222, 122222, 10000000, 15000000, 10000001]
         # idx = [0, 1, 2, 3, 4]
-        idx = [0, 1, int(len(score_vec) * 0.2), int(len(score_vec) * 0.5), int(len(score_vec) * 0.6), int(len(score_vec)) - 1, int(len(score_vec)) - 2]
-        print(f"True labels : {sum(label_vec)} / {len(label_vec)} len_score == len_label : ({len(score_vec) == len(label_vec)})")
-        print("Scores vec : ", score_vec.shape, score_vec[idx])
-        print("Label_vec : ", label_vec.shape, label_vec[idx])
+        # idx = [0, 1, int(len(score_vec) * 0.2), int(len(score_vec) * 0.5), int(len(score_vec) * 0.6), int(len(score_vec)) - 1, int(len(score_vec)) - 2]
+        print(f"Positive labels : {sum(label_vec)} / {len(label_vec)}")
+        # print("Scores vec : ", score_vec.shape, score_vec[idx])
+        # print("Label_vec : ", label_vec.shape, label_vec[idx])
 
         tars, fars, thresholds = metrics.ROC(score_vec, label_vec, FARs=FARs)
 
-        print("Tars : ", tars.shape, tars)
-        print("Fars : ", fars.shape, fars)
-        print("Thresholds : ", thresholds.shape, thresholds)
+        # print("Tars : ", tars.shape, tars)
+        # print("Fars : ", fars.shape, fars)
+        # print("Thresholds : ", thresholds.shape, thresholds)
 
         # There is no std for IJB-C
         std = [0. for t in tars]

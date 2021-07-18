@@ -57,8 +57,6 @@ def main(args):
         basename = os.path.splitext(img)[0]
         dict_path["frames/" + basename] = args.prefix + "/frames/" + img
 
-    count_success = 0
-    count_fail = 0
     dict_name = {}
 
     def _f(i, line):
