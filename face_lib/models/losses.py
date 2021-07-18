@@ -112,7 +112,8 @@ class MLSLoss(FaceModule):
         super(MLSLoss, self).__init__(kwargs)
         self.mean = mean
 
-    def forward(self, device, mu_X, gty, log_sigma):
+    def forward(self, device, **kwargs):
+        mu_X, gty, log_sigma = kwargs["feature"], kwargs["gty"], kwargs["log_sigma"]
         non_diag_mask = (1 - torch.eye(mu_X.size(0))).int().to(gty.device)
         loss_mat = -MLS()(mu_X, log_sigma)
         gty_mask = (torch.eq(gty[:, None], gty[None, :])).int()
