@@ -130,23 +130,9 @@ def eval_fusion_ijb(
 
     features = np.concatenate([mu, sigma_sq], axis=1)
 
-    print('---- Random pooling (Euclidean distance)')
-    aggregate_templates(tester.verification_templates, features, 'random')
-    TARs, std, FARs = tester.test_verification(force_compare(pair_euc_score))
-    for i in range(len(TARs)):
-        print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
-
     print('---- Random pooling (Cosine distance)')
     aggregate_templates(tester.verification_templates, features, 'random')
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    for i in range(len(TARs)):
-        print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
-
-    print('---- Average pooling (Euclidean distance)')
-    aggregate_templates(tester.verification_templates, features, 'mean')
-    TARs, std, FARs = tester.test_verification(force_compare(pair_euc_score))
     for i in range(len(TARs)):
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
     print()
@@ -158,13 +144,6 @@ def eval_fusion_ijb(
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
     print()
 
-    print('---- Uncertainty pooling (Euclidean distance)')
-    aggregate_templates(tester.verification_templates, features, 'PFE_fuse')
-    TARs, std, FARs = tester.test_verification(force_compare(pair_euc_score))
-    for i in range(len(TARs)):
-        print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
-
     print('---- Uncertainty pooling (Cosine distance)')
     aggregate_templates(tester.verification_templates, features, 'PFE_fuse')
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
@@ -172,7 +151,7 @@ def eval_fusion_ijb(
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
     print()
 
-    print('---- MLS comparison')
+    print('---- Uncertainty pooling (MLS distance)')
     aggregate_templates(tester.verification_templates, features, 'PFE_fuse_match')
     TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
     for i in range(len(TARs)):
