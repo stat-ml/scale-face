@@ -203,11 +203,11 @@ def accuracy_lfw_6000_pairs(
 
     pairs_lines = open(lfw_pairs_txt_path).readlines()[1:]
     mls_values = []
-    
+
     backbone = backbone.to(device)
     if head is not None:
         head = head.to(device)
-    
+
     for i in tqdm(range(N), desc="Evaluating on LFW 6000 pairs: "):
         p = pairs_lines[i].replace("\n", "").split("\t")
 
@@ -219,19 +219,19 @@ def accuracy_lfw_6000_pairs(
             sameflag = 0
             name1 = p[0] + "/" + p[0] + "_" + "{:04}.jpg".format(int(p[1]))
             name2 = p[2] + "/" + p[2] + "_" + "{:04}.jpg".format(int(p[3]))
-        
+
         try:
             img1 = lfw_set.get_item_by_the_path(name1)
             img2 = lfw_set.get_item_by_the_path(name2)
-            
+
             img1 = cv2.resize(img1, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
             img2 = cv2.resize(img2, dsize=(112, 112), interpolation=cv2.INTER_CUBIC)
-            
-#             print (img1.min(), img2.max())
+
+        #             print (img1.min(), img2.max())
         except Exception as e:
             # FIXME: mtcncaffe and spherenet alignments are not the same
             continue
-        
+
         img_batch = (
             torch.from_numpy(np.concatenate((img1[None], img2[None]), axis=0))
             .permute(0, 3, 1, 2)
@@ -240,19 +240,21 @@ def accuracy_lfw_6000_pairs(
 
         # TODO: for some reason spherenet is good on BGR??
         output = backbone(img_batch.to(device))
-        
+
         if isinstance(output, dict):
             f1, f2 = output["feature"]
         elif isinstance(output, (tuple, list)):
             f1, f2 = output[0]
-            
+
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
         if head:
             output.update(head(**output))
             mls = MLS()(**output)[0, 1]
 
             predicts.append(
-                "{}\t{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance.cpu(), mls.cpu(), sameflag)
+                "{}\t{}\t{}\t{}\t{}\n".format(
+                    name1, name2, cosdistance.cpu(), mls.cpu(), sameflag
+                )
             )
             mls_values.append(mls.item())
         else:
@@ -275,10 +277,10 @@ def accuracy_lfw_6000_pairs(
         accuracy_head = calculate_accuracy(
             3, np.linspace(np.min(mls_values), np.max(mls_values), 400), predicts
         )
-    
+
     result = {}
     result["accuracy_backbone"] = np.mean(accuracy_backbone)
     if head:
         result["accuracy_head"] = np.mean(accuracy_head)
-    
+
     return result

@@ -130,13 +130,23 @@ def main(args):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--meta-path", type=str, default="/gpfs/gpfs0/r.karimov/ijbc_meta/", help="Path to metadata files.")
+    parser.add_argument(
+        "--meta-path",
+        type=str,
+        default="/gpfs/gpfs0/r.karimov/ijbc_meta/",
+        help="Path to metadata files.",
+    )
     parser.add_argument(
         "--prefix",
         type=str,
         help="Path to the folder containing the original images of IJB-C.",
     )
-    parser.add_argument("--save-prefix", type=str, default="./loose_crop", help="Directory for output images.")
+    parser.add_argument(
+        "--save-prefix",
+        type=str,
+        default="./loose_crop",
+        help="Directory for output images.",
+    )
     parser.add_argument(
         "--start-index",
         type=int,

@@ -23,6 +23,7 @@ from .utils_inference import inference_example
 optimizers_map = {"sgd": torch.optim.SGD}
 scheduler_map = {"multistep_lr": torch.optim.lr_scheduler.MultiStepLR}
 
+
 def pop_element(obj: dict, key: str):
     obj.pop(key)
     return obj
