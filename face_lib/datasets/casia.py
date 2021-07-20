@@ -9,23 +9,25 @@ from IPython import embed
 
 
 class CASIAWebFace(data.Dataset):
-
-    def __init__(self, args, mode = 'train'):
+    def __init__(self, args, mode="train"):
 
         super(CASIAWebFace, self).__init__()
-        self.args       = args
-        self.mode       = mode
-        self.transforms = torchvision.transforms.Compose([
-                              torchvision.transforms.ToTensor(),
-                              torchvision.transforms.Normalize(mean=[0.5, 0.5, 0.5], \
-                                                                std=[0.5, 0.5, 0.5])])
-        with open(args.train_file, 'r') as f:
-            self.lines  = f.readlines()
+        self.args = args
+        self.mode = mode
+        self.transforms = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(
+                    mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
+                ),
+            ]
+        )
+        with open(args.train_file, "r") as f:
+            self.lines = f.readlines()
         f.close()
         if args.is_debug:
             self.lines = self.lines[:512]  # just for debug
-            print('debug version for casia ...')
-
+            print("debug version for casia ...")
 
     def _load_imginfo(self, img_name):
 
@@ -39,24 +41,22 @@ class CASIAWebFace(data.Dataset):
             img = None
         return img
 
-
     def __getitem__(self, index):
 
         # info  = self.lines[index].strip().split('\t')
-        info = self.lines[index].strip().split(' ')
-        img  = self._load_imginfo(info[0])
+        info = self.lines[index].strip().split(" ")
+        img = self._load_imginfo(info[0])
         cnt_try = 0
         while (img is None) and cnt_try < self.args.try_times:
-            idx        = np.random.randint(0, len(self.lines) - 1)
+            idx = np.random.randint(0, len(self.lines) - 1)
             # info  = self.lines[idx].strip().split('\t')
-            info = self.lines[idx].strip().split(' ')
-            img  = self._load_imginfo(info[0])
+            info = self.lines[idx].strip().split(" ")
+            img = self._load_imginfo(info[0])
             cnt_try += 1
         if cnt_try == self.args.try_times:
-            print('read face failed ...')
+            print("read face failed ...")
         img = self.transforms(img)
         return (img, int(float(info[1])))
-
 
     def __len__(self):
         return len(self.lines)

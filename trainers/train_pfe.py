@@ -80,8 +80,7 @@ class Trainer(TrainerBase):
         )
 
         self.scheduler = utils.scheduler_map[self.model_args.scheduler.name](
-            self.optimizer,
-            **utils.pop_element(self.model_args.scheduler, "name")
+            self.optimizer, **utils.pop_element(self.model_args.scheduler, "name")
         )
 
         if self.device:
@@ -93,8 +92,8 @@ class Trainer(TrainerBase):
             for p in self.head.parameters():
                 dist.broadcast(p, 0)
             self.head = self.head = torch.nn.parallel.DistributedDataParallel(
-                module=self.head, broadcast_buffers=False,
-                device_ids=[self.local_rank])
+                module=self.head, broadcast_buffers=False, device_ids=[self.local_rank]
+            )
             self.head.train()
 
         # set evaluation metrics
@@ -107,19 +106,27 @@ class Trainer(TrainerBase):
         print("Model loading was finished")
 
     def _data_loader(self):
-        if self.model_args.dataset.name == 'ms1m':
+        if self.model_args.dataset.name == "ms1m":
             self.trainset = MS1MDatasetPFE(
                 root_dir=self.model_args.dataset.path,
                 num_face_pb=self.model_args.dataset.num_face_pb,
-                local_rank=self.rank)
+                local_rank=self.rank,
+            )
 
             train_sampler = torch.utils.data.distributed.DistributedSampler(
-                self.trainset, shuffle=True)
+                self.trainset, shuffle=True
+            )
 
             self.trainloader = DataLoaderX(
-                local_rank=self.rank, dataset=self.trainset,
-                batch_size=self.model_args.dataset.batch_size, sampler=train_sampler,
-                num_workers=0, pin_memory=True, drop_last=True, collate_fn=ms1m_collate_fn)
+                local_rank=self.rank,
+                dataset=self.trainset,
+                batch_size=self.model_args.dataset.batch_size,
+                sampler=train_sampler,
+                num_workers=0,
+                pin_memory=True,
+                drop_last=True,
+                collate_fn=ms1m_collate_fn,
+            )
         else:
             raise NotImplementedError("Dataset is not implemented")
 
@@ -207,9 +214,9 @@ class Trainer(TrainerBase):
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict() if \
-                            self.model_args.is_distributed else \
-                            self.head.state_dict(),
+                        "head": self.head.module.state_dict()
+                        if self.model_args.is_distributed
+                        else self.head.state_dict(),
                         "train_loss": min_train_loss,
                     },
                     filename,
@@ -222,9 +229,9 @@ class Trainer(TrainerBase):
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict() if \
-                            self.model_args.is_distributed else \
-                            self.head.state_dict(),
+                        "head": self.head.module.state_dict()
+                        if self.model_args.is_distributed
+                        else self.head.state_dict(),
                         "train_loss": train_loss,
                     },
                     savename,

@@ -50,8 +50,9 @@ class DataLoaderX(DataLoader):
             return None
         with torch.cuda.stream(self.stream):
             for k in range(len(self.batch)):
-                self.batch[k] = self.batch[k].to(device=self.local_rank,
-                                                 non_blocking=True)
+                self.batch[k] = self.batch[k].to(
+                    device=self.local_rank, non_blocking=True
+                )
 
     def __next__(self):
         torch.cuda.current_stream().wait_stream(self.stream)

@@ -2,17 +2,24 @@ import os
 import sys
 import argparse
 import numpy as np
+from scipy import misc
 import cv2
-import joblib
-
 from tqdm import tqdm
+import pickle
 
-square_crop = True  # Take the max of (w,h) for a square bounding box
+from joblib import Parallel, delayed
+from collections import defaultdict
+
+square_crop = True
 padding_ratio = 0.0  # Add padding to bounding boxes by a ratio
 target_size = (256, 256)  # If not None, resize image after processing
 
 
 def square_bbox(bbox):
+    """
+    Output a square-like bounding box. But because all the numbers are float,
+    it is not guaranteed to really be a square.
+    """
     x, y, w, h = tuple(bbox)
     cx = x + 0.5 * w
     cy = y + 0.5 * h
@@ -43,10 +50,26 @@ def crop(image, bbox):
     return img
 
 
+def create_dict(args):
+    lines = open(os.path.join(args.meta_path, "ijbc_face_tid_mid.txt"), "r").readlines()
+    lines_dict = [_.split()[:2] for _ in lines]
+    lines_dict = {a[:-4]: b for a, b in lines_dict}
+    return lines, lines_dict
+
+
 def main(args):
-    with open(args.meta_file, "r") as fr:
+    with open(os.path.join(args.meta_path, "ijbc_metadata_modified.csv"), "r") as fr:
         lines = fr.readlines()
 
+    # create mapping from mid to filename and crop box
+    mid_map = defaultdict(list)
+    mid_map_index = defaultdict(int)
+    for item in lines:
+        parts = item.split(",")
+        mid_map[parts[2]].append([parts[1], parts[3 : 3 + 4]])
+
+    # Some files have different extensions in the meta file,
+    # record their oroginal name for reading
     files_img = os.listdir(args.prefix + "/img/")
     files_frames = os.listdir(args.prefix + "/frames/")
     dict_path = {}
@@ -57,78 +80,81 @@ def main(args):
         basename = os.path.splitext(img)[0]
         dict_path["frames/" + basename] = args.prefix + "/frames/" + img
 
+    tid_mid_list, dict_ = create_dict(args)
+
+    count_success = 0
+    count_fail = 0
     dict_name = {}
+    broken_lines = []
+    for i, item in tqdm(enumerate(tid_mid_list[args.start_index :])):
+        parts = item[:-1].split(" ")
+        map_elem = mid_map[parts[2]][mid_map_index[parts[2]]]
+        mid_map_index[parts[2]] += 1
+        mid_map_index[parts[2]] %= len(mid_map[parts[2]])
 
-    def _f(i, line):
-        if i > 0:
-            parts = line.split(",")
-            label = parts[0]
-            impath = os.path.join(args.prefix, parts[1])
-            imname = os.path.join(label, parts[1].replace("/", "_"))
-            # Check name duplication
-            if imname in dict_name:
-                print(
-                    "image %s at line %d collision with  line %d"
-                    % (imname, i, dict_name[imname])
-                )
-            dict_name[imname] = i
+        impath = os.path.join(args.prefix, map_elem[0])
+        imname = parts[0]
 
-            # Check extention difference
-            if not os.path.isfile(impath):
-                basename = os.path.splitext(parts[1])[0]
-                if basename in dict_path:
-                    impath = dict_path[basename]
+        img = cv2.imread(impath, flags=1)
+
+        if img is None:
+            # if img is None then create empty image
+            img = np.zeros((256, 256, 3), dtype=np.float64)
+            impath_new = os.path.join(args.save_prefix, imname)
+            cv2.imwrite(impath_new, img)
+            broken_lines.append(i + args.start_index)
+        else:
+            try:
+                if img.ndim == 0:
+                    print("Invalid image: %s" % impath)
+                    raise
                 else:
-                    print("%s not found in the input directory, skipped" % (impath))
-                    return
-            if impath[-4:] == ".mp4":
-                return 0
-            img = cv2.imread(impath, flags=1)
-
-            if img.ndim == 0:
-                print("Invalid image: %s" % impath)
-                return 0
-            else:
-                bbox = tuple(map(float, parts[3:7]))
-                if square_crop:
-                    bbox = square_bbox(bbox)
-                bbox = pad_bbox(bbox, padding_ratio)
-                try:
+                    bbox = tuple(map(float, map_elem[1]))
+                    if square_crop:
+                        bbox = square_bbox(bbox)
+                    bbox = pad_bbox(bbox, padding_ratio)
                     img = crop(img, bbox)
-                except:
-                    return 0
 
-                impath_new = os.path.join(args.save_prefix, imname)
-                if not os.path.isdir(os.path.dirname(impath_new)):
-                    os.makedirs(os.path.dirname(impath_new))
-                if target_size:
-                    img = cv2.resize(img, target_size)
-                cv2.imwrite(impath_new, img)
-                return 1
+                    impath_new = os.path.join(args.save_prefix, imname)
+                    if os.path.isdir(os.path.dirname(impath_new)) == False:
+                        os.makedirs(os.path.dirname(impath_new))
+                    if target_size:
+                        img = cv2.resize(img, target_size)
+                    cv2.imwrite(impath_new, img)
+            except:
+                broken_lines.append(i + args.start_index)
 
-    count = joblib.Parallel(n_jobs=1)(
-        joblib.delayed(_f)(i, line) for i, line in tqdm(enumerate(lines[141296:]))
-    )
-    count = np.array(count)
-
-    print(
-        "%d images cropped, %d images failed"
-        % (len(count[count == 1]), len(count[count == 0]))
-    )
-    print("%d image names created" % len(dict_name))
+    with open(f"broken_lines_{args.start_index}.pkl", "wb") as f:
+        pickle.dump(broken_lines, f)
 
 
-def parse_arguments(argv):
+def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("meta_file", type=str, help="Path to metadata file.")
     parser.add_argument(
-        "prefix",
+        "--meta-path",
         type=str,
-        help="Path to the folder containing the original images of IJB-A.",
+        default="/gpfs/gpfs0/r.karimov/ijbc_meta/",
+        help="Path to metadata files.",
     )
-    parser.add_argument("save_prefix", type=str, help="Directory for output images.")
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--prefix",
+        type=str,
+        help="Path to the folder containing the original images of IJB-C.",
+    )
+    parser.add_argument(
+        "--save-prefix",
+        type=str,
+        default="./loose_crop",
+        help="Directory for output images.",
+    )
+    parser.add_argument(
+        "--start-index",
+        type=int,
+        default=0,
+        help="Start index of the image to be pre-processed. Could be used with parallel utility.",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    main(parse_arguments(sys.argv[1:]))
+    main(parse_arguments())
