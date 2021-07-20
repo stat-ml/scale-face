@@ -82,10 +82,10 @@ def extract_features(
                 .permute(0, 3, 1, 2)
                 .to(device)
         )
-        feature, sig_feat = backbone(batch)
-        log_sig_sq = head(sig_feat)
-        mu.append(np.array(feature.detach().cpu()))
-        sigma_sq.append(np.array(log_sig_sq.exp().detach().cpu()))
+        output = backbone(batch)
+        output.update(head(**output))
+        mu.append(np.array(output["feature"].detach().cpu()))
+        sigma_sq.append(np.array(output["log_sigma"].exp().detach().cpu()))
 
     mu = np.concatenate(mu, axis=0)
     sigma_sq = np.concatenate(sigma_sq, axis=0)
@@ -95,7 +95,7 @@ def extract_features(
     return mu, sigma_sq
 
 
-def eval_fusion_ijb(
+def dump_fusion_ijb(
         backbone,
         head,
         dataset_path,
@@ -135,27 +135,87 @@ def eval_fusion_ijb(
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
 
     print('---- Average pooling (Cosine distance)')
     aggregate_templates(tester.verification_templates, features, 'mean')
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
 
     print('---- Uncertainty pooling (Cosine distance)')
     aggregate_templates(tester.verification_templates, features, 'PFE_fuse')
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
-    print()
 
     print('---- Uncertainty pooling (MLS distance)')
     aggregate_templates(tester.verification_templates, features, 'PFE_fuse_match')
     TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
     for i in range(len(TARs)):
         print('TAR: {:.5} +- {:.5} FAR: {:.5}'.format(TARs[i], std[i], FARs[i]))
+
+
+def eval_fusion_ijb(
+        backbone,
+        head,
+        dataset_path,
+        protocol_path,
+        batch_size=64,
+        protocol="ijbc",
+        device=torch.device("cpu"),):
+
+    proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+    testset = IJBDataset(dataset_path)
+    if protocol == 'ijba':
+        tester = IJBATest(testset['abspath'].values)
+        tester.init_proto(protocol_path)
+    elif protocol == 'ijbc':
+        tester = IJBCTest(testset['abspath'].values)
+        tester.init_proto(protocol_path)
+    else:
+        raise ValueError('Unkown protocol. Only accept "ijba" or "ijbc".')
+
+    backbone = backbone.eval().to(device)
+    head = head.eval().to(device)
+
+    mu, sigma_sq = extract_features(
+        backbone,
+        head,
+        tester.image_paths,
+        batch_size,
+        proc_func=proc_func,
+        verbose=True,
+        device=device,)
+
+    features = np.concatenate([mu, sigma_sq], axis=1)
+
+    results_dict = {}
+    print('---- Random pooling (Cosine distance)')
+    aggregate_templates(tester.verification_templates, features, 'random')
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        results_dict["Random_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+
+    print('---- Average pooling (Cosine distance)')
+    aggregate_templates(tester.verification_templates, features, 'mean')
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        results_dict["Average_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+
+    print('---- Uncertainty pooling (Cosine distance)')
+    aggregate_templates(tester.verification_templates, features, 'PFE_fuse')
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        results_dict["Uncertainty_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+
+    print('---- Uncertainty pooling (MLS distance)')
+    aggregate_templates(tester.verification_templates, features, 'PFE_fuse_match')
+    TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
+    for i in range(len(TARs)):
+        results_dict["Uncertainty_pooling_MLS_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+
+    return results_dict
 
 
 if __name__ == '__main__':
@@ -170,7 +230,7 @@ if __name__ == '__main__':
                         type=str, default='proto/IJB-A')
     parser.add_argument("--batch_size", help="Number of images per mini batch",
                         type=int, default=64)
-    parser.add_argument("--config_path", help="The path to config .yaml file",
+    parser.add_argument("--config_path", help="The paths to config .yaml file",
                         type=str, default=None)
     args = parser.parse_args()
 
@@ -186,7 +246,7 @@ if __name__ == '__main__':
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["uncertain"])
 
-    eval_fusion_ijb(
+    dump_fusion_ijb(
         backbone,
         head,
         args.dataset_path,
