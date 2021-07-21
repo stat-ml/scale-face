@@ -198,7 +198,11 @@ class IResNet(nn.Module):
         sig_x = x.float() if self.fp16 else x
         x = self.fc(x.float() if self.fp16 else x)
         x = self.features(x)
-        return x, sig_x
+        output = {
+            "feature": x,
+            "bottleneck_feature": sig_x,
+        }
+        return output
 
 
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):

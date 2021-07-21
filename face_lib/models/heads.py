@@ -40,10 +40,11 @@ class PFEHeadAdjustable(FaceModule):
         nn.init.kaiming_normal_(self.fc1)
         nn.init.kaiming_normal_(self.fc2)
 
-    def forward(self, x):
+    def forward(self, **kwargs):
+        x: torch.Tensor = kwargs["bottleneck_feature"]
         x = x.view(x.size(0), -1)
         x = self.relu(self.bn1(F.linear(x, F.normalize(self.fc1))))
         x = self.bn2(F.linear(x, F.normalize(self.fc2)))  # 2*log(sigma)
         x = self.gamma * x + self.beta
         x = torch.log(1e-6 + torch.exp(x))  # log(sigma^2)
-        return x
+        return {"log_sigma": x}
