@@ -8,13 +8,12 @@ queue_timeout = 600
 
 
 class IJBDataset(object):
-
     def __init__(self, path=None, prefix=None):
 
         if path is not None:
             self.init_from_path(path)
         else:
-            self.data = pd.DataFrame([], columns=['path', 'abspath', 'label', 'name'])
+            self.data = pd.DataFrame([], columns=["path", "abspath", "label", "name"])
 
         self.prefix = prefix
         self.base_seed = 0
@@ -33,11 +32,11 @@ class IJBDataset(object):
 
     @property
     def num_classes(self):
-        return len(self.data['label'].unique())
+        return len(self.data["label"].unique())
 
     @property
     def classes(self):
-        return self.data['label'].unique()
+        return self.data["label"].unique()
 
     @property
     def size(self):
@@ -56,11 +55,14 @@ class IJBDataset(object):
         _, ext = os.path.splitext(path)
         if os.path.isdir(path):
             self.init_from_folder(path)
-        elif ext == '.txt':
+        elif ext == ".txt":
             self.init_from_list(path)
         else:
-            raise ValueError('Cannot initialize dataset from path: %s\n\
-                It should be either a folder, .txt or .hdf5 file' % path)
+            raise ValueError(
+                "Cannot initialize dataset from path: %s\n\
+                It should be either a folder, .txt or .hdf5 file"
+                % path
+            )
         # print('%d images of %d classes loaded' % (len(self.images), self.num_classes))
 
     def init_from_folder(self, folder):
@@ -80,29 +82,33 @@ class IJBDataset(object):
                 labels.extend(len(images_class) * [label])
                 names.extend(len(images_class) * [class_name])
         abspaths = [os.path.join(folder, p) for p in paths]
-        self.data = pd.DataFrame({'path': paths, 'abspath': abspaths,
-                                  'label': labels, 'name': names})
+        self.data = pd.DataFrame(
+            {"path": paths, "abspath": abspaths, "label": labels, "name": names}
+        )
         self.prefix = folder
 
     def init_from_list(self, filename, folder_depth=2):
-        with open(filename, 'r') as f:
+        with open(filename, "r") as f:
             lines = f.readlines()
-        lines = [line.strip().split(' ') for line in lines]
+        lines = [line.strip().split(" ") for line in lines]
         abspaths = [os.path.abspath(line[0]) for line in lines]
-        paths = ['/'.join(p.split('/')[-folder_depth:]) for p in abspaths]
+        paths = ["/".join(p.split("/")[-folder_depth:]) for p in abspaths]
         if len(lines[0]) == 2:
             labels = [int(line[1]) for line in lines]
             names = [str(lb) for lb in labels]
         elif len(lines[0]) == 1:
-            names = [p.split('/')[-folder_depth] for p in abspaths]
+            names = [p.split("/")[-folder_depth] for p in abspaths]
             _, labels = np.unique(names, return_inverse=True)
         else:
-            raise ValueError('List file must be in format: "fullpath(str) \
-                                        label(int)" or just "fullpath(str)"')
+            raise ValueError(
+                'List file must be in format: "fullpath(str) \
+                                        label(int)" or just "fullpath(str)"'
+            )
 
-        self.data = pd.DataFrame({'path': paths, 'abspath': abspaths,
-                                  'label': labels, 'name': names})
-        self.prefix = abspaths[0].split('/')[:-folder_depth]
+        self.data = pd.DataFrame(
+            {"path": paths, "abspath": abspaths, "label": labels, "name": names}
+        )
+        self.prefix = abspaths[0].split("/")[:-folder_depth]
 
     #
     # Data Loading
@@ -113,7 +119,7 @@ class IJBDataset(object):
 
     def random_samples_from_class(self, label, num_samples, exception=None):
         # indices_temp = self.class_indices[label]
-        indices_temp = list(np.where(self.data['label'].values == label)[0])
+        indices_temp = list(np.where(self.data["label"].values == label)[0])
 
         if exception is not None:
             indices_temp.remove(exception)
@@ -128,17 +134,19 @@ class IJBDataset(object):
         return indices
 
     def get_batch_indices(self, batch_format):
-        ''' Get the indices from index queue and fetch the data with indices.'''
+        """Get the indices from index queue and fetch the data with indices."""
         indices_batch = []
-        batch_size = batch_format['size']
+        batch_size = batch_format["size"]
 
-        num_classes = batch_format['num_classes']
+        num_classes = batch_format["num_classes"]
         assert batch_size % num_classes == 0
         num_samples_per_class = batch_size // num_classes
         idx_classes = np.random.permutation(self.classes)[:num_classes]
         indices_batch = []
         for c in idx_classes:
-            indices_batch.extend(self.random_samples_from_class(c, num_samples_per_class))
+            indices_batch.extend(
+                self.random_samples_from_class(c, num_samples_per_class)
+            )
 
         return indices_batch
 
@@ -162,7 +170,7 @@ class IJBDataset(object):
             while True:
                 batch = self.get_batch(batch_format)
                 if proc_func is not None:
-                    batch['image'] = proc_func(batch['abspath'])
+                    batch["image"] = proc_func(batch["abspath"])
                 self.batch_queue.put(batch)
 
         self.batch_workers = []
@@ -189,4 +197,3 @@ class IJBDataset(object):
                 w.terminate()
                 del w
             self.batch_workers = None
-

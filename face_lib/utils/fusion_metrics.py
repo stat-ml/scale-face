@@ -13,7 +13,7 @@ def aggregate_PFE(x, sigma_sq=None, normalize=True, concatenate=False):
         mu, sigma_sq = x[:, :D], x[:, D:]
     else:
         mu = x
-    attention = 1. / sigma_sq
+    attention = 1.0 / sigma_sq
     attention = attention / np.sum(attention, axis=0, keepdims=True)
 
     mu_new = np.sum(mu * attention, axis=0)
@@ -44,16 +44,20 @@ def pair_cosine_score(x1, x2):
 def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
     if sigma_sq1 is None:
         x1, x2 = np.array(x1), np.array(x2)
-        assert sigma_sq2 is None, 'either pass in concated features, or mu, sigma_sq for both!'
+        assert (
+            sigma_sq2 is None
+        ), "either pass in concated features, or mu, sigma_sq for both!"
         D = int(x1.shape[1] / 2)
-        mu1, sigma_sq1 = x1[:,:D], x1[:,D:]
-        mu2, sigma_sq2 = x2[:,:D], x2[:,D:]
+        mu1, sigma_sq1 = x1[:, :D], x1[:, D:]
+        mu2, sigma_sq2 = x2[:, :D], x2[:, D:]
     else:
         x1, x2 = np.array(x1), np.array(x2)
         sigma_sq1, sigma_sq2 = np.array(sigma_sq1), np.array(sigma_sq2)
         mu1, mu2 = x1, x2
     sigma_sq_mutual = sigma_sq1 + sigma_sq2
-    dist = np.sum(np.square(mu1 - mu2) / sigma_sq_mutual + np.log(sigma_sq_mutual), axis=1)
+    dist = np.sum(
+        np.square(mu1 - mu2) / sigma_sq_mutual + np.log(sigma_sq_mutual), axis=1
+    )
     return -dist
 
 
@@ -105,7 +109,10 @@ def ROC(score_vec, label_vec, thresholds=None, FARs=None, get_false_indices=Fals
 
     assert len(thresholds.shape) == 1
     if np.size(thresholds) > 10000:
-        warn('number of thresholds (%d) very large, computation may take a long time!' % np.size(thresholds))
+        warn(
+            "number of thresholds (%d) very large, computation may take a long time!"
+            % np.size(thresholds)
+        )
 
     # FARs would be check again
     TARs = np.zeros(thresholds.shape[0])
