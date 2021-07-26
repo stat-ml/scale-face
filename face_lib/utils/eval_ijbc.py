@@ -15,7 +15,6 @@ import cv2
 import numpy as np
 import torch
 from skimage import transform as trans
-from backbones import get_model
 from sklearn.metrics import roc_curve, auc
 
 from menpo.visualize.viewmatplotlib import sample_colours_from_colourmap
@@ -24,11 +23,15 @@ from pathlib import Path
 
 import sys
 import warnings
-import net_sphere
 from tqdm import tqdm
 
 sys.path.insert(0, "../")
 warnings.filterwarnings("ignore")
+
+sys.path.insert(0, "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch")
+
+from backbones import get_model
+import net_sphere
 
 parser = argparse.ArgumentParser(description="do ijb test")
 # general
@@ -83,7 +86,8 @@ class Embedding(object):
         self.data_shape = data_shape
 
         self.net = getattr(net_sphere, "sphere20a")()
-        self.net.load_state_dict(torch.load("sphere20a_20171020.pth"))
+        net_path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/sphere20a_20171020.pth"
+        self.net.load_state_dict(torch.load(net_path))
         self.net.eval()
         self.net.feature = True
 
@@ -124,9 +128,9 @@ class Embedding(object):
         imgs = torch.Tensor(batch_data)
         imgs.div_(255).sub_(0.5).div_(0.5)
         feat = self.net(imgs)
-        import pdb
-
-        pdb.set_trace()
+        # import pdb
+        #
+        # pdb.set_trace()
         feat = feat.reshape([self.batch_size, 2 * feat.shape[1]])
         return feat.cpu().numpy()
 
@@ -182,11 +186,13 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
     # img_feats = np.empty((len(files), 1024), dtype=np.float32)
 
     path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit/loose_crop"
+    memmp_path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out"
     fp = np.memmap(
-        "final_out", dtype="float32", mode="r", shape=(len(os.listdir(path)), 11)
+        memmp_path, dtype="float32", mode="r", shape=(len(os.listdir(path)), 11)
     )
-    # fp2 = np.memmap("final_out2", dtype='float32', mode='r', shape=(len(files), 1024))
-    # img_feats = np.array(fp2)
+    memmap_path_2 = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out2"
+    fp2 = np.memmap(memmap_path_2, dtype='float32', mode='r', shape=(len(files), 1024))
+    img_feats = np.array(fp2)
 
     batch_data = np.empty((2 * batch_size, 3, 112, 96))
     embedding = Embedding(model_path, data_shape, batch_size)
@@ -339,7 +345,9 @@ print("Time: %.2f s. " % (stop - start))
 #           tid_1 tid_2 label
 # =============================================================
 start = timeit.default_timer()
-p1, p2, label = read_template_pair_list("ijbc_template_pair_label.txt")
+
+pairs_path = "/gpfs/gpfs0/r.karimov/ijbc_meta/ijbc_template_pair_label.txt"
+p1, p2, label = read_template_pair_list(pairs_path)
 stop = timeit.default_timer()
 print("Time: %.2f s. " % (stop - start))
 
@@ -355,7 +363,7 @@ print("Time: %.2f s. " % (stop - start))
 # =============================================================
 start = timeit.default_timer()
 img_path = "%s/loose_crop" % image_path
-img_list_path = "ijbc_name_5pts_score.txt"
+img_list_path = "/gpfs/gpfs0/r.karimov/ijbc_meta/ijbc_name_5pts_score.txt"
 img_list = open(img_list_path)
 files = img_list.readlines()
 # files_list = divideIntoNstrand(files, rank_size)
