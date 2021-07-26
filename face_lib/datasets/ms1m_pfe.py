@@ -26,16 +26,18 @@ class MS1MDatasetPFE(Dataset):
         self.num_face_pb = num_face_pb
 
         self.transform = transforms.Compose(
-            [transforms.ToPILImage(),
-             transforms.RandomHorizontalFlip(),
-             transforms.ToTensor(),
-             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-             ])
+            [
+                transforms.ToPILImage(),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            ]
+        )
         self.root_dir = root_dir
         self.local_rank = local_rank
-        path_imgrec = os.path.join(root_dir, 'train.rec')
-        path_imgidx = os.path.join(root_dir, 'train.idx')
-        self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, 'r')
+        path_imgrec = os.path.join(root_dir, "train.rec")
+        path_imgidx = os.path.join(root_dir, "train.idx")
+        self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, "r")
         s = self.imgrec.read_idx(0)
         header, _ = mx.recordio.unpack(s)
         if header.flag > 0:
@@ -45,8 +47,10 @@ class MS1MDatasetPFE(Dataset):
             self.imgidx = np.array(list(self.imgrec.keys))
 
         print("Root dir : ", root_dir)
+
         if os.path.exists(root_dir + '/identities_indices.pt'):
             self.class_to_first_idx = torch.load(os.path.join(root_dir,'identities_indices.pt'))
+
 
     def __get_pic_by_idx__(self, index):
         idx = self.imgidx[index]

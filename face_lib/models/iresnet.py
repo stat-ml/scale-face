@@ -141,7 +141,7 @@ class IResNet(nn.Module):
 
         if learnable is False:
             for p in self.modules():
-                p.requires_grad=False
+                p.requires_grad = False
 
     def _make_layer(self, block, planes, blocks, stride=1, dilate=False):
         downsample = None
@@ -198,7 +198,11 @@ class IResNet(nn.Module):
         sig_x = x.float() if self.fp16 else x
         x = self.fc(x.float() if self.fp16 else x)
         x = self.features(x)
-        return x, sig_x
+        output = {
+            "feature": x,
+            "bottleneck_feature": sig_x,
+        }
+        return output
 
 
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):

@@ -19,19 +19,29 @@ class CallBackVerification(object):
         self.ver_list: List[object] = []
         self.ver_name_list: List[str] = []
         if self.rank is 0:
-            self.init_dataset(val_targets=val_targets, data_dir=rec_prefix, image_size=image_size)
+            self.init_dataset(
+                val_targets=val_targets, data_dir=rec_prefix, image_size=image_size
+            )
 
     def ver_test(self, backbone: torch.nn.Module, global_step: int):
         results = []
         for i in range(len(self.ver_list)):
             acc1, std1, acc2, std2, xnorm, embeddings_list = verification.test(
-                self.ver_list[i], backbone, 10, 10)
-            logging.info('[%s][%d]XNorm: %f' % (self.ver_name_list[i], global_step, xnorm))
-            logging.info('[%s][%d]Accuracy-Flip: %1.5f+-%1.5f' % (self.ver_name_list[i], global_step, acc2, std2))
+                self.ver_list[i], backbone, 10, 10
+            )
+            logging.info(
+                "[%s][%d]XNorm: %f" % (self.ver_name_list[i], global_step, xnorm)
+            )
+            logging.info(
+                "[%s][%d]Accuracy-Flip: %1.5f+-%1.5f"
+                % (self.ver_name_list[i], global_step, acc2, std2)
+            )
             if acc2 > self.highest_acc_list[i]:
                 self.highest_acc_list[i] = acc2
             logging.info(
-                '[%s][%d]Accuracy-Highest: %1.5f' % (self.ver_name_list[i], global_step, self.highest_acc_list[i]))
+                "[%s][%d]Accuracy-Highest: %1.5f"
+                % (self.ver_name_list[i], global_step, self.highest_acc_list[i])
+            )
             results.append(acc2)
 
     def init_dataset(self, val_targets, data_dir, image_size):
@@ -62,29 +72,43 @@ class CallBackLogging(object):
         self.init = False
         self.tic = 0
 
-    def __call__(self, global_step, loss: AverageMeter, epoch: int, fp16: bool, grad_scaler: torch.cuda.amp.GradScaler):
+    def __call__(
+        self,
+        global_step,
+        loss: AverageMeter,
+        epoch: int,
+        fp16: bool,
+        grad_scaler: torch.cuda.amp.GradScaler,
+    ):
         if self.rank is 0 and global_step > 0 and global_step % self.frequent == 0:
             if self.init:
                 try:
-                    speed: float = self.frequent * self.batch_size / (time.time() - self.tic)
+                    speed: float = (
+                        self.frequent * self.batch_size / (time.time() - self.tic)
+                    )
                     speed_total = speed * self.world_size
                 except ZeroDivisionError:
-                    speed_total = float('inf')
+                    speed_total = float("inf")
 
                 time_now = (time.time() - self.time_start) / 3600
                 time_total = time_now / ((global_step + 1) / self.total_step)
                 time_for_end = time_total - time_now
                 if self.writer is not None:
-                    self.writer.add_scalar('time_for_end', time_for_end, global_step)
-                    self.writer.add_scalar('loss', loss.avg, global_step)
+                    self.writer.add_scalar("time_for_end", time_for_end, global_step)
+                    self.writer.add_scalar("loss", loss.avg, global_step)
                 if fp16:
-                    msg = "Speed %.2f samples/sec   Loss %.4f   Epoch: %d   Global Step: %d   "\
-                          "Fp16 Grad Scale: %2.f   Required: %1.f hours" % (
-                        speed_total, loss.avg, epoch, global_step, grad_scaler.get_scale(), time_for_end
+                    msg = "Speed %.2f samples/sec   Loss %.4f   Epoch: %d   Global Step: %d   " "Fp16 Grad Scale: %2.f   Required: %1.f hours" % (
+                        speed_total,
+                        loss.avg,
+                        epoch,
+                        global_step,
+                        grad_scaler.get_scale(),
+                        time_for_end,
                     )
                 else:
-                    msg = "Speed %.2f samples/sec   Loss %.4f   Epoch: %d   Global Step: %d   Required: %1.f hours" % (
-                        speed_total, loss.avg, epoch, global_step, time_for_end
+                    msg = (
+                        "Speed %.2f samples/sec   Loss %.4f   Epoch: %d   Global Step: %d   Required: %1.f hours"
+                        % (speed_total, loss.avg, epoch, global_step, time_for_end)
                     )
                 logging.info(msg)
                 loss.reset()
@@ -99,8 +123,12 @@ class CallBackModelCheckpoint(object):
         self.rank: int = rank
         self.output: str = output
 
-    def __call__(self, global_step, backbone: torch.nn.Module, partial_fc: PartialFC = None):
+    def __call__(
+        self, global_step, backbone: torch.nn.Module, partial_fc: PartialFC = None
+    ):
         if global_step > 100 and self.rank is 0:
-            torch.save(backbone.module.state_dict(), os.path.join(self.output, "backbone.pth"))
+            torch.save(
+                backbone.module.state_dict(), os.path.join(self.output, "backbone.pth")
+            )
         if global_step > 100 and partial_fc is not None:
             partial_fc.save_params()
