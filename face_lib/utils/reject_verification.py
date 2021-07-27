@@ -28,7 +28,10 @@ def eval_reject_verification(
     dataset_path,
     pairs_table_path,
     batch_size=64,
-    rejected_portions=(0.),):
+    rejected_portions=None):
+
+    if rejected_portions is None:
+        rejected_portions = [0., ]
 
     pairs, labels = [], []
     unique_imgs = set()
@@ -48,31 +51,34 @@ def eval_reject_verification(
     mu, sigma_sq = extract_features(
         backbone,
         head,
-        list(map(lambda x: os.path.join())),
+        list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
         batch_size,
         proc_func=proc_func,
         verbose=True,
         device=device,
     )
 
+    mu_1 = np.array([mu[img_to_idx[pair[0]]] for pair in pairs])
+    mu_2 = np.array([mu[img_to_idx[pair[1]]] for pair in pairs])
+    sigma_sq_1 = np.array([sigma_sq[img_to_idx[pair[0]]] for pair in pairs])
+    sigma_sq_2 = np.array([sigma_sq[img_to_idx[pair[1]]] for pair in pairs])
 
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--checkpoint_path",
         help="The path to the pre-trained model directory",
-        type=str, required=True,)
+        type=str, required=True, )
     parser.add_argument(
         "--dataset_path",
         help="The path to the IJB-C dataset directory",
-        type=str, required=True,)
+        type=str, required=True, )
     parser.add_argument(
-        "--protocol_path",
+        "--meta_path",
         help="The path to the IJB-A protocol directory",
-        type=str, required=True,)
+        type=str, required=True, )
     parser.add_argument(
         "--batch_size",
         help="Number of images per mini batch",
@@ -80,19 +86,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config_path",
         help="The paths to config .yaml file",
-        type=str, required=True,)
+        type=str, required=True, )
     parser.add_argument(
         "--rejected_portions",
         help="Portion of rejected pairs of images",
-        nargs="+",)
+        nargs="+", )
     parser.add_argument(
         "--figure_path",
         help="The figure will be saved to this path",
-        type=str, default=None,)
+        type=str, default=None, )
     parser.add_argument(
         "device_id",
         help="Gpu id on which the algorithm will be launched",
-        type=int, default=0,)
+        type=int, default=0, )
 
     args = parser.parse_args()
 
@@ -110,11 +116,12 @@ if __name__ == "__main__":
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["uncertain"])
 
-    # dump_fusion_ijb(
-    #     backbone,
-    #     head,
-    #     args.dataset_path,
-    #     args.protocol_path,
-    #     batch_size=64,
-    #     protocol="ijbc",
-    #     device=torch.device("cuda:0"),)
+    rejected_portions = list(map(float, args.rejected_portions))
+
+    eval_reject_verification(
+        backbone,
+        head,
+        args.dataset_path,
+        args.pairs_table_path,
+        batch_size=args.batch_size,
+        rejected_portions=rejected_portions)
