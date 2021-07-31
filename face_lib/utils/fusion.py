@@ -23,26 +23,28 @@ from face_lib.utils.fusion_metrics import (
 from face_lib.utils.fusion_metrics import l2_normalize, aggregate_PFE
 
 
-def aggregate_templates(templates, features, method):
+def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
     number_of_templates = 0
     for i, t in enumerate(templates):
         if len(t.indices) > 0:
             if method == "random":
-                t.feature = l2_normalize(features[np.random.choice(t.indices)])
+                t.feature = l2_normalize(mu[np.random.choice(t.indices)])
+                t.sigma_sq = None
             if method == "mean":
-                t.feature = l2_normalize(np.mean(features[t.indices], axis=0))
+                t.feature = l2_normalize(np.mean(mu[t.indices], axis=0))
+                t.sigma_sq = None
             if method == "PFE_fuse":
                 t.mu, t.sigma_sq = aggregate_PFE(
-                    features[t.indices], normalize=True, concatenate=False
+                    mu[t.indices], sigma_sq=sigma_sq[t.indices], normalize=True, concatenate=False
                 )
                 t.feature = t.mu
             if method == "PFE_fuse_match":
                 if not hasattr(t, "mu"):
                     t.mu, t.sigma_sq = aggregate_PFE(
-                        features[t.indices], normalize=True, concatenate=False
+                        mu[t.indices], sigma_sq=sigma_sq[t.indices], normalize=True, concatenate=False
                     )
-                t.feature = np.concatenate([t.mu, t.sigma_sq])
+                # t.feature = np.concatenate([t.mu, t.sigma_sq])
         else:
             t.feature = None
         if i % 1000 == 0:
@@ -55,13 +57,13 @@ def aggregate_templates(templates, features, method):
 
 
 def force_compare(compare_func, verbose=False):
-    def compare(t1, t2):
+    def compare(t1, t2, s1, s2):
         score_vec = np.zeros(len(t1))
         for i in range(len(t1)):
             if t1[i] is None or t2[i] is None:
                 score_vec[i] = -9999
             else:
-                score_vec[i] = compare_func(t1[i][None], t2[i][None])
+                score_vec[i] = compare_func(t1[i][None], t2[i][None], s1[i], s2[i])
             if verbose and i % 1000 == 0:
                 sys.stdout.write("Matching pair {}/{}...\t\r".format(i, len(t1)))
         if verbose:
@@ -146,28 +148,28 @@ def dump_fusion_ijb(
         device=device,
     )
 
-    features = np.concatenate([mu, sigma_sq], axis=1)
+    print(f"Mu : {mu.shape} Sigma : {sigma_sq.shape}")
 
     print("---- Random pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "random")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
 
     print("---- Average pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "mean")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
 
     print("---- Uncertainty pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "PFE_fuse")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
 
     print("---- Uncertainty pooling (MLS distance)")
-    aggregate_templates(tester.verification_templates, features, "PFE_fuse_match")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
     TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
     for i in range(len(TARs)):
         print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
@@ -208,29 +210,30 @@ def eval_fusion_ijb(
         device=device,
     )
 
-    features = np.concatenate([mu, sigma_sq], axis=1)
+    print(f"mu : {mu.shape} sigma : {sigma_sq.shape}")
+    # features = np.concatenate([mu, sigma_sq], axis=1)
 
     results_dict = {}
     print("---- Random pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "random")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         results_dict["Random_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
 
     print("---- Average pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "mean")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         results_dict["Average_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
 
     print("---- Uncertainty pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, features, "PFE_fuse")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
     TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     for i in range(len(TARs)):
         results_dict["Uncertainty_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
 
     print("---- Uncertainty pooling (MLS distance)")
-    aggregate_templates(tester.verification_templates, features, "PFE_fuse_match")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
     TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
     for i in range(len(TARs)):
         results_dict["Uncertainty_pooling_MLS_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
@@ -262,6 +265,12 @@ if __name__ == "__main__":
         default="proto/IJB-A",
     )
     parser.add_argument(
+        "--device_id",
+        help="Device on which the algorithm will be ran",
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
         "--batch_size", help="Number of images per mini batch", type=int, default=64
     )
     parser.add_argument(
@@ -281,7 +290,7 @@ if __name__ == "__main__":
 
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
     backbone.load_state_dict(checkpoint["backbone"])
-    head.load_state_dict(checkpoint["uncertain"])
+    head.load_state_dict(checkpoint["head"])
 
     dump_fusion_ijb(
         backbone,
@@ -290,5 +299,5 @@ if __name__ == "__main__":
         args.protocol_path,
         batch_size=64,
         protocol="ijbc",
-        device=torch.device("cuda:0"),
+        device=torch.device("cuda:" + str(args.device_id)),
     )

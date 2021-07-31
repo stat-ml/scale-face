@@ -46,7 +46,6 @@ def build_templates(subject_dict, meta_file):
     template_indices = None
     template_medias = None
     count = 0
-    # print("Meta list : ", meta_list[:10])
     for line in meta_list:
         temp_id, subject_id, image, media = tuple(line.split(",")[0:4])
         temp_id = int(temp_id)
@@ -101,16 +100,6 @@ class IJBCTest:
 
         print("Number of identities : ", len(self.subject_dict))
 
-        # sum_dct_len = 0
-        # for key, val in self.subject_dict.items():
-        #    sum_dct_len += len(val)
-        # print(f"\tMean dict size : {sum_dct_len / len(self.subject_dict)}")
-        # i = 0
-        # for key, val in self.subject_dict.items():
-        #     print(f"\t\t[{key}] : {val}")
-        #     i += 1
-        #     if i == 10 : break
-
     def init_verification_proto(self, protofolder):
         self.verification_folds = []
         self.verification_templates = []
@@ -145,7 +134,6 @@ class IJBCTest:
         self.verification_templates = np.concatenate(
             [self.verification_G1_templates, self.verification_G2_templates]
         )
-        # print("Verification templates : ", self.verification_templates.shape)
         print("{} templates are initialized.".format(len(self.verification_templates)))
 
     def init_proto(self, protofolder):
@@ -170,15 +158,20 @@ class IJBCTest:
 
         features1 = [t.feature for t in templates1]
         features2 = [t.feature for t in templates2]
+        sigmas_sq1 = [t.sigma_sq for t in templates1]
+        sigmas_sq2 = [t.sigma_sq for t in templates2]
         labels1 = np.array([t.label for t in templates1])
         labels2 = np.array([t.label for t in templates2])
 
-        score_vec = compare_func(features1, features2)
+        print(f"feature1 : {len(features1)} {features1[0].shape} features2 : {len(features2)}")
+        score_vec = compare_func(features1, features2, sigmas_sq1, sigmas_sq2)
         label_vec = labels1 == labels2
 
         print(f"Positive labels : {sum(label_vec)} / {len(label_vec)}")
 
         tars, fars, thresholds = metrics.ROC(score_vec, label_vec, FARs=FARs)
+
+        # There is no std for IJB-C
         std = [0.0 for t in tars]
 
         return tars, std, fars

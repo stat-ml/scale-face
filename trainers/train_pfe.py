@@ -178,9 +178,16 @@ class Trainer(TrainerBase):
             # log_sig_sq = self.head(sig_feat)
             # loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
 
-            output = self.backbone(img)
-            output.update(self.head(**output))
-            loss = self.head_criterion.forward(device=self.device, gty=gty, **output)
+            feature, sig_feat = self.backbone(img)
+            sig_feature = {"bottleneck_feature":  sig_feat}
+            log_sig_sq = self.head(**sig_feature)
+
+            outputs = {"gty": gty}
+            outputs.update({"feature":  feature})
+            outputs.update(log_sig_sq)
+
+            loss = self.head_criterion.forward(device=self.device, **outputs)
+
 
             self.optimizer.zero_grad()
             loss.backward()
