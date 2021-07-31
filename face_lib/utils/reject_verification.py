@@ -24,9 +24,6 @@ from face_lib.utils.fusion_metrics import (
 from face_lib.utils.fusion_metrics import l2_normalize, aggregate_PFE
 
 
-def calculate_pair_uncertainty
-
-
 def eval_reject_verification(
     backbone,
     head,
@@ -76,7 +73,7 @@ def eval_reject_verification(
     print("labels :",  labels.shape,  labels.dtype)
     print(labels.dtype)
 
-    score_vec = compare_func(features1, features2)
+    # score_vec = compare_func(features1, features2)
     print("Hello world")
 
 
