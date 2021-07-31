@@ -14,7 +14,7 @@ sys.path.insert(0, path)
 from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
-from face_lib.utils.imageprocessing import preprocess
+from face_lib.utils.imageprocessing import preprocess, preprocess_tta
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
     pair_cosine_score,
@@ -113,6 +113,56 @@ def extract_features(
     return mu, sigma_sq
 
 
+def extract_features_tta(
+    backbone,
+    images,
+    batch_size,
+    proc_func=None,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+    num_images = len(images)
+    mu = []
+    sigma_sq = []
+    start_time = time.time()
+    for start_idx in tqdm(range(0, num_images, batch_size)):
+        if verbose:
+            elapsed_time = time.strftime(
+                "%H:%M:%S", time.gmtime(time.time() - start_time)
+            )
+            sys.stdout.write(
+                "# of images: %d Current image: %d Elapsed time: %s \t\r"
+                % (num_images, start_idx, elapsed_time)
+            )
+        end_idx = min(num_images, start_idx + batch_size)
+        images_batch = images[start_idx:end_idx]
+
+        #batch = proc_func(images_batch)  # imagesprocessing.py -> preprocess
+
+        batch_tta = proc_func(images_batch)
+        embeds_augments = []
+
+        for ind, batch in enumerate(batch_tta):
+            if ind == 0:
+                batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+                output = backbone(batch)
+                mu.append(np.array(output["feature"].detach().cpu()))
+            else:
+                batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+                output = backbone(batch)
+                embeds_augments.append(np.array(output["feature"].detach().cpu()))
+
+        sigma_sq = np.var(embeds_augments, axis=0)
+        print(len(mu))
+        print(len(sigma_sq))
+
+    mu = np.concatenate(mu, axis=0)
+
+    if verbose:
+        print("")
+    return mu, sigma_sq
+
+
 def dump_fusion_ijb(
     backbone,
     head,
@@ -185,7 +235,12 @@ def eval_fusion_ijb(
     device=torch.device("cpu"),
 ):
 
-    proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    useTTA = True
+
+    if(useTTA == True):
+        proc_func = lambda images: preprocess_tta(images, [112, 112], is_training=False)
+    else:
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
     testset = IJBDataset(dataset_path)
     if protocol == "ijba":

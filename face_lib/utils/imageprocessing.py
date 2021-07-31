@@ -1,6 +1,35 @@
 import numpy as np
 from scipy import misc
+from scipy.ndimage.filters import gaussian_filter
 import imageio
+
+
+def noisy(image, noise_type):
+   if noise_type == "gauss":
+      row, col, ch = image.shape
+      mean = 0
+      var = 0.1
+      sigma = var**0.5
+      gauss = np.random.normal(mean, sigma, (row, col, ch))
+      gauss = gauss.reshape(row, col, ch)
+      noisy = image + gauss
+      return noisy
+
+
+def add_noise(images, noise_type="gauss"):
+    images_new = images.copy()
+    for i in range(images_new.shape[0]):
+        images_new[i] = noisy(images[i], noise_type)
+
+    return images_new
+
+
+def gaussian_blur(images, sigma=5):
+    images_new = images.copy()
+    for i in range(images_new.shape[0]):
+        images_new[i] = gaussian_filter(images_new[i], sigma=sigma, multichannel=True)
+
+    return images_new
 
 
 def get_new_shape(images, size=None, n=None):
@@ -242,3 +271,61 @@ def preprocess(
     if len(images.shape) == 3:
         images = images[:, :, :, None]
     return images
+
+
+# (horizontal_flip, center_cropp/random_cropp, gausian_blur/median_blur, noise? , hue/saturation?)
+def preprocess_tta(
+    images, center_crop_size, mode="RGB", align: tuple = None, *, is_training=False
+):
+    """
+    #TODO: docs, describe mode parameter
+    """
+    # TODO: this is not preprocess actually
+    if type(images[0]) == str:
+        image_paths = images
+        images = []
+        for image_path in image_paths:
+            images.append(imageio.imread(image_path, pilmode=mode))
+        images = np.stack(images, axis=0)
+    else:
+        assert type(images) == np.ndarray
+        assert images.ndim == 4
+
+    preprocess_augmentation_orig = [
+        ["center_crop", center_crop_size],
+        ["standardize", "mean_scale"],
+    ]
+    preprocess_augmentation_flipped = [
+        ["center_crop", center_crop_size],
+        ["flip"],
+        ["standardize", "mean_scale"],
+    ]
+    preprocess_augmentation_blurred = [
+        ["center_crop", center_crop_size],
+        ["gaussian_blur"],
+        ["standardize", "mean_scale"],
+    ]
+    preprocess_augmentation_noise = [
+        ["center_crop", center_crop_size],
+        ["add_noise"],
+        ["standardize", "mean_scale"],
+    ]
+
+    proc_funcs_list = [preprocess_augmentation_orig, preprocess_augmentation_flipped,
+                       preprocess_augmentation_blurred, preprocess_augmentation_noise]
+
+    images_augmented = []
+
+    for proc_funcs in proc_funcs_list:
+        for proc in proc_funcs:
+            proc_name, proc_args = proc[0], proc[1:]
+            assert (
+                    proc_name in register
+            ), "Not a registered preprocessing function: {}".format(proc_name)
+            images = register[proc_name](images, *proc_args)
+        if len(images.shape) == 3:
+            images = images[:, :, :, None]
+
+        images_augmented.append(images)
+
+    return images_augmented
