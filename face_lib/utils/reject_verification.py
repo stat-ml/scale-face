@@ -1,12 +1,14 @@
 import os
+import sys
 import argparse
 import numpy as np
 import torch
 from path import Path
 
-path = str(
-    Path(Path(Path(__file__).parent.absolute()).parent.absolute()).parent.absolute()
-)
+# path = str(
+#     Path(Path(Path(__file__).parent.abspath()).parent.abspath()).parent.abspath()
+# )
+path = str(Path(__file__).parent.parent.parent.abspath())
 sys.path.insert(0, path)
 
 from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
@@ -20,6 +22,9 @@ from face_lib.utils.fusion_metrics import (
     pair_MLS_score,
 )
 from face_lib.utils.fusion_metrics import l2_normalize, aggregate_PFE
+
+
+def calculate_pair_uncertainty
 
 
 def eval_reject_verification(
@@ -39,7 +44,7 @@ def eval_reject_verification(
         for line in f.readlines():
             left_path, right_path, label = line.split(",")
             pairs.append((left_path, right_path))
-            labels.append(label)
+            labels.append(int(label))
             unique_imgs.add(left_path)
             unique_imgs.add(right_path)
 
@@ -62,7 +67,17 @@ def eval_reject_verification(
     mu_2 = np.array([mu[img_to_idx[pair[1]]] for pair in pairs])
     sigma_sq_1 = np.array([sigma_sq[img_to_idx[pair[0]]] for pair in pairs])
     sigma_sq_2 = np.array([sigma_sq[img_to_idx[pair[1]]] for pair in pairs])
+    labels = np.array(labels, dtype=bool)
 
+    print("Mu_1 :", mu_1.shape, mu_1.dtype)
+    print("Mu_2 :", mu_2.shape, mu_2.dtype)
+    print("sigma_sq_1 :", sigma_sq_1.shape, sigma_sq_1.dtype)
+    print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
+    print("labels :",  labels.shape,  labels.dtype)
+    print(labels.dtype)
+
+    score_vec = compare_func(features1, features2)
+    print("Hello world")
 
 
 if __name__ == "__main__":
@@ -76,8 +91,8 @@ if __name__ == "__main__":
         help="The path to the IJB-C dataset directory",
         type=str, required=True, )
     parser.add_argument(
-        "--meta_path",
-        help="The path to the IJB-A protocol directory",
+        "--pairs_table_path",
+        help="Path to csv file with pairs names",
         type=str, required=True, )
     parser.add_argument(
         "--batch_size",
@@ -96,13 +111,13 @@ if __name__ == "__main__":
         help="The figure will be saved to this path",
         type=str, default=None, )
     parser.add_argument(
-        "device_id",
+        "--device_id",
         help="Gpu id on which the algorithm will be launched",
         type=int, default=0, )
 
     args = parser.parse_args()
 
-    device = torch.device("cuda:" + args.device_id)
+    device = torch.device("cuda:" + str(args.device_id))
 
     model_args = cfg.load_config(args.config_path)
     backbone = mlib.model_dict[model_args.backbone["name"]](
@@ -111,6 +126,7 @@ if __name__ == "__main__":
     head = mlib.heads[model_args.head.name](
         **utils.pop_element(model_args.head, "name")
     )
+    backbone, head = backbone.to(device), head.to(device)
 
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
     backbone.load_state_dict(checkpoint["backbone"])

@@ -176,20 +176,9 @@ class IJBCTest:
         score_vec = compare_func(features1, features2)
         label_vec = labels1 == labels2
 
-        # idx = [0, 12, 1222, 12222, 122222, 10000000, 15000000, 10000001]
-        # idx = [0, 1, 2, 3, 4]
-        # idx = [0, 1, int(len(score_vec) * 0.2), int(len(score_vec) * 0.5), int(len(score_vec) * 0.6), int(len(score_vec)) - 1, int(len(score_vec)) - 2]
         print(f"Positive labels : {sum(label_vec)} / {len(label_vec)}")
-        # print("Scores vec : ", score_vec.shape, score_vec[idx])
-        # print("Label_vec : ", label_vec.shape, label_vec[idx])
 
         tars, fars, thresholds = metrics.ROC(score_vec, label_vec, FARs=FARs)
-
-        # print("Tars : ", tars.shape, tars)
-        # print("Fars : ", fars.shape, fars)
-        # print("Thresholds : ", thresholds.shape, thresholds)
-
-        # There is no std for IJB-C
         std = [0.0 for t in tars]
 
         return tars, std, fars
