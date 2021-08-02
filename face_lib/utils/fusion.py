@@ -152,9 +152,11 @@ def extract_features_tta(
                 output = backbone(batch)
                 embeds_augments.append(np.array(output["feature"].detach().cpu()))
 
-        sigma_sq.append(np.var(embeds_augments, axis=0))
+        sigma_sq.append(np.mean(np.var(embeds_augments, axis=0)))
         print("len mu: ", len(mu))
         print("len siqma: ", len(sigma_sq))
+        print("shape mu", mu[0].shape)
+        print("shape sigma", sigma_sq[0].shape)
 
     mu = np.concatenate(mu, axis=0)
     sigma_sq = np.concatenate(sigma_sq, axis=0)
