@@ -353,7 +353,7 @@ if __name__ == "__main__":
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
 
-    eval_fusion_ijb(
+    xui = eval_fusion_ijb(
         backbone,
         head,
         args.dataset_path,
@@ -362,3 +362,4 @@ if __name__ == "__main__":
         protocol="ijbc",
         device=torch.device("cuda:" + str(args.device_id)),
     )
+    print(xui)
