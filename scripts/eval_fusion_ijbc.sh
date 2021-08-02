@@ -7,9 +7,17 @@
 #  --protocol=ijbc
 
 # Fusion with ProbFace
+#python3 ./face_lib/utils/fusion.py \
+#  --checkpoint_path=/gpfs/gpfs0/r.zainulin/sota.pth \
+#  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
+#  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
+#  --config_path=./configs/models/iresnet_ms1m_probface.yaml \
+#  --protocol=ijbc
+
+# Evaluating probface on fusion IJBC
 python3 ./face_lib/utils/fusion.py \
   --checkpoint_path=/gpfs/gpfs0/r.zainulin/sota.pth \
-  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
+  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/debug \
   --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
-  --config_path=./configs/models/iresnet_ms1m_probface.yaml \
+  --config_path=/gpfs/gpfs0/r.zainulin/git_repos/face-evaluation/configs/models/iresnet_ms1m_probface.yaml \
   --protocol=ijbc

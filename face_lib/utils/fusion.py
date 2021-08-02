@@ -253,11 +253,9 @@ def eval_fusion_ijb(
         raise ValueError('Unkown protocol. Only accept "ijba" or "ijbc".')
 
     backbone = backbone.eval().to(device)
-    head = head.eval().to(device)
 
-    mu, sigma_sq = extract_features(
+    mu, sigma_sq = extract_features_tta(
         backbone,
-        head,
         tester.image_paths,
         batch_size,
         proc_func=proc_func,
@@ -269,23 +267,23 @@ def eval_fusion_ijb(
     # features = np.concatenate([mu, sigma_sq], axis=1)
 
     results_dict = {}
-    print("---- Random pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
-    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    for i in range(len(TARs)):
-        results_dict["Random_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
-
-    print("---- Average pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
-    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    for i in range(len(TARs)):
-        results_dict["Average_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
-
-    print("---- Uncertainty pooling (Cosine distance)")
-    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
-    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    for i in range(len(TARs)):
-        results_dict["Uncertainty_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+    # print("---- Random pooling (Cosine distance)")
+    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
+    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    # for i in range(len(TARs)):
+    #     results_dict["Random_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+    #
+    # print("---- Average pooling (Cosine distance)")
+    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
+    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    # for i in range(len(TARs)):
+    #     results_dict["Average_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
+    # 
+    # print("---- Uncertainty pooling (Cosine distance)")
+    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
+    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    # for i in range(len(TARs)):
+    #     results_dict["Uncertainty_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
 
     print("---- Uncertainty pooling (MLS distance)")
     aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
