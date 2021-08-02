@@ -230,6 +230,10 @@ register = {
     "expand_flip": expand_flip,
     "five_crop": five_crop,
     "ten_crop": ten_crop,
+    "flip": flip,
+    "add_noise": add_noise,
+    "gaussian_blur": gaussian_blur,
+
 }
 
 

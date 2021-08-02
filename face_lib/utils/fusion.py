@@ -278,7 +278,7 @@ def eval_fusion_ijb(
     # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
     # for i in range(len(TARs)):
     #     results_dict["Average_pooling_cos_dist_TAR@FAR=" + str(FARs[i])] = TARs[i]
-    # 
+    #
     # print("---- Uncertainty pooling (Cosine distance)")
     # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
     # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
@@ -345,7 +345,7 @@ if __name__ == "__main__":
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
 
-    dump_fusion_ijb(
+    eval_fusion_ijb(
         backbone,
         head,
         args.dataset_path,
