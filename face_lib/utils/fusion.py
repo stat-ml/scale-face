@@ -276,23 +276,23 @@ def eval_fusion_ijb(
 
     print(f"Mu : {mu.shape} Sigma : {sigma_sq.shape}")
 
-    # print("---- Random pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Average pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Uncertainty pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
+    print("---- Random pooling (Cosine distance)")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
+
+    print("---- Average pooling (Cosine distance)")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
+
+    print("---- Uncertainty pooling (Cosine distance)")
+    aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
+    TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
+    for i in range(len(TARs)):
+        print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
 
     print("---- Uncertainty pooling (MLS distance)")
     aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
