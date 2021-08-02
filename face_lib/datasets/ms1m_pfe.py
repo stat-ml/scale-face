@@ -47,8 +47,10 @@ class MS1MDatasetPFE(Dataset):
             self.imgidx = np.array(list(self.imgrec.keys))
 
         print("Root dir : ", root_dir)
-        if os.path.exists(root_dir + "/identities_indices.pt"):
-            self.class_to_first_idx = torch.load(root_dir + "identities_indices.pt")
+
+        if os.path.exists(root_dir + '/identities_indices.pt'):
+            self.class_to_first_idx = torch.load(os.path.join(root_dir,'identities_indices.pt'))
+
 
     def __get_pic_by_idx__(self, index):
         idx = self.imgidx[index]

@@ -28,13 +28,13 @@ def aggregate_PFE(x, sigma_sq=None, normalize=True, concatenate=False):
         return mu_new, sigma_sq_new
 
 
-def pair_euc_score(x1, x2):
+def pair_euc_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
     x1, x2 = np.array(x1), np.array(x2)
     dist = np.sum(np.square(x1 - x2), axis=1)
     return -dist
 
 
-def pair_cosine_score(x1, x2):
+def pair_cosine_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
     x1, x2 = np.array(x1), np.array(x2)
     x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
     dist = np.sum(x1 * x2, axis=1)
@@ -51,9 +51,9 @@ def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
         mu1, sigma_sq1 = x1[:, :D], x1[:, D:]
         mu2, sigma_sq2 = x2[:, :D], x2[:, D:]
     else:
-        x1, x2 = np.array(x1), np.array(x2)
+        mu1, mu2 = np.array(x1), np.array(x2)
         sigma_sq1, sigma_sq2 = np.array(sigma_sq1), np.array(sigma_sq2)
-        mu1, mu2 = x1, x2
+        # mu1, mu2 = x1, x2
     sigma_sq_mutual = sigma_sq1 + sigma_sq2
     dist = np.sum(
         np.square(mu1 - mu2) / sigma_sq_mutual + np.log(sigma_sq_mutual), axis=1

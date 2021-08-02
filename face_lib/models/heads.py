@@ -42,9 +42,29 @@ class PFEHeadAdjustable(FaceModule):
 
     def forward(self, **kwargs):
         x: torch.Tensor = kwargs["bottleneck_feature"]
-        x = x.view(x.size(0), -1)
         x = self.relu(self.bn1(F.linear(x, F.normalize(self.fc1))))
         x = self.bn2(F.linear(x, F.normalize(self.fc2)))  # 2*log(sigma)
         x = self.gamma * x + self.beta
         x = torch.log(1e-6 + torch.exp(x))  # log(sigma^2)
+        return {"log_sigma": x}
+
+
+class ProbHead(FaceModule):
+    def __init__(self, in_feat=512, **kwargs):
+        super(ProbHead, self).__init__(kwargs)
+        # TODO: remove hard coding here
+        self.fc1 = nn.Linear(in_feat * 7 * 7, in_feat)
+        self.bn1 = nn.BatchNorm1d(in_feat, affine=True)
+        self.relu = nn.ReLU(in_feat)
+        self.fc2 = nn.Linear(in_feat, 1)
+        self.bn2 = nn.BatchNorm1d(1, affine=False)
+        self.gamma = Parameter(torch.Tensor([1e-4]))
+        self.beta = Parameter(torch.Tensor([-7.0]))
+
+    def forward(self, **kwargs):
+        x: torch.Tensor = kwargs["bottleneck_feature"]
+        x = self.relu(self.bn1(self.fc1(x)))
+        x = self.bn2(self.fc2(x))
+        x = self.gamma * x + self.beta
+        x = torch.log(1e-6 + torch.exp(x))
         return {"log_sigma": x}
