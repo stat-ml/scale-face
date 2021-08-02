@@ -27,7 +27,7 @@ def add_noise(images, noise_type="gauss"):
 def gaussian_blur(images, sigma=5):
     images_new = images.copy()
     for i in range(images_new.shape[0]):
-        images_new[i] = gaussian_filter(images_new[i], sigma=sigma, multichannel=True)
+        images_new[i] = gaussian_filter(images_new[i], sigma=sigma)
 
     return images_new
 

@@ -157,6 +157,7 @@ def extract_features_tta(
         print(len(sigma_sq))
 
     mu = np.concatenate(mu, axis=0)
+    sigma_sq = np.concatenate(sigma_sq, axis=0)
 
     if verbose:
         print("")
