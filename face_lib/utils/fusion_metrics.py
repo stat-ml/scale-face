@@ -1,6 +1,8 @@
 import numpy as np
 from warnings import warn
 
+from .utils import harmonic_mean
+
 
 def l2_normalize(x, axis=None, eps=1e-8):
     x = x / (eps + np.linalg.norm(x, axis=axis))
@@ -53,12 +55,25 @@ def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
     else:
         mu1, mu2 = np.array(x1), np.array(x2)
         sigma_sq1, sigma_sq2 = np.array(sigma_sq1), np.array(sigma_sq2)
+        mu1, mu2 = l2_normalize(mu1, axis=1), l2_normalize(mu2, axis=1)
         # mu1, mu2 = x1, x2
     sigma_sq_mutual = sigma_sq1 + sigma_sq2
     dist = np.sum(
         np.square(mu1 - mu2) / sigma_sq_mutual + np.log(sigma_sq_mutual), axis=1
     )
     return -dist
+
+
+def pair_uncertainty_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return sigma_sq_1.sum(axis=1) + sigma_sq_2.sum(axis=1)
+
+
+def pair_uncertainty_harmonic_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return harmonic_mean(sigma_sq_1, axis=1) + harmonic_mean(sigma_sq_2, axis=1)
+
+
+def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return harmonic_mean(np.concatenate((sigma_sq_1, sigma_sq_2,), axis=1), axis=1)
 
 
 def find_thresholds_by_FAR(score_vec, label_vec, FARs=None, epsilon=1e-8):
