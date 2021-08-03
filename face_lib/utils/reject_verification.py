@@ -197,6 +197,11 @@ def eval_reject_verification(
     for method, table in all_results.items():
         res_AUCs[method] = {far: auc(rejected_portions, TARs) for far, TARs in table.items()}
 
+    for (distance_name, uncertainty_name), aucs in res_AUCs.items():
+        print(distance_name, uncertainty_name)
+        for FAR, AUC in aucs.items():
+            print(f"\tFAR={round(FAR, 5)} TAR_AUC : {round(AUC, 5)}")
+
     for (distance_name, uncertainty_name), result_table in all_results.items():
         title = pairs_table_path.split("/")[-1][-4] + " " + distance_name + " " + uncertainty_name
         save_to_path = args.save_fig_path + "_" + distance_name + "_" + uncertainty_name + ".jpg"
