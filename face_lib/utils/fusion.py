@@ -36,13 +36,19 @@ def aggregate_templates(templates, mu, sigma_sq, method):
                 t.sigma_sq = None
             if method == "PFE_fuse":
                 t.mu, t.sigma_sq = aggregate_PFE(
-                    mu[t.indices], sigma_sq=sigma_sq[t.indices], normalize=True, concatenate=False
+                    mu[t.indices],
+                    sigma_sq=sigma_sq[t.indices],
+                    normalize=True,
+                    concatenate=False,
                 )
                 t.feature = t.mu
             if method == "PFE_fuse_match":
                 if not hasattr(t, "mu"):
                     t.mu, t.sigma_sq = aggregate_PFE(
-                        mu[t.indices], sigma_sq=sigma_sq[t.indices], normalize=True, concatenate=False
+                        mu[t.indices],
+                        sigma_sq=sigma_sq[t.indices],
+                        normalize=True,
+                        concatenate=False,
                     )
                 # t.feature = np.concatenate([t.mu, t.sigma_sq])
         else:
@@ -142,7 +148,7 @@ def extract_features_tta(
         end_idx = min(num_images, start_idx + batch_size)
         images_batch = images[start_idx:end_idx]
 
-        #batch = proc_func(images_batch)  # imagesprocessing.py -> preprocess
+        # batch = proc_func(images_batch)  # imagesprocessing.py -> preprocess
 
         batch_tta = proc_func(images_batch)
         embeds_augments = []
@@ -245,7 +251,7 @@ def eval_fusion_ijb(
 
     useTTA = True
 
-    if(useTTA == True):
+    if useTTA == True:
         proc_func = lambda images: preprocess_tta(images, [112, 112], is_training=False)
     else:
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)

@@ -5,15 +5,15 @@ import imageio
 
 
 def noisy(image, noise_type):
-   if noise_type == "gauss":
-      row, col, ch = image.shape
-      mean = 0
-      var = 0.1
-      sigma = var**0.5
-      gauss = np.random.normal(mean, sigma, (row, col, ch))
-      gauss = gauss.reshape(row, col, ch)
-      noisy = image + gauss
-      return noisy
+    if noise_type == "gauss":
+        row, col, ch = image.shape
+        mean = 0
+        var = 0.1
+        sigma = var ** 0.5
+        gauss = np.random.normal(mean, sigma, (row, col, ch))
+        gauss = gauss.reshape(row, col, ch)
+        noisy = image + gauss
+        return noisy
 
 
 def add_noise(images, noise_type="gauss"):
@@ -233,7 +233,6 @@ register = {
     "flip": flip,
     "add_noise": add_noise,
     "gaussian_blur": gaussian_blur,
-
 }
 
 
@@ -315,8 +314,12 @@ def preprocess_tta(
         ["standardize", "mean_scale"],
     ]
 
-    proc_funcs_list = [preprocess_augmentation_orig, preprocess_augmentation_flipped,
-                       preprocess_augmentation_blurred, preprocess_augmentation_noise]
+    proc_funcs_list = [
+        preprocess_augmentation_orig,
+        preprocess_augmentation_flipped,
+        preprocess_augmentation_blurred,
+        preprocess_augmentation_noise,
+    ]
 
     images_augmented = []
 
@@ -324,7 +327,7 @@ def preprocess_tta(
         for proc in proc_funcs:
             proc_name, proc_args = proc[0], proc[1:]
             assert (
-                    proc_name in register
+                proc_name in register
             ), "Not a registered preprocessing function: {}".format(proc_name)
             images = register[proc_name](images, *proc_args)
         if len(images.shape) == 3:

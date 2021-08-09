@@ -29,13 +29,13 @@ import face_lib.utils.fusion_metrics as metrics
 name_to_distance_func = {
     "euc": pair_euc_score,
     "cosine": pair_cosine_score,
-    "MLS": pair_MLS_score
+    "MLS": pair_MLS_score,
 }
 
 name_to_uncertainty_func = {
     "mean": pair_uncertainty_sum,
     "harmonic-sum": pair_uncertainty_harmonic_sum,
-    "harmonic-harmonic": pair_uncertainty_concatenated_harmonic
+    "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
 }
 
 
@@ -53,16 +53,28 @@ def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=No
     return fig
 
 
-def plot_TAR_FAR_different_methods(results, rejected_portions, AUCs, title=None, save_figs_path=None):
-    plots_indices = {FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())}
-    fig, axes = plt.subplots(ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 8))
+def plot_TAR_FAR_different_methods(
+    results, rejected_portions, AUCs, title=None, save_figs_path=None
+):
+    plots_indices = {
+        FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
+    }
+    fig, axes = plt.subplots(
+        ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 8)
+    )
     for (distance_name, uncertainty_name), table in results.items():
         for FAR, TARs in table.items():
             auc = AUCs[(distance_name, uncertainty_name)][FAR]
             axes[plots_indices[FAR]].plot(
-                rejected_portions, TARs,
-                label=distance_name + "_" + uncertainty_name + "_AUC=" + str(round(auc, 5)),
-                marker=".")
+                rejected_portions,
+                TARs,
+                label=distance_name
+                + "_"
+                + uncertainty_name
+                + "_AUC="
+                + str(round(auc, 5)),
+                marker=".",
+            )
             axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
             axes[plots_indices[FAR]].set_xlabel("Rejected portion")
             axes[plots_indices[FAR]].set_ylabel("TAR")
@@ -79,7 +91,8 @@ def get_features_sigmas_labels(
     head,
     dataset_path,
     pairs_table_path,
-    batch_size=64,):
+    batch_size=64,
+):
 
     pairs, label_vec = [], []
     unique_imgs = set()
@@ -103,7 +116,8 @@ def get_features_sigmas_labels(
         batch_size,
         proc_func=proc_func,
         verbose=True,
-        device=device, )
+        device=device,
+    )
 
     mu_1 = np.array([mu[img_to_idx[pair[0]]] for pair in pairs])
     mu_2 = np.array([mu[img_to_idx[pair[1]]] for pair in pairs])
@@ -115,8 +129,15 @@ def get_features_sigmas_labels(
 
 
 def get_rejected_tar_far(
-    mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec,
-    distance_func, pair_uncertainty_func, FARs):
+    mu_1,
+    mu_2,
+    sigma_sq_1,
+    sigma_sq_2,
+    label_vec,
+    distance_func,
+    pair_uncertainty_func,
+    FARs,
+):
 
     score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
@@ -130,7 +151,9 @@ def get_rejected_tar_far(
     result_fars = defaultdict(list)
     for rejected_portion in tqdm(rejected_portions):
         cur_len = int(score_vec.shape[0] * (1 - rejected_portion))
-        tars, fars, thresholds = metrics.ROC(score_vec[:cur_len], label_vec[:cur_len], FARs=FARs)
+        tars, fars, thresholds = metrics.ROC(
+            score_vec[:cur_len], label_vec[:cur_len], FARs=FARs
+        )
         for far, tar in zip(FARs, tars):
             result_table[far].append(tar)
         for wanted_far, real_far in zip(FARs, fars):
@@ -160,34 +183,41 @@ def eval_reject_verification(
     batch_size=64,
     rejected_portions=None,
     FARs=None,
-    distances_uncertainties=None):
+    distances_uncertainties=None,
+):
 
     if rejected_portions is None:
-        rejected_portions = [0., ]
+        rejected_portions = [
+            0.0,
+        ]
     if FARs is None:
-        FARs = [0., ]
+        FARs = [
+            0.0,
+        ]
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
-        backbone,
-        head,
-        dataset_path,
-        pairs_table_path,
-        batch_size=batch_size)
+        backbone, head, dataset_path, pairs_table_path, batch_size=batch_size
+    )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
     print("Mu_2 :", mu_2.shape, mu_2.dtype)
     print("sigma_sq_1 :", sigma_sq_1.shape, sigma_sq_1.dtype)
     print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
-    print("labels :",  label_vec.shape,  label_vec.dtype)
+    print("labels :", label_vec.shape, label_vec.dtype)
 
     all_results = OrderedDict()
     for distance_name, uncertainty_name in distances_uncertainties:
         print(f"=== {distance_name} {uncertainty_name} ===")
         result_table = get_rejected_tar_far(
-            mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec,
+            mu_1,
+            mu_2,
+            sigma_sq_1,
+            sigma_sq_2,
+            label_vec,
             distance_func=name_to_distance_func[distance_name],
             pair_uncertainty_func=name_to_uncertainty_func[uncertainty_name],
-            FARs=FARs)
+            FARs=FARs,
+        )
 
         all_results[(distance_name, uncertainty_name)] = result_table
 
@@ -195,7 +225,9 @@ def eval_reject_verification(
     # Otherwise the results are incomparable
     res_AUCs = OrderedDict()
     for method, table in all_results.items():
-        res_AUCs[method] = {far: auc(rejected_portions, TARs) for far, TARs in table.items()}
+        res_AUCs[method] = {
+            far: auc(rejected_portions, TARs) for far, TARs in table.items()
+        }
 
     for (distance_name, uncertainty_name), aucs in res_AUCs.items():
         print(distance_name, uncertainty_name)
@@ -203,15 +235,26 @@ def eval_reject_verification(
             print(f"\tFAR={round(FAR, 5)} TAR_AUC : {round(AUC, 5)}")
 
     for (distance_name, uncertainty_name), result_table in all_results.items():
-        title = pairs_table_path.split("/")[-1][-4] + " " + distance_name + " " + uncertainty_name
-        save_to_path = args.save_fig_path + "_" + distance_name + "_" + uncertainty_name + ".jpg"
+        title = (
+            pairs_table_path.split("/")[-1][-4]
+            + " "
+            + distance_name
+            + " "
+            + uncertainty_name
+        )
+        save_to_path = (
+            args.save_fig_path + "_" + distance_name + "_" + uncertainty_name + ".jpg"
+        )
         if args.save_fig_path:
             plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
     plot_TAR_FAR_different_methods(
-        all_results, rejected_portions, res_AUCs,
+        all_results,
+        rejected_portions,
+        res_AUCs,
         title=pairs_table_path.split("/")[-1][:-4],
-        save_figs_path=args.save_fig_path + "_" + "all_methods" + ".jpg")
+        save_figs_path=args.save_fig_path + "_" + "all_methods" + ".jpg",
+    )
 
 
 if __name__ == "__main__":
@@ -219,47 +262,63 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint_path",
         help="The path to the pre-trained model directory",
-        type=str, required=True, )
+        type=str,
+        required=True,
+    )
     parser.add_argument(
         "--dataset_path",
         help="The path to the IJB-C dataset directory",
-        type=str, required=True, )
+        type=str,
+        required=True,
+    )
     parser.add_argument(
         "--pairs_table_path",
         help="Path to csv file with pairs names",
-        type=str, required=True, )
+        type=str,
+        required=True,
+    )
     parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int, default=64)
+        "--batch_size", help="Number of images per mini batch", type=int, default=64
+    )
     parser.add_argument(
         "--config_path",
         help="The paths to config .yaml file",
-        type=str, required=True, )
+        type=str,
+        required=True,
+    )
     parser.add_argument(
         "--rejected_portions",
         help="Portion of rejected pairs of images",
-        nargs="+", )
+        nargs="+",
+    )
     parser.add_argument(
         "--FARs",
         help="Portion of rejected pairs of images",
-        nargs="+", )
+        nargs="+",
+    )
     parser.add_argument(
         "--distance_uncertainty_metrics",
         help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
-        nargs="+", )
+        nargs="+",
+    )
     parser.add_argument(
         "--figure_path",
         help="The figure will be saved to this path",
-        type=str, default=None, )
+        type=str,
+        default=None,
+    )
     parser.add_argument(
         "--device_id",
         help="Gpu id on which the algorithm will be launched",
-        type=int, default=0, )
+        type=int,
+        default=0,
+    )
     parser.add_argument(
         "--save_fig_path",
         help="Path to save figure to",
-        type=str, default=None, )
+        type=str,
+        default=None,
+    )
 
     args = parser.parse_args()
 
@@ -278,9 +337,13 @@ if __name__ == "__main__":
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
 
-    rejected_portions = list(map(lambda x: float(x.replace(",", ".")), args.rejected_portions))
+    rejected_portions = list(
+        map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
+    )
     FARs = list(map(float, args.FARs))
-    distances_uncertainties = list(map(lambda x : x.split("_"), args.distance_uncertainty_metrics))
+    distances_uncertainties = list(
+        map(lambda x: x.split("_"), args.distance_uncertainty_metrics)
+    )
 
     eval_reject_verification(
         backbone,
@@ -290,4 +353,5 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         rejected_portions=rejected_portions,
         FARs=FARs,
-        distances_uncertainties=distances_uncertainties)
+        distances_uncertainties=distances_uncertainties,
+    )

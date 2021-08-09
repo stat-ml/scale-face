@@ -186,12 +186,16 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
     # img_feats = np.empty((len(files), 1024), dtype=np.float32)
 
     path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit/loose_crop"
-    memmp_path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out"
+    memmp_path = (
+        "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out"
+    )
     fp = np.memmap(
         memmp_path, dtype="float32", mode="r", shape=(len(os.listdir(path)), 11)
     )
-    memmap_path_2 = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out2"
-    fp2 = np.memmap(memmap_path_2, dtype='float32', mode='r', shape=(len(files), 1024))
+    memmap_path_2 = (
+        "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out2"
+    )
+    fp2 = np.memmap(memmap_path_2, dtype="float32", mode="r", shape=(len(files), 1024))
     img_feats = np.array(fp2)
 
     batch_data = np.empty((2 * batch_size, 3, 112, 96))

@@ -121,6 +121,7 @@ class MLSLoss(FaceModule):
         pos_loss = loss_mat[pos_mask].mean()
         return pos_loss
 
+
 class ProbConstraintLoss(FaceModule):
     def __init__(self):
         super(ProbConstraintLoss, self).__init__()
@@ -171,15 +172,13 @@ class ProbLoss(FaceModule):
 
         loss_triplet = ProbTripletLoss()(**kwargs)
 
-        triplet_loss = torch.cat(
-            (loss_triplet[pos_mask], -loss_triplet[neg_mask]), dim=0
-        ) + self.m
+        triplet_loss = (
+            torch.cat((loss_triplet[pos_mask], -loss_triplet[neg_mask]), dim=0) + self.m
+        )
 
         triplet_loss = (
             self.lambda_id
-            * torch.max(
-                torch.zeros(1, device=triplet_loss.device), triplet_loss
-            ).mean()
+            * torch.max(torch.zeros(1, device=triplet_loss.device), triplet_loss).mean()
         )
 
         return loss_mls + loss_c + triplet_loss

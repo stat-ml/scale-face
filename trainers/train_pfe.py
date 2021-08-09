@@ -181,15 +181,14 @@ class Trainer(TrainerBase):
             # loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
 
             feature, sig_feat = self.backbone(img)
-            sig_feature = {"bottleneck_feature":  sig_feat}
+            sig_feature = {"bottleneck_feature": sig_feat}
             log_sig_sq = self.head(**sig_feature)
 
             outputs = {"gty": gty}
-            outputs.update({"feature":  feature})
+            outputs.update({"feature": feature})
             outputs.update(log_sig_sq)
 
             loss = self.head_criterion.forward(device=self.device, **outputs)
-
 
             self.optimizer.zero_grad()
             loss.backward()

@@ -22,5 +22,5 @@ criterions_dict = {
 heads = {
     "pfe_head": PFEHead,
     "pfe_head_adjustable": PFEHeadAdjustable,
-    "prob_head": ProbHead
+    "prob_head": ProbHead,
 }

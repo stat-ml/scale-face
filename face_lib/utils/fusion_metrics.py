@@ -73,7 +73,16 @@ def pair_uncertainty_harmonic_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
 
 
 def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
-    return harmonic_mean(np.concatenate((sigma_sq_1, sigma_sq_2,), axis=1), axis=1)
+    return harmonic_mean(
+        np.concatenate(
+            (
+                sigma_sq_1,
+                sigma_sq_2,
+            ),
+            axis=1,
+        ),
+        axis=1,
+    )
 
 
 def find_thresholds_by_FAR(score_vec, label_vec, FARs=None, epsilon=1e-8):
