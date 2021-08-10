@@ -2,6 +2,7 @@ import sys
 import argparse
 from collections import defaultdict
 import numpy as np
+import pandas as pd
 import torch
 from pathlib import Path
 
@@ -49,15 +50,6 @@ def aggregate_templates(templates, mu, sigma_sq, method):
                     concatenate=False,
                 )
                 t.feature = t.mu
-            # if method == "PFE_fuse_match":
-            #     if not hasattr(t, "mu"):
-            #         t.mu, t.sigma_sq = aggregate_PFE(
-            #             mu[t.indices],
-            #             sigma_sq=sigma_sq[t.indices],
-            #             normalize=True,
-            #             concatenate=False,
-            #         )
-            #     t.feature = t.mu
             if method == "min":
                 t.mu, t.sigma_sq = aggregate_min(
                     mu[t.indices],
@@ -163,37 +155,13 @@ def eval_fusion_ijb(
     for (fusion_name, distance_name) in fusion_distance_methods:
         print(f"==== fuse : {fusion_name} distance : {distance_name} ====")
         aggregate_templates(tester.verification_templates, mu, sigma_sq, fusion_name)
-        TARs, stds, FARs = tester.test_verification(force_compare(name_to_distance_func[distance_name]), FARs=FARs)
+        TARs, stds, res_FARs = tester.test_verification(force_compare(name_to_distance_func[distance_name]), FARs=FARs)
         for FAR, std, TAR in zip(FARs, stds, TARs):
             result[(fusion_name, distance_name)][FAR] = TAR
             if verbose:
                 print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TAR, std, FAR))
 
     return result
-
-    # print("---- Random pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Average pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Uncertainty pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Uncertainty pooling (MLS distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
 
 
 def dump_fusion_ijb(
@@ -207,7 +175,8 @@ def dump_fusion_ijb(
         fusion_distance_methods=None,
         FARs=None,
         device=torch.device("cpu"),
-        verbose=False
+        verbose=False,
+        save_to=None,
 ):
     results = eval_fusion_ijb(
         backbone,
@@ -223,58 +192,10 @@ def dump_fusion_ijb(
         verbose=verbose,
     )
 
-    torch.save(results, "/gpfs/gpfs0/r.kail/figures/fusion_result")
-
-    # proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
-    #
-    # testset = IJBDataset(dataset_path)
-    # if protocol == "ijba":
-    #     tester = IJBATest(testset["abspath"].values)
-    #     tester.init_proto(protocol_path)
-    # elif protocol == "ijbc":
-    #     tester = IJBCTest(testset["abspath"].values)
-    #     tester.init_proto(protocol_path)
-    # else:
-    #     raise ValueError('Unkown protocol. Only accept "ijba" or "ijbc".')
-    #
-    # backbone = backbone.eval().to(device)
-    # head = head.eval().to(device)
-    #
-    # mu, sigma_sq = extract_features(
-    #     backbone,
-    #     head,
-    #     tester.image_paths,
-    #     batch_size,
-    #     proc_func=proc_func,
-    #     verbose=True,
-    #     device=device,
-    # )
-    #
-    # print(f"Mu : {mu.shape} Sigma : {sigma_sq.shape}")
-
-    # print("---- Random pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "random")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Average pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "mean")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Uncertainty pooling (Cosine distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_cosine_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
-    #
-    # print("---- Uncertainty pooling (MLS distance)")
-    # aggregate_templates(tester.verification_templates, mu, sigma_sq, "PFE_fuse_match")
-    # TARs, std, FARs = tester.test_verification(force_compare(pair_MLS_score))
-    # for i in range(len(TARs)):
-    #     print("TAR: {:.5} +- {:.5} FAR: {:.5}".format(TARs[i], std[i], FARs[i]))
+    if save_to is not None:
+        torch.save(results, save_to + ".pt")
+        table = pd.DataFrame(results)
+        table.to_pickle(save_to)
 
 
 if __name__ == "__main__":
@@ -342,6 +263,12 @@ if __name__ == "__main__":
         action="store_true",
         help="increase output verbosity",
     )
+    parser.add_argument(
+        "--save_table_path",
+        help="Path where the resulted table will be dumped",
+        type=str,
+        default="/gpfs/gpfs0/r.kail/tables/result.pkl",
+    )
     args = parser.parse_args()
 
     device = torch.device("cuda:" + str(args.device_id))
@@ -373,6 +300,7 @@ if __name__ == "__main__":
         uncertainty_strategy=args.uncertainty_strategy,
         fusion_distance_methods=fusion_distance_methods,
         FARs=FARs,
-        device=torch.device("cuda:" + str(args.device_id)),
+        device=device,
         verbose=args.verbose,
+        save_to=args.save_table_path,
     )
