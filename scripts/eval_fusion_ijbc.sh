@@ -1,23 +1,27 @@
-## Fusion with PFE
-#python3 ./face_lib/utils/fusion.py \
-#  --checkpoint_path=/gpfs/gpfs0/r.karimov/models/pfe/first_ms1m_pfe/sota.pt \
-#  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
-#  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
-#  --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
-#  --protocol=ijbc
+# Fusion with PFE
+python3 ./face_lib/utils/fusion.py \
+  --checkpoint_path=/gpfs/gpfs0/r.karimov/models/pfe/first_ms1m_pfe/sota.pt \
+  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/debug \
+  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
+  --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
+  --uncertainty_strategy=head \
+  --protocol=ijbc \
+  --fusion_distance_methods random_cosine mean_cosine PFE_cosine min_MLS PFE_MLS\
+  --FARs 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2 5e-2 \
+  --device_id=0 \
+  --batch_size=64 \
+  --verbose
 
-# Fusion with ProbFace
+## Fusion with Probface
 #python3 ./face_lib/utils/fusion.py \
 #  --checkpoint_path=/gpfs/gpfs0/r.zainulin/sota.pth \
 #  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
 #  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
-#  --config_path=./configs/models/iresnet_ms1m_probface.yaml \
-#  --protocol=ijbc
-
-# Evaluating probface on fusion IJBC
-python3 ./face_lib/utils/fusion.py \
-  --checkpoint_path=/gpfs/gpfs0/r.zainulin/sota.pth \
-  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/debug \
-  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
-  --config_path=/gpfs/gpfs0/r.zainulin/git_repos/face-evaluation/configs/models/iresnet_ms1m_probface.yaml \
-  --protocol=ijbc
+#  --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
+#  --uncertainty_strategy=head \
+#  --protocol=ijbc \
+#  --fusion_distance_methods random_cosine mean_cosine PFE_cosine \
+#  --FARs 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2 5e-2 \
+#  --device_id=0 \
+#  --batch_size=64 \
+#  --verbose
