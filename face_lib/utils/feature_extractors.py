@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 
+
 def extract_features_head(
     backbone,
     head,
@@ -95,4 +96,3 @@ def extract_features_tta(
     if verbose:
         print("")
     return mu, sigma_sq
-

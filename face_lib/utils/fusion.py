@@ -14,7 +14,10 @@ from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.imageprocessing import preprocess_tta
-from face_lib.utils.feature_extractors import extract_features_head, extract_features_tta
+from face_lib.utils.feature_extractors import (
+    extract_features_head,
+    extract_features_tta,
+)
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
     pair_cosine_score,
@@ -30,6 +33,7 @@ name_to_distance_func = {
     "cosine": pair_cosine_score,
     "MLS": pair_MLS_score,
 }
+
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -155,7 +159,9 @@ def eval_fusion_ijb(
     for (fusion_name, distance_name) in fusion_distance_methods:
         print(f"==== fuse : {fusion_name} distance : {distance_name} ====")
         aggregate_templates(tester.verification_templates, mu, sigma_sq, fusion_name)
-        TARs, stds, res_FARs = tester.test_verification(force_compare(name_to_distance_func[distance_name]), FARs=FARs)
+        TARs, stds, res_FARs = tester.test_verification(
+            force_compare(name_to_distance_func[distance_name]), FARs=FARs
+        )
         for FAR, std, TAR in zip(FARs, stds, TARs):
             result[(fusion_name, distance_name)][FAR] = TAR
             if verbose:
@@ -165,18 +171,18 @@ def eval_fusion_ijb(
 
 
 def dump_fusion_ijb(
-        backbone,
-        head,
-        dataset_path,
-        protocol_path,
-        batch_size=64,
-        protocol="ijbc",
-        uncertainty_strategy="head",
-        fusion_distance_methods=None,
-        FARs=None,
-        device=torch.device("cpu"),
-        verbose=False,
-        save_to=None,
+    backbone,
+    head,
+    dataset_path,
+    protocol_path,
+    batch_size=64,
+    protocol="ijbc",
+    uncertainty_strategy="head",
+    fusion_distance_methods=None,
+    FARs=None,
+    device=torch.device("cpu"),
+    verbose=False,
+    save_to=None,
 ):
     results = eval_fusion_ijb(
         backbone,
@@ -219,16 +225,10 @@ if __name__ == "__main__":
         default="proto/IJB-A",
     )
     parser.add_argument(
-        "--protocol",
-        help="The dataset to test",
-        type=str,
-        default="ijbc"
+        "--protocol", help="The dataset to test", type=str, default="ijbc"
     )
     parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        default=None
+        "--config_path", help="The paths to config .yaml file", type=str, default=None
     )
     parser.add_argument(
         "--uncertainty_strategy",
@@ -259,7 +259,8 @@ if __name__ == "__main__":
         default=64,
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="increase output verbosity",
     )
