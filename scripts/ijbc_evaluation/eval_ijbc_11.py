@@ -21,12 +21,12 @@ from face_lib.models import SphereNet20
 def str2bool(v):
     if isinstance(v, bool):
         return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    if v.lower() in ("yes", "true", "t", "y", "1"):
         return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    elif v.lower() in ("no", "false", "f", "n", "0"):
         return False
     else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
+        raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
 parser = argparse.ArgumentParser(description="IJBC verification protocol")
@@ -167,8 +167,7 @@ def get_image_feature(img_path, files, model_path, epoch, gpu_id):
         name_lmk_score = each_line.strip().split(" ")
         img_name = os.path.join(img_path, name_lmk_score[0])
         img = cv2.imread("/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit" + img_name)
-        lmk = np.array([float(x) for x in name_lmk_score[1:-1]],
-                       dtype=np.float32)
+        lmk = np.array([float(x) for x in name_lmk_score[1:-1]], dtype=np.float32)
         lmk = lmk.reshape((5, 2))
         input_blob = embedding.get(img, lmk)
 
@@ -187,8 +186,7 @@ def get_image_feature(img_path, files, model_path, epoch, gpu_id):
         img_name = os.path.join(img_path, name_lmk_score[0])
 
         img = cv2.imread(os.path.join(args.loose_crop_prefix, img_name))
-        lmk = np.array([float(x) for x in name_lmk_score[1:-1]],
-                       dtype=np.float32)
+        lmk = np.array([float(x) for x in name_lmk_score[1:-1]], dtype=np.float32)
         lmk = lmk.reshape((5, 2))
 
         input_blob = embedding.get(img, lmk)
@@ -196,8 +194,7 @@ def get_image_feature(img_path, files, model_path, epoch, gpu_id):
         batch_data[2 * img_index_ + 1][:] = input_blob[1]
         if (img_index_ + 1) % rare_size == 0:
             emb = embedding.forward_db(batch_data)
-            img_feats[len(files) -
-                      rare_size:][:] = emb
+            img_feats[len(files) - rare_size :][:] = emb
             batch += 1
         faceness_scores.append(name_lmk_score[-1])
     faceness_scores = np.array(faceness_scores).astype(np.float32)
