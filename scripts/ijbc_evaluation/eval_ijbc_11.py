@@ -2,7 +2,7 @@ import os
 import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
-import timeit
+
 import sklearn
 import argparse
 import cv2
@@ -18,12 +18,44 @@ from tqdm import tqdm
 from face_lib.models import SphereNet20
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 parser = argparse.ArgumentParser(description="IJBC verification protocol")
 parser.add_argument(
     "--model-prefix",
-    default="",
-    help="/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/sphere20a_20171020.pth",
+    type=str,
+    default="/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/sphere20a_20171020.pth",
 )
+
+parser.add_argument(
+    "--metadata-prefix",
+    type=str,
+    default="/gpfs/gpfs0/r.karimov/ijbc_11_metadata/",
+)
+
+parser.add_argument(
+    "--loose-crop-prefix",
+    type=str,
+    default="/gpfs/gpfs0/r.karimov/ijbc_11_verification_data",
+)
+
+parser.add_argument(
+    "--is-casia",
+    type=str2bool,
+    nargs="?",
+    const=True,
+    default=True,
+)
+
 parser.add_argument("--image-path", default="", type=str, help="")
 parser.add_argument("--result-dir", default=".", type=str, help="")
 parser.add_argument("--batch-size", default=128, type=int, help="")
@@ -59,12 +91,13 @@ class Embedding(object):
             ],
             dtype=np.float32,
         )
-        # src[:, 0] += 8.0
+        if not args.is_case:
+            src[:, 0] += 8.0
+            self.image_size = (112, 112)
 
         self.src = src
         self.batch_size = batch_size
         self.data_shape = data_shape
-
         self.net = SphereNet20()
         self.net.load_state_dict(torch.load(args.model_prefix))
         self.net.eval()
@@ -107,10 +140,7 @@ def read_template_media_list(path):
 
 
 def read_template_pair_list(path):
-    # pairs = np.loadtxt(path, dtype=str)
     pairs = pd.read_csv(path, sep=" ", header=None).values
-    # print(pairs.shape)
-    # print(pairs[:, 0].astype(np.int))
     t1 = pairs[:, 0].astype(np.int)
     t2 = pairs[:, 1].astype(np.int)
     label = pairs[:, 2].astype(np.int)
@@ -123,28 +153,13 @@ def read_image_feature(path):
     return img_feats
 
 
-def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
+def get_image_feature(img_path, files, model_path, epoch, gpu_id):
     batch_size = args.batch_size
     data_shape = (3, 112, 112)
 
-    files = files_list
-    print("files:", len(files))
     rare_size = len(files) % batch_size
     faceness_scores = []
     batch = 0
-
-    path = "/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit/loose_crop"
-    memmp_path = (
-        "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out"
-    )
-    fp = np.memmap(
-        memmp_path, dtype="float32", mode="r", shape=(len(os.listdir(path)), 11)
-    )
-    memmap_path_2 = (
-        "/gpfs/gpfs0/r.karimov/final_ijb/IJB/validation/arcface_torch/final_out2"
-    )
-    fp2 = np.memmap(memmap_path_2, dtype="float32", mode="r", shape=(len(files), 1024))
-    img_feats = np.array(fp2)
 
     batch_data = np.empty((2 * batch_size, 3, 112, 96))
     embedding = Embedding(model_path, data_shape, batch_size)
@@ -152,7 +167,8 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
         name_lmk_score = each_line.strip().split(" ")
         img_name = os.path.join(img_path, name_lmk_score[0])
         img = cv2.imread("/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit" + img_name)
-        lmk = fp[img_index][:10]
+        lmk = np.array([float(x) for x in name_lmk_score[1:-1]],
+                       dtype=np.float32)
         lmk = lmk.reshape((5, 2))
         input_blob = embedding.get(img, lmk)
 
@@ -167,13 +183,12 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
     batch_data = np.empty((2 * rare_size, 3, 112, 96))
     embedding = Embedding(model_path, data_shape, rare_size)
     for img_index_, each_line in tqdm(enumerate(files[len(files) - rare_size :])):
-        img_index = img_index_ + len(files) - rare_size
         name_lmk_score = each_line.strip().split(" ")
-        """
         img_name = os.path.join(img_path, name_lmk_score[0])
 
-        img = cv2.imread("/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit" + img_name)
-        lmk = fp[img_index][:10]
+        img = cv2.imread(os.path.join(args.loose_crop_prefix, img_name))
+        lmk = np.array([float(x) for x in name_lmk_score[1:-1]],
+                       dtype=np.float32)
         lmk = lmk.reshape((5, 2))
 
         input_blob = embedding.get(img, lmk)
@@ -184,10 +199,8 @@ def get_image_feature(img_path, files_list, model_path, epoch, gpu_id):
             img_feats[len(files) -
                       rare_size:][:] = emb
             batch += 1
-        """
         faceness_scores.append(name_lmk_score[-1])
     faceness_scores = np.array(faceness_scores).astype(np.float32)
-    # faceness_scores = np.ones((469375,), dtype=np.float32)
     return img_feats, faceness_scores
 
 
@@ -246,39 +259,23 @@ def read_score(path):
     return img_feats
 
 
-start = timeit.default_timer()
 templates, medias = read_template_media_list(
-    "./metadata/ijbc_face_tid_mid.txt"
+    os.path.join(args.metadata_prefix, "ijbc_face_tid_mid.txt")
 )
-stop = timeit.default_timer()
-print("Time: %.2f s. " % (stop - start))
 
-start = timeit.default_timer()
-
-pairs_path = "./metadata/ijbc_template_pair_label.txt"
+pairs_path = os.path.join(args.metadata_prefix, "ijbc_template_pair_label.txt")
 p1, p2, label = read_template_pair_list(pairs_path)
-stop = timeit.default_timer()
-print("Time: %.2f s. " % (stop - start))
 
-
-start = timeit.default_timer()
 img_path = "%s/loose_crop" % image_path
-img_list_path = "./metadata/ijbc_name_5pts_score.txt"
+img_list_path = os.path.join(args.metadata_prefix, "ijbc_name_5pts_score.txt")
 img_list = open(img_list_path)
 files = img_list.readlines()
-
 files_list = files
 
 
 img_feats, faceness_scores = get_image_feature(
     img_path, files_list, model_path, 0, gpu_id
 )
-stop = timeit.default_timer()
-print("Time: %.2f s. " % (stop - start))
-print("Feature Shape: ({} , {}) .".format(img_feats.shape[0], img_feats.shape[1]))
-
-start = timeit.default_timer()
-
 
 if use_flip_test:
     img_input_feats = (
@@ -304,15 +301,9 @@ else:
 template_norm_feats, unique_templates = image2template_feature(
     img_input_feats, templates, medias
 )
-stop = timeit.default_timer()
-print("Time: %.2f s. " % (stop - start))
 
 
-start = timeit.default_timer()
 score = verification(template_norm_feats, unique_templates, p1, p2)
-stop = timeit.default_timer()
-print("Time: %.2f s. " % (stop - start))
-
 save_path = os.path.join(result_dir, args.job)
 
 if not os.path.exists(save_path):
