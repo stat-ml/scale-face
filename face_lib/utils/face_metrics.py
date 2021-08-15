@@ -284,3 +284,7 @@ def accuracy_lfw_6000_pairs(
         result["accuracy_head"] = np.mean(accuracy_head)
 
     return result
+
+
+#%%
+
