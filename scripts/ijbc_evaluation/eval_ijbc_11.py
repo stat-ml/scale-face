@@ -248,14 +248,14 @@ def read_score(path):
 
 start = timeit.default_timer()
 templates, medias = read_template_media_list(
-    "/gpfs/gpfs0/r.karimov/final_ijb/IJB/edit/ijbc_face_tid_mid.txt"
+    "./metadata/ijbc_face_tid_mid.txt"
 )
 stop = timeit.default_timer()
 print("Time: %.2f s. " % (stop - start))
 
 start = timeit.default_timer()
 
-pairs_path = "/gpfs/gpfs0/r.karimov/ijbc_meta/ijbc_template_pair_label.txt"
+pairs_path = "./metadata/ijbc_template_pair_label.txt"
 p1, p2, label = read_template_pair_list(pairs_path)
 stop = timeit.default_timer()
 print("Time: %.2f s. " % (stop - start))
@@ -263,7 +263,7 @@ print("Time: %.2f s. " % (stop - start))
 
 start = timeit.default_timer()
 img_path = "%s/loose_crop" % image_path
-img_list_path = "/gpfs/gpfs0/r.karimov/ijbc_meta/ijbc_name_5pts_score.txt"
+img_list_path = "./metadata/ijbc_name_5pts_score.txt"
 img_list = open(img_list_path)
 files = img_list.readlines()
 
