@@ -1,6 +1,6 @@
-title: "iresnet_ms1m_pfe"
+title: "iresnet_ms1m_pfe_normalized"
 backbone:
-    name: "iresnet50"
+    name: "iresnet50_normalized"
     learnable: false
 head:
     name: "pfe_head_adjustable"

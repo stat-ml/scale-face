@@ -20,7 +20,7 @@ def ms1m_collate_fn(batch):
 
 
 class MS1MDatasetPFE(Dataset):
-    def __init__(self, root_dir, num_face_pb, local_rank, **kwargs):
+    def __init__(self, root_dir, num_face_pb, local_rank, in_size, **kwargs):
         super(MS1MDatasetPFE, self).__init__()
 
         self.num_face_pb = num_face_pb
@@ -29,6 +29,7 @@ class MS1MDatasetPFE(Dataset):
             [
                 transforms.ToPILImage(),
                 transforms.RandomHorizontalFlip(),
+                transforms.Resize(size=in_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
             ]
