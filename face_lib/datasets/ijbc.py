@@ -163,9 +163,6 @@ class IJBCTest:
         labels1 = np.array([t.label for t in templates1])
         labels2 = np.array([t.label for t in templates2])
 
-        print(
-            f"feature1 : {len(features1)} {features1[0].shape} features2 : {len(features2)}"
-        )
         score_vec = compare_func(features1, features2, sigmas_sq1, sigmas_sq2)
         label_vec = labels1 == labels2
 

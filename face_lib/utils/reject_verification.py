@@ -15,7 +15,11 @@ sys.path.insert(0, path)
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.utils.fusion import extract_features, force_compare
+from face_lib.utils.fusion import force_compare
+from face_lib.utils.feature_extractors import (
+    extract_features_head,
+    extract_features_tta,
+)
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
     pair_cosine_score,
@@ -109,7 +113,7 @@ def get_features_sigmas_labels(
 
     proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
-    mu, sigma_sq = extract_features(
+    mu, sigma_sq = extract_features_head(
         backbone,
         head,
         list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
