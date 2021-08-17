@@ -46,7 +46,7 @@ name_to_uncertainty_func = {
 def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=None):
     fig, ax = plt.subplots()
     for FAR, TARs in table.items():
-        ax.plot(rejected_portions, TARs, label="TAR@FAR=" + str(FAR))
+        ax.plot(rejected_portions, TARs, label="TAR@FAR=" + str(FAR), marker=" ")
     fig.legend()
     ax.set_xlabel("Rejected portion")
     ax.set_ylabel("TAR")
@@ -77,7 +77,7 @@ def plot_TAR_FAR_different_methods(
                 + uncertainty_name
                 + "_AUC="
                 + str(round(auc, 5)),
-                marker=".",
+                marker=" ",
             )
             axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
             axes[plots_indices[FAR]].set_xlabel("Rejected portion")
