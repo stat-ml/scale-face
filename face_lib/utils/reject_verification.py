@@ -259,6 +259,7 @@ def eval_reject_verification(
         title=pairs_table_path.split("/")[-1][:-4],
         save_figs_path=args.save_fig_path + "_" + "all_methods" + ".jpg",
     )
+    torch.save(all_results, args.save_fig_path + "_table.pt")
 
 
 if __name__ == "__main__":
