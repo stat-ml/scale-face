@@ -30,7 +30,7 @@ python3 ./face_lib/utils/fusion.py \
 
 ## Fusion with PFE
 #python3 ./face_lib/utils/fusion.py \
-#  --checkpoint_path=/beegfs/home/r.kail/Faces/face-evaluation/exman/runs/000088-2021-08-16-18-40-20/checkpoints/sota.pth \
+#  --checkpoint_path=/gpfs/data/gpfs0/r.karimov/models/pfe/normalized_pfe/sota.pth \
 #  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
 #  --protocol_path=/gpfs/gpfs0/r.karimov/IJB/IJB-C/protocols/archive \
 #  --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \

@@ -26,7 +26,7 @@ python3 ./face_lib/utils/reject_verification.py \
 
 ## PFE normalized
 #python3 ./face_lib/utils/reject_verification.py \
-#  --checkpoint_path=/beegfs/home/r.kail/Faces/face-evaluation/exman/runs/000088-2021-08-16-18-40-20/checkpoints/sota.pth \
+#  --checkpoint_path=/gpfs/data/gpfs0/r.karimov/models/pfe/normalized_pfe/sota.pth \
 #  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
 #  --pairs_table_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
 #  --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \
