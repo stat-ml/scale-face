@@ -18,7 +18,7 @@ optimizer:
     nesterov: true
 scheduler:
     name: "multistep_lr"
-    milestones: [1, 2, 3]
+    milestones: [3, 6, 9]
     gamma: 0.1
 dataset:
     name: "ms1m"
@@ -30,7 +30,7 @@ batch_size: 256
 num_classes_batch: 4
 is_distributed: true
 iterations: 2000
-epochs: 4
+epochs: 12
 path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
 in_size: [112, 112]
 logging:
