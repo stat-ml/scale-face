@@ -40,19 +40,6 @@ def visualizer_decorator(function):
 
 
 @visualizer_decorator
-def visualize_in_out_class_distribution(
-    pfe_backbone: torch.nn.Module,
-    criterion_backbone: torch.nn.Module,
-    pfe_head: torch.nn.Module,
-    criterion_head,
-    in_size: tuple = (112, 96),
-    device=None,
-    **kwargs,  # TODO: can we get rid of this dict?
-):
-    ...
-
-
-@visualizer_decorator
 def visualize_ambiguity_dilemma_lfw(
     pfe_backbone: torch.nn.Module,
     criterion_backbone: torch.nn.Module,
