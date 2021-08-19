@@ -11,9 +11,6 @@ from face_lib.models import MLS
 from tqdm import tqdm
 
 
-__all__ = ["visualize_ambiguity_dilemma_lfw", "visualize_low_high_similarity_pairs"]
-
-
 # TODO: remove from here and move to the utils submodule
 # after that we can expose this
 def _gaussian_blur(image: np.array, k: int):
@@ -37,6 +34,19 @@ def visualizer_decorator(function):
         return fig
 
     return wrap_function
+
+
+@visualizer_decorator
+def visualize_in_out_class_distribution(
+    pfe_backbone: torch.nn.Module,
+    criterion_backbone: torch.nn.Module,
+    pfe_head: torch.nn.Module,
+    criterion_head,
+    in_size: tuple = (112, 96),
+    device=None,
+    **kwargs,  # TODO: can we get rid of this dict?
+):
+    ...
 
 
 @visualizer_decorator

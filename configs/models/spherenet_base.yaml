@@ -17,7 +17,7 @@ num_classes_batch: 4
 is_distributed: false
 iterations: 1000
 epochs: 3
-path_list: /gpfs/gpfs0/r.karimov/casia/list_data.txt
+path_list: /gpfs/gpfs0/k.fedyanin/space/casia/list_data.txt
 in_size: [112, 96]
 pretrained_backbone: false
 logging:
@@ -26,7 +26,7 @@ logging:
 evaluation_configs:
     - name: "accuracy_lfw_6000_pairs"
       type: "lfw"
-      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
-      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+      lfw_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/ldmarks.txt"
       N: 6000
       n_folds: 10

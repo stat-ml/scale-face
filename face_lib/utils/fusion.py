@@ -17,6 +17,9 @@ from face_lib.utils.imageprocessing import preprocess_tta
 from face_lib.utils.feature_extractors import (
     extract_features_head,
     extract_features_tta,
+    extract_features_fourier,
+    extract_features_grad,
+    extract_features_ssim,
 )
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
@@ -115,6 +118,12 @@ def eval_fusion_ijb(
         proc_func = lambda images: preprocess_tta(images, [112, 112], is_training=False)
     elif uncertainty_strategy == "head":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    elif uncertainty_strategy == "ssim":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    elif uncertainty_strategy == "fourier":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    elif uncertainty_strategy == "grad":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
     else:
         raise AssertionError("Unknown type of uncertainty calculating strategy")
 
@@ -143,6 +152,33 @@ def eval_fusion_ijb(
         )
     elif uncertainty_strategy == "TTA":
         mu, sigma_sq = extract_features_tta(
+            backbone,
+            tester.image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "fourier":
+        mu, sigma_sq = extract_features_fourier(
+            backbone,
+            tester.image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "grad":
+        mu, sigma_sq = extract_features_grad(
+            backbone,
+            tester.image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "ssim":
+        mu, sigma_sq = extract_features_ssim(
             backbone,
             tester.image_paths,
             batch_size,

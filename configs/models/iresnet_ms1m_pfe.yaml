@@ -39,14 +39,14 @@ logging:
 evaluation_configs:
     - name: "lfw_dilemma"
       type: "lfw"
-      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
+      lfw_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/data_aligned_sphereface_repo"
     - name: "low_high_similarity"
       type: "lfw"
-      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
-      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/ldmarks.txt"
+      lfw_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/ldmarks.txt"
     - name: "lfw_6000_pairs"
       type: "lfw"
-      lfw_path: "/gpfs/gpfs0/r.karimov/lfw/data_aligned_sphereface_repo"
-      lfw_pairs_txt_path: "/gpfs/gpfs0/r.karimov/lfw/pairs_val_6000.txt"
+      lfw_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/data_aligned_sphereface_repo"
+      lfw_pairs_txt_path: "/gpfs/gpfs0/k.fedyanin/space/lfw/pairs_val_6000.txt"
       N: 6000
       n_folds: 10

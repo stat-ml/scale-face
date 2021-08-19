@@ -148,7 +148,7 @@ def extract_features_ssim(
     return mu, sigma_sq
 
 
-def extract_features_gradient(
+def extract_features_grad(
     backbone,
     head,
     images,
