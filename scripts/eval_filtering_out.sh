@@ -1,8 +1,8 @@
 # PFE
 python3 ./face_lib/utils/reject_verification.py \
-  --checkpoint_path=/gpfs/gpfs0/r.karimov/models/pfe/first_ms1m_pfe/sota.pt \
-  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
-  --pairs_table_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/pfe/first_ms1m_pfe/sota.pt \
+  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
   --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
   --batch_size=64 \
   --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
@@ -14,8 +14,8 @@ python3 ./face_lib/utils/reject_verification.py \
 ## Probface
 #python3 ./face_lib/utils/reject_verification.py \
 #  --checkpoint_path=/gpfs/gpfs0/r.zainulin/sota.pth \
-#  --dataset_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/big \
-#  --pairs_table_path=/gpfs/gpfs0/r.karimov/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
 #  --config_path=./configs/models/iresnet_ms1m_probface.yaml \
 #  --batch_size=64 \
 #  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
