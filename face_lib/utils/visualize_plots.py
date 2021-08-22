@@ -11,9 +11,6 @@ from face_lib.models import MLS
 from tqdm import tqdm
 
 
-__all__ = ["visualize_ambiguity_dilemma_lfw", "visualize_low_high_similarity_pairs"]
-
-
 # TODO: remove from here and move to the utils submodule
 # after that we can expose this
 def _gaussian_blur(image: np.array, k: int):

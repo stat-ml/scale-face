@@ -91,62 +91,6 @@ def _calculate_tpr(threshold_value, features_query, features_distractor, gtys_qu
 
 @_register_board
 @_register_metric
-def tpr_pfr(
-    model: dict,
-    query_path: str,
-    distractor_path: str,
-    FPRs=[0.1],
-    *,
-    in_size: tuple = (112, 96),
-    batch_size: int = 128,
-    device=None,
-    debug=False,
-) -> List[torch.Tensor]:
-    """
-    if device is None:
-        device = torch.device("cpu")
-    # load LFW dataset (distractor)
-    query_set = Dataset(query_path)
-    # load query dataset
-    distractor_set = Dataset(distractor_path)
-
-    proc_func = lambda images: preprocess(images, in_size, True)
-    query_set.start_sequential_batch_queue(batch_size, proc_func=proc_func)
-    distractor_set.start_sequential_batch_queue(batch_size, proc_func=proc_func)
-
-    features_query, log_sig_sq_query, gtys_query, angles_xs_query = _collect_outputs(
-        model, query_set, device, debug=debug
-    )
-    (
-        features_distractor,
-        log_sig_sq_distractor,
-        gtys_distractor,
-        angles_xs_distractor,
-    ) = _collect_outputs(model, distractor_set, device, debug=debug)
-    from model import AngleLoss
-
-    features_distractor = features_distractor[:50]
-
-    feature_pairs = torch.norm(
-        features_query[None] - features_distractor[:, None], dim=-1
-    ).view(-1)
-    feature_pairs, sorted_inds = torch.sort(feature_pairs, descending=True)
-    len_features = feature_pairs.size(0)
-    TPRs = []
-    for fpr_value in FPRs:
-        threshold_value = feature_pairs[int(fpr_value * len_features)]
-        TPRs.append(
-            _calculate_tpr(
-                threshold_value, features_query, features_distractor, gtys_query
-            )
-        )
-    return TPRs
-    """
-    raise NotImplementedError
-
-
-@_register_board
-@_register_metric
 def accuracy_lfw_6000_pairs(
     backbone: nn.Module,
     head: nn.Module,

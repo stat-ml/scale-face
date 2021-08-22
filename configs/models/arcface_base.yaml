@@ -29,5 +29,5 @@ num_epoch: 20
 val_targets:
     - lfw
 fp16: false
-rec: /gpfs/gpfs0/r.karimov/ms1m
+rec: /gpfs/gpfs0/k.fedyanin/space/ms1m
 is_distributed: true
