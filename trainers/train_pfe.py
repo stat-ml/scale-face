@@ -111,6 +111,7 @@ class Trainer(TrainerBase):
                 root_dir=self.model_args.dataset.path,
                 num_face_pb=self.model_args.dataset.num_face_pb,
                 local_rank=self.rank,
+                in_size=self.model_args.in_size,
             )
 
             train_sampler = torch.utils.data.distributed.DistributedSampler(
@@ -180,13 +181,17 @@ class Trainer(TrainerBase):
             # log_sig_sq = self.head(sig_feat)
             # loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
 
-            feature, sig_feat = self.backbone(img)
-            sig_feature = {"bottleneck_feature": sig_feat}
-            log_sig_sq = self.head(**sig_feature)
+            # feature, sig_feat = self.backbone(img)
+            # sig_feature = {"bottleneck_feature": sig_feat}
+            # log_sig_sq = self.head(**sig_feature)
+            #
+            # outputs = {"gty": gty}
+            # outputs.update({"feature": feature})
+            # outputs.update(log_sig_sq)
 
-            outputs = {"gty": gty}
-            outputs.update({"feature": feature})
-            outputs.update(log_sig_sq)
+            outputs = self.backbone(img)
+            outputs.update(self.head(**outputs))
+            outputs.update({"gty": gty})
 
             loss = self.head_criterion.forward(device=self.device, **outputs)
 
@@ -212,37 +217,37 @@ class Trainer(TrainerBase):
                     np.mean(loss_recorder),
                     _global_iteration,
                 )
-                if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
-                    for metric in self.evaluation_configs:
-                        if metric.name == "lfw_dilemma":
-                            visual_img = utils.visualize_ambiguity_dilemma_lfw(
-                                self.backbone,
-                                self.backbone_criterion,
-                                metric.lfw_path,
-                                pfe_head=self.head,
-                                criterion_head=self.head_criterion,
-                                board=True,
-                                device=self.device,
-                            )
-                            self.board.add_image(
-                                "ambiguity_dilemma_lfw",
-                                visual_img.transpose(2, 0, 1),
-                                _global_iteration,
-                            )
-                        if metric.name == "lfw_dilemma":
-                            pass
-                            """
-                            utils.visualize_low_high_similarity_pairs(
-                                self.backbone,
-                                self.backbone_criterion,
-                                metric.lfw_path,
-                                metric.lfw_pairs_txt_path,
-                                pfe_head=self.head,
-                                criterion_head=self.head_criterion,
-                                board=True,
-                                device=self.device,
-                            )
-                            """
+                # if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
+                #     for metric in self.evaluation_configs:
+                #         if metric.name == "lfw_dilemma":
+                #             visual_img = utils.visualize_ambiguity_dilemma_lfw(
+                #                 self.backbone,
+                #                 self.backbone_criterion,
+                #                 metric.lfw_path,
+                #                 pfe_head=self.head,
+                #                 criterion_head=self.head_criterion,
+                #                 board=True,
+                #                 device=self.device,
+                #             )
+                #             self.board.add_image(
+                #                 "ambiguity_dilemma_lfw",
+                #                 visual_img.transpose(2, 0, 1),
+                #                 _global_iteration,
+                #             )
+                #         if metric.name == "lfw_dilemma":
+                #             pass
+                #             """
+                #             utils.visualize_low_high_similarity_pairs(
+                #                 self.backbone,
+                #                 self.backbone_criterion,
+                #                 metric.lfw_path,
+                #                 metric.lfw_pairs_txt_path,
+                #                 pfe_head=self.head,
+                #                 criterion_head=self.head_criterion,
+                #                 board=True,
+                #                 device=self.device,
+                #             )
+                #             """
         print("train_loss : %.4f" % train_loss)
         return train_loss
 

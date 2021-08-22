@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 __all__ = ["iresnet18", "iresnet34", "iresnet50", "iresnet100"]
 
@@ -205,8 +206,22 @@ class IResNet(nn.Module):
         return output
 
 
+class IResNetNorm(IResNet):
+    def forward(self, x):
+        res = super(IResNetNorm, self).forward(x)
+        res["feature"] = F.normalize(res["feature"], p=2.0, dim=1)
+        return res
+
+
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNet(block, layers, **kwargs)
+    if pretrained:
+        raise ValueError()
+    return model
+
+
+def _iresnet_normalized(arch, block, layers, pretrained, progress, **kwargs):
+    model = IResNetNorm(block, layers, **kwargs)
     if pretrained:
         raise ValueError()
     return model
@@ -233,4 +248,10 @@ def iresnet50(pretrained=False, progress=True, **kwargs):
 def iresnet100(pretrained=False, progress=True, **kwargs):
     return _iresnet(
         "iresnet100", IBasicBlock, [3, 13, 30, 3], pretrained, progress, **kwargs
+    )
+
+
+def iresnet50_normalized(pretrained=False, progress=True, **kwargs):
+    return _iresnet_normalized(
+        "iresnet50", IBasicBlock, [3, 4, 14, 3], pretrained, progress, **kwargs
     )
