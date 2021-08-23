@@ -49,16 +49,15 @@ def aggregate_min(x, sigma_sq, normalize=True, concatenate=False):
         return mu_new, sigma_sq_new
 
 
-def aggregate_softmax(x, sigma_sq, normalize=True, concatenate=False):
+def aggregate_softmax(x, sigma_sq, temperature=1.0, normalize=True, concatenate=False):
     if sigma_sq is None:
         D = int(x.shape[1] / 2)
         mu, sigma_sq = x[:, :D], x[:, D:]
     else:
         mu = x
 
-    weights = np.exp(sigma_sq)
-    weights /= weights.sum(axis=0, keepdims=True)
-
+    weights = np.exp(sigma_sq * temperature)
+    weights /= weights.sum(axis=1, keepdims=True)
     mu_new = (mu * weights).sum(axis=0)
 
     if normalize:
@@ -120,6 +119,10 @@ def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
         ),
         axis=1,
     )
+
+
+def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return (sigma_sq_1 * sigma_sq_2 + mu_1 * sigma_sq_2 + mu_2 * sigma_sq_1).sum(axis=1)
 
 
 def find_thresholds_by_FAR(score_vec, label_vec, FARs=None, epsilon=1e-8):

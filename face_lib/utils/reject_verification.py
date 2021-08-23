@@ -27,6 +27,7 @@ from face_lib.utils.fusion_metrics import (
     pair_uncertainty_sum,
     pair_uncertainty_harmonic_sum,
     pair_uncertainty_concatenated_harmonic,
+    pair_uncertainty_cosine_analytic,
 )
 import face_lib.utils.fusion_metrics as metrics
 
@@ -40,6 +41,7 @@ name_to_uncertainty_func = {
     "mean": pair_uncertainty_sum,
     "harmonic-sum": pair_uncertainty_harmonic_sum,
     "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
+    "cosine-analytic": pair_uncertainty_cosine_analytic,
 }
 
 
