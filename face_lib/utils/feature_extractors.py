@@ -259,3 +259,43 @@ def extract_features_fourier(
     if verbose:
         print("")
     return mu, sigma_sq
+
+
+def extract_features_gan(
+    backbone,
+    discriminator,
+    images,
+    batch_size,
+    proc_func=None,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+    num_images = len(images)
+    mu = []
+    sigma_sq = []
+    start_time = time.time()
+    for start_idx in tqdm(range(0, num_images, batch_size)):
+        if verbose:
+            elapsed_time = time.strftime(
+                "%H:%M:%S", time.gmtime(time.time() - start_time)
+            )
+            sys.stdout.write(
+                "# of images: %d Current image: %d Elapsed time: %s \t\r"
+                % (num_images, start_idx, elapsed_time)
+            )
+        end_idx = min(num_images, start_idx + batch_size)
+        images_batch = images[start_idx:end_idx]
+
+        batch = proc_func(images_batch)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        output = backbone(batch)
+        output.update(head(**output))
+        mu.append(np.array(output["feature"].detach().cpu()))
+        sigma_sq.append(np.array(output["log_sigma"].exp().detach().cpu()))
+
+    mu = np.concatenate(mu, axis=0)
+    sigma_sq = np.concatenate(sigma_sq, axis=0)
+
+    if verbose:
+        print("")
+    return mu, sigma_sq
