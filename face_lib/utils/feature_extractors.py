@@ -272,7 +272,6 @@ def extract_features_gan(
     verbose=False,
     device=torch.device("cpu"),
 ):
-    # batch_size = 64
     num_images = len(images)
     mu = []
     start_time = time.time()
@@ -298,7 +297,6 @@ def extract_features_gan(
     if verbose:
         print("")
 
-    # batch_size = 4
     uncertainties = []
     uncertainty_proc_func = lambda images: preprocess_gan(images, resize_size=[256, 256], is_training=False)
     start_time = time.time()
@@ -316,10 +314,8 @@ def extract_features_gan(
 
         batch = uncertainty_proc_func(images_batch)
         batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
-        print("Batch :", batch.shape)
         output = discriminator(batch)
         uncertainties.append(np.array(output.detach().cpu()))
-        print("Output :", output.mean().item())
 
     uncertainties = np.concatenate(uncertainties, axis=0)
     if verbose:

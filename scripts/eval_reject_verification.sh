@@ -52,5 +52,5 @@
 #  --rejected_portions $(seq 0 0.002 0.2) \
 #  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic\
 #  --device_id=0 \
-#  --save_fig_path=/gpfs/data/gpfs0/r.kail/figures/gan_different_batch_sizes/ \
+#  --save_fig_path=/gpfs/data/gpfs0/r.kail/figures/gan_bs4/ \
 #  --discriminator_path=/gpfs/data/gpfs0/k.fedyanin/space/GAN/stylegan.pth

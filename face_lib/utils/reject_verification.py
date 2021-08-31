@@ -374,7 +374,7 @@ if __name__ == "__main__":
 
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
-    backbone, head = backbone.to(device), head.to(device)
+    backbone, head = backbone.to(device).eval(), head.to(device).eval()
 
     discriminator = None
     if args.discriminator_path:
