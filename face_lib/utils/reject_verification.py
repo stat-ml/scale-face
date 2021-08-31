@@ -18,7 +18,7 @@ from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.fusion import force_compare
 from face_lib.utils.feature_extractors import (
     extract_features_head,
-    extract_features_tta,
+    extract_features_gan,
 )
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
@@ -95,7 +95,9 @@ def get_features_sigmas_labels(
     head,
     dataset_path,
     pairs_table_path,
+    uncertainty_strategy="head",
     batch_size=64,
+    discriminator=None,
 ):
 
     pairs, label_vec = [], []
@@ -111,17 +113,34 @@ def get_features_sigmas_labels(
     image_paths = list(unique_imgs)
     img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
 
-    proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    if uncertainty_strategy == "head":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
-    mu, sigma_sq = extract_features_head(
-        backbone,
-        head,
-        list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
-        batch_size,
-        proc_func=proc_func,
-        verbose=True,
-        device=device,
-    )
+        mu, sigma_sq = extract_features_head(
+            backbone,
+            head,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "GAN":
+        print("Hello there")
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        if discriminator is None:
+            raise RuntimeError("Please determine a discriminator")
+        mu, sigma_sq = extract_features_gan(
+            backbone,
+            discriminator,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    else:
+        raise NotImplementedError("Don't know this type of uncertainty strategy")
 
     mu_1 = np.array([mu[img_to_idx[pair[0]]] for pair in pairs])
     mu_2 = np.array([mu[img_to_idx[pair[1]]] for pair in pairs])
@@ -184,10 +203,12 @@ def eval_reject_verification(
     head,
     dataset_path,
     pairs_table_path,
+    uncertainty_strategy="head",
     batch_size=64,
     rejected_portions=None,
     FARs=None,
     distances_uncertainties=None,
+    discriminator=None,
 ):
 
     if rejected_portions is None:
@@ -200,7 +221,8 @@ def eval_reject_verification(
         ]
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
-        backbone, head, dataset_path, pairs_table_path, batch_size=batch_size
+        backbone, head, dataset_path, pairs_table_path,
+        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -271,6 +293,12 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
+        "--discriminator_path",
+        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
+        type=str,
+        default=None
+    )
+    parser.add_argument(
         "--dataset_path",
         help="The path to the IJB-C dataset directory",
         type=str,
@@ -290,6 +318,12 @@ if __name__ == "__main__":
         help="The paths to config .yaml file",
         type=str,
         required=True,
+    )
+    parser.add_argument(
+        "--uncertainty_strategy",
+        help="Strategy to get uncertainty (ex. head or GAN)",
+        type=str,
+        default="head",
     )
     parser.add_argument(
         "--rejected_portions",
@@ -336,11 +370,18 @@ if __name__ == "__main__":
     head = mlib.heads[model_args.head.name](
         **utils.pop_element(model_args.head, "name")
     )
-    backbone, head = backbone.to(device), head.to(device)
-
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
+
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
+    backbone, head = backbone.to(device), head.to(device)
+
+    discriminator = None
+    if args.discriminator_path:
+        discriminator = mlib.StyleGanDiscriminator()
+        discriminator.load_state_dict(torch.load(args.discriminator_path)["d"])
+        discriminator.to(device)
+        print(discriminator)
 
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
@@ -355,8 +396,10 @@ if __name__ == "__main__":
         head,
         args.dataset_path,
         args.pairs_table_path,
+        uncertainty_strategy=args.uncertainty_strategy,
         batch_size=args.batch_size,
         rejected_portions=rejected_portions,
         FARs=FARs,
         distances_uncertainties=distances_uncertainties,
+        discriminator=discriminator,
     )

@@ -4,6 +4,7 @@ from .spherenet import SphereNet20
 from .heads import PFEHead, PFEHeadAdjustable, ProbHead
 from .iresnet import iresnet18, iresnet34, iresnet50, iresnet100, iresnet50_normalized
 from .partial_fc import PartialFC
+from .style_gan import StyleGanDiscriminator
 
 model_dict = {
     "spherenet20": SphereNet20,

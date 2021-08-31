@@ -445,8 +445,8 @@ class ResBlock(nn.Module):
         return out
 
 
-class Discriminator(nn.Module):
-    def __init__(self, size, channel_multiplier=2, blur_kernel=[1, 3, 3, 1]):
+class StyleGanDiscriminator(nn.Module):
+    def __init__(self, size=256, channel_multiplier=2, blur_kernel=[1, 3, 3, 1]):
         super().__init__()
 
         channels = {
@@ -503,4 +503,4 @@ class Discriminator(nn.Module):
         out = out.view(batch, -1)
         out = self.final_linear(out)
 
-        return out
+        return - out # Originally there's no minus here but it is neede for reject verification
