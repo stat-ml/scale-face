@@ -65,10 +65,12 @@ def aggregate_templates(templates, mu, sigma_sq, method):
                     concatenate=False,
                 )
                 t.feature = t.mu
-            if method == "softmax":
+            if "softmax" in method:
+                temperature = float(method.split("-")[1])
                 t.feature = aggregate_softmax(
                     mu[t.indices],
                     sigma_sq=sigma_sq[t.indices],
+                    temperature=temperature,
                     normalize=True,
                     concatenate=False,
                 )
