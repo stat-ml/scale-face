@@ -1,4 +1,4 @@
-## Fusion with PFE
+## Fusion with PFEs
 #python3 ./face_lib/utils/fusion.py \
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/pfe/first_ms1m_pfe/sota.pt \
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
@@ -6,11 +6,26 @@
 #  --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
 #  --uncertainty_strategy=head \
 #  --protocol=ijbc \
-#  --fusion_distance_methods random_cosine mean_cosine min_cosine softmax_cosine PFE_cosine min_MLS PFE_MLS \
+#  --fusion_distance_methods random_cosine mean_cosine min_cosine softmax-100_cosine PFE_cosine min_MLS PFE_MLS \
 #  --FARs 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2 5e-2 \
 #  --device_id=0 \
 #  --batch_size=64 \
 #  --save_table_path=/gpfs/gpfs0/r.kail/tables/res_PFE.pkl \
+#  --verbose
+
+## Fusion with normalized PFEs
+#python3 ./face_lib/utils/fusion.py \
+#  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
+#  --config_path=./configs/models/iresnet_ms1m_pfe.yaml \
+#  --uncertainty_strategy=head \
+#  --protocol=ijbc \
+#  --fusion_distance_methods random_cosine mean_cosine min_cosine softmax-100_cosine PFE_cosine min_MLS PFE_MLS \
+#  --FARs 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2 5e-2 \
+#  --device_id=0 \
+#  --batch_size=64 \
+#  --save_table_path=/gpfs/gpfs0/r.kail/tables/res_PFE_normalized.pkl \
 #  --verbose
 
 ## Fusion with Probface
@@ -36,9 +51,9 @@
 #  --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \
 #  --uncertainty_strategy=head \
 #  --protocol=ijbc \
-#  --fusion_distance_methods softmax-500_cosine softmax-700_cosine softmax-1200_cosine softmax-1500_cosine softmax-2000_cosine \
+#  --fusion_distance_methods softmax-100_cosine softmax-200_cosine softmax-300_cosine softmax-500_cosine softmax-700_cosine softmax-1000_cosine softmax-1500_cosine \
 #  --FARs 1e-5 5e-5 1e-4 5e-4 1e-3 5e-3 1e-2 5e-2 \
 #  --device_id=0 \
 #  --batch_size=64 \
-#  --save_table_path=/gpfs/gpfs0/r.kail/tables/res_temperature2_PFE.pkl \
+#  --save_table_path=/gpfs/gpfs0/r.kail/tables/res_temperature_PFE.pkl \
 #  --verbose
