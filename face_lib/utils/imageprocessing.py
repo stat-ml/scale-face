@@ -1,6 +1,8 @@
 import numpy as np
 from scipy import misc
 from scipy.ndimage.filters import gaussian_filter
+import skimage
+from skimage.transform import resize as skimage_resize
 import imageio
 
 
@@ -101,7 +103,8 @@ def resize(images, size):
     images_new = np.ndarray(shape_new, dtype=images.dtype)
 
     for i in range(n):
-        images_new[i] = misc.imresize(images[i], (h, w))
+        # images_new[i] = skimage.transform.resize(images[i], (h, w))
+        images_new[i] = skimage_resize(images[i], (h, w))
 
     return images_new
 
@@ -336,3 +339,45 @@ def preprocess_tta(
         images_augmented.append(images)
 
     return images_augmented
+
+
+def preprocess_gan(
+    images, resize_size, mode="RGB", align: tuple = None, *, is_training=False
+):
+    """
+    #TODO: docs, describe mode parameter
+    """
+    # TODO: this is not preprocess actually
+    if type(images[0]) == str:
+        image_paths = images
+        images = []
+        for image_path in image_paths:
+            images.append(imageio.imread(image_path, pilmode=mode))
+        images = np.stack(images, axis=0)
+    else:
+        assert type(images) == np.ndarray
+        assert images.ndim == 4
+
+    # Process images
+    preprocess_train = [
+        ["standardize", "mean_scale"],
+        ["resize", resize_size],
+        ["random_flip"],
+    ]
+    preprocess_test = [
+        ["standardize", "mean_scale"],
+        ["resize", resize_size],
+    ]
+    proc_funcs = preprocess_train if is_training else preprocess_test
+
+    for proc in proc_funcs:
+        proc_name, proc_args = proc[0], proc[1:]
+        assert (
+            proc_name in register
+        ), "Not a registered preprocessing function: {}".format(proc_name)
+        images = register[proc_name](images, *proc_args)
+
+    if len(images.shape) == 3:
+        images = images[:, :, :, None]
+    return images
+
