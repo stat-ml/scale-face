@@ -50,6 +50,8 @@ class DataLoaderX(DataLoader):
             return None
         with torch.cuda.stream(self.stream):
             for k in range(len(self.batch)):
+                print(self.batch)
+                print(self.batch[k])
                 self.batch[k] = self.batch[k].to(
                     device=self.local_rank, non_blocking=True
                 )

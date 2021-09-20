@@ -9,7 +9,8 @@ from pathlib import Path
 path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
 
-from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
+#from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
+from face_lib.datasets import IJBDataset
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
