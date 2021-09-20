@@ -1,2 +1,2 @@
-python train_arcface.py \
+python train_artracface.py \
 --model-config configs/models/arcface_base.yaml
