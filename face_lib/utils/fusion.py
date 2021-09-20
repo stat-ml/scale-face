@@ -323,7 +323,7 @@ if __name__ == "__main__":
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
-    backbone, head = backbone.eval(), head.eval()
+    backbone, head = backbone.eval().to(device), head.eval().to(device)
 
     fusion_distance_methods = list(
         map(lambda x: x.split("_"), args.fusion_distance_methods)

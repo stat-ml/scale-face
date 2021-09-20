@@ -382,8 +382,7 @@ if __name__ == "__main__":
     if args.discriminator_path:
         discriminator = mlib.StyleGanDiscriminator()
         discriminator.load_state_dict(torch.load(args.discriminator_path)["d"])
-        discriminator.to(device)
-        print(discriminator)
+        discriminator.eval().to(device)
 
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
