@@ -27,3 +27,8 @@ heads = {
     "prob_head": ProbHead,
     "feedforward": Feedforward
 }
+
+classifiers = {
+    "feedforward": Feedforward,
+    "feedforward_bn": FeedForwardBN,
+}
