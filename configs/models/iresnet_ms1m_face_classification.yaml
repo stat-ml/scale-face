@@ -3,12 +3,12 @@ backbone:
     name: "iresnet50"
     learnable: false
 head:
-    name: "feedforward"
+    name: "perceptron2"
     in_feat: 25088
     out_feat: 512
     learnable: true
     criterion:
-        name: "mlsloss"
+        name: "cross_entropy_loss"
         mean: false
 optimizer:
     name: "sgd"

@@ -7,23 +7,14 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
+from .ms1m_pfe import MS1MDatasetPFE
 
 
-def ms1m_collate_fn(batch):
-
-    imgs, gtys = [], []
-    for pid_imgs, gty in batch:
-        imgs.extend(pid_imgs)
-        gtys.extend([gty] * len(pid_imgs))
-
-    return torch.stack(imgs, dim=0), torch.tensor(gtys).long()
-
-
-class MS1MDatasetPFE(Dataset):
-    def __init__(self, root_dir, num_face_pb, local_rank, in_size, **kwargs):
+class MS1MDatasetRandomPairs(MS1MDatasetPFE):
+    def __init__(self, root_dir, in_size, p_same=0.5,  **kwargs):
         super(MS1MDatasetPFE, self).__init__()
 
-        self.num_face_pb = num_face_pb
+        self.p_same = p_same    # probability of pick the pair of same faces
 
         self.transform = transforms.Compose(
             [
@@ -35,7 +26,6 @@ class MS1MDatasetPFE(Dataset):
             ]
         )
         self.root_dir = root_dir
-        self.local_rank = local_rank
         path_imgrec = os.path.join(root_dir, "train.rec")
         path_imgidx = os.path.join(root_dir, "train.idx")
         self.imgrec = mx.recordio.MXIndexedRecordIO(path_imgidx, path_imgrec, "r")
@@ -54,40 +44,27 @@ class MS1MDatasetPFE(Dataset):
                 os.path.join(root_dir, "identities_indices.pt")
             )
 
-    def __get_pic_by_idx__(self, index):
-        idx = self.imgidx[index]
-        s = self.imgrec.read_idx(idx)
-        header, img = mx.recordio.unpack(s)
-        label = header.label
-        if not isinstance(label, numbers.Number):
-            label = label[0]
-        label = torch.tensor(label, dtype=torch.long)
-        sample = mx.image.imdecode(img).asnumpy()
-        if self.transform is not None:
-            sample = self.transform(sample)
-        return sample, label
-
     def __getitem__(self, idx):
         left_idx = self.class_to_first_idx[idx]
         right_idx = self.class_to_first_idx[idx + 1]
 
-        if right_idx - left_idx >= self.num_face_pb:
-            indices = random.sample(range(left_idx, right_idx), k=self.num_face_pb)
+        first_face_img_idx = random.choice(range(left_idx, right_idx))
+
+        is_face_same = np.random.choice([0, 1], p=[1 - self.p_same, self.p_same])
+        if(is_face_same == 1):
+            list_range_idx = list(range(left_idx, right_idx))
+            list_range_idx.remove(first_face_img_idx)
+            second_face_img_idx = random.choice(list_range_idx)
         else:
-            indices = list(range(left_idx, right_idx))
+            list_range_first_class_idx = list(range(0, len(self.class_to_first_idx) - 1))
+            list_range_first_class_idx.remove(idx)
+            different_face_class_idx = random.choice(list_range_first_class_idx)
+            second_left_idx = self.class_to_first_idx[different_face_class_idx]
+            second_right_idx = self.class_to_first_idx[different_face_class_idx + 1]
+            second_face_img_idx = random.choice(range(second_left_idx, second_right_idx))
 
-        imgs = []
-        for pic_idx in indices:
-            img, identity = self.__get_pic_by_idx__(pic_idx)
-            assert identity == idx
-            imgs.append(img)
+        first_face_img, first_face_identity = self.__get_pic_by_idx__(first_face_img_idx)
+        second_face_img, second_face_identity = self.__get_pic_by_idx__(second_face_img_idx)
+        label = is_face_same
 
-        print("get_item_typres", type(imgs), type(idx))
-
-        return imgs, idx
-
-    def __len__(self):
-        return len(self.class_to_first_idx) - 1
-
-    def get_same_class_idx(idx):
-        pass
+        return first_face_img, second_face_img, torch.tensor(label, dtype=torch.long)   # long for CroosEntropy, float for BCE?

@@ -6,7 +6,7 @@ import numpy as np
 import torchvision
 
 sys.path.append(".")
-from face_lib.datasets import MS1MDatasetPFE, MS1MDatasetPFERandomPairs, DataLoaderX, ms1m_collate_fn, ms1m_collate_fn_pair_face
+from face_lib.datasets import MS1MDatasetPFE, MS1MDatasetRandomPairs, DataLoaderX
 from face_lib.utils import FACE_METRICS
 from face_lib import models as mlib, utils
 from face_lib.parser_cfg import training_args
@@ -33,23 +33,23 @@ class Trainer(TrainerBase):
         )
 
         if self.model_args.head:
-            self.head = mlib.heads[self.model_args.head.name](
+            self.pair_classifier = mlib.heads[self.model_args.head.name](
                 **utils.pop_element(self.model_args.head, "name"),
             )
-            # self.head_criterion = mlib.criterions_dict[
-            #     self.model_args.head.criterion.name
-            # ](
-            #     **utils.pop_element(self.model_args.head.criterion, "name"),
-            # )
+            self.pair_classifier_criterion = mlib.criterions_dict[
+                self.model_args.head.criterion.name
+            ](
+#                **utils.pop_element(self.model_args.head.criterion, "name"),
+            )
 
-        self.head_criterion = torch.nn.BCELoss()
+        #self.head_criterion = torch.nn.BCELoss()
 
         self.start_epoch = 0
         if self.args.resume:
             model_dict = torch.load(self.args.resume, map_location=self.device)
             self.start_epoch = model_dict["epoch"]
             self.backbone.load_state_dict(model_dict["backbone"])
-            self.head.load_state_dict(model_dict["head"])
+            self.pair_classifier.load_state_dict(model_dict["pair_classifier"])
 
         if self.model_args.pretrained_backbone and self.args.resume is None:
             backbone_dict = torch.load(
@@ -68,13 +68,13 @@ class Trainer(TrainerBase):
         if self.model_args.head and self.model_args.head.learnable is False:
             for p in self.head.parameters():
                 p.requires_grad = False
-            self.head.eval()
+            self.pair_classifier.eval()
 
         learnable_parameters = []
         if self.model_args.backbone.learnable is True:
             learnable_parameters += list(self.backbone.parameters())
         if self.model_args.head and self.model_args.head.learnable is True:
-            learnable_parameters += list(self.head.parameters())
+            learnable_parameters += list(self.pair_classifier.parameters())
 
 
         self.optimizer = utils.optimizers_map[self.model_args.optimizer.name](
@@ -88,16 +88,16 @@ class Trainer(TrainerBase):
 
         if self.device:
             self.backbone = self.backbone.to(self.device)
-            if self.head:
-                self.head = self.head.to(self.device)
+            if self.pair_classifier:
+                self.pair_classifier = self.pair_classifier.to(self.device)
 
         if self.model_args.is_distributed:
-            for p in self.head.parameters():
+            for p in self.pair_classifier.parameters():
                 dist.broadcast(p, 0)
-            self.head = self.head = torch.nn.parallel.DistributedDataParallel(
-                module=self.head, broadcast_buffers=False, device_ids=[self.local_rank]
+            self.pair_classifier = self.pair_classifier = torch.nn.parallel.DistributedDataParallel(
+                module=self.pair_classifier, broadcast_buffers=False, device_ids=[self.local_rank]
             )
-            self.head.train()
+            self.pair_classifier.train()
 
         # set evaluation metrics
         self.evaluation_metrics, self.evaluation_configs = [], []
@@ -110,17 +110,10 @@ class Trainer(TrainerBase):
 
     def _data_loader(self):
         if self.model_args.dataset.name == "ms1m":
-            self.trainset = MS1MDatasetPFERandomPairs(
+            self.trainset = MS1MDatasetRandomPairs(
                 root_dir=self.model_args.dataset.path,
                 in_size=self.model_args.in_size,
             )
-
-            # self.trainset = MS1MDatasetPFE(
-            #     root_dir=self.model_args.dataset.path,
-            #     num_face_pb=self.model_args.dataset.num_face_pb,
-            #     local_rank=self.rank,
-            #     in_size=self.model_args.in_size,
-            # )
 
             train_sampler = torch.utils.data.distributed.DistributedSampler(
                 self.trainset, shuffle=True
@@ -134,8 +127,6 @@ class Trainer(TrainerBase):
                 num_workers=0,
                 pin_memory=True,
                 drop_last=True,
-                #collate_fn=ms1m_collate_fn,
-                #collate_fn=ms1m_collate_fn_pair_face,
             )
         else:
             raise NotImplementedError("Dataset is not implemented")
@@ -146,13 +137,13 @@ class Trainer(TrainerBase):
     def _model_evaluate(self, epoch=0):
         self.backbone.eval()
         if self.model_args.head:
-            self.head.eval()
+            self.pair_classifier.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
                 # Calculating accuracy does not seem reasonable in terms of PFE
-                ac_res = utils.accuracy_lfw_6000_pairs_ramil(
+                ac_res = utils.accuracy_lfw_6000_pairs_binary_classification(
                     self.backbone,
-                    self.head,
+                    self.pair_classifier,
                     metric.lfw_path,
                     metric.lfw_pairs_txt_path,
                     N=metric.N,
@@ -163,16 +154,17 @@ class Trainer(TrainerBase):
                     board_iter=epoch,
                 )
                 print(ac_res)
+
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable:
             self.backbone.train()
         else:
             self.backbone.eval()
         if self.model_args.head.learnable:
-            self.head.train()
+            self.pair_classifier.train()
         else:
-            self.head.eval()
-        self.head_criterion.train()
+            self.pair_classifier.eval()
+        self.pair_classifier_criterion.train()
 
         loss_recorder, batch_acc = [], []
         for idx, (first_img, second_img, label) in enumerate(self.trainloader):
@@ -201,10 +193,10 @@ class Trainer(TrainerBase):
             # print("feature_stacked", outputs["feature"])
             # print("feature_stacked", outputs["feature"].shape)
 
-            outputs.update(self.head(**outputs))
+            outputs.update(self.pair_classifier(**outputs))
             outputs.update({"label": label})
 
-            loss = self.head_criterion(outputs["head_output"], label.unsqueeze(1))
+            loss = self.pair_classifier_criterion(outputs["pair_classifiers_output"], label)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -224,7 +216,7 @@ class Trainer(TrainerBase):
                     )
                 )
                 self.board.add_scalar(
-                    f"train/{self.head_criterion if self.head else self.backbone_criterion}_loss_mean",
+                    f"train/{self.pair_classifier_criterion if self.pair_classifier else self.backbone_criterion}_loss_mean",
                     np.mean(loss_recorder),
                     _global_iteration,
                 )
@@ -248,9 +240,9 @@ class Trainer(TrainerBase):
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict()
+                        "pair_classifier": self.pair_classifier.module.state_dict()
                         if self.model_args.is_distributed
-                        else self.head.state_dict(),
+                        else self.pair_classifier.state_dict(),
                         "train_loss": min_train_loss,
                     },
                     filename,
@@ -263,9 +255,9 @@ class Trainer(TrainerBase):
                     {
                         "epoch": epoch,
                         "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict()
+                        "pair_classifier": self.pair_classifier.module.state_dict()
                         if self.model_args.is_distributed
-                        else self.head.state_dict(),
+                        else self.pair_classifier.state_dict(),
                         "train_loss": train_loss,
                     },
                     savename,
@@ -281,9 +273,9 @@ class Trainer(TrainerBase):
         print("- USE_GPU   : {}".format(self.device))
         print("-" * 52)
         print("- Backbone   : {}".format(self.backbone.__class__))
-        print("- Head   : {}".format(self.head))
+        print("- Pair_classifier   : {}".format(self.pair_classifier))
         print("- Backbone Criterion   : {}".format(self.backbone_criterion))
-        print("- Head Criterion   : {}".format(self.head_criterion))
+        print("- Pair_classifier Criterion   : {}".format(self.pair_classifier_criterion))
         print("-" * 52)
 
 
