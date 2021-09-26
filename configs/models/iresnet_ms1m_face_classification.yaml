@@ -4,21 +4,12 @@ backbone:
     learnable: false
 
 head:
-    name: "pfe_head_adjustable"
+    name: "perceptron2"
     in_feat: 25088
     out_feat: 512
     learnable: true
     criterion:
-        name: "mlsloss"
-        mean: false
-
-classifier:
-    name: "feedforward"
-    in_feat: 25088
-    out_feat: 512
-    learnable: true
-    criterion:
-        name: "mlsloss"
+        name: "cross_entropy_loss"
         mean: false
 optimizer:
     name: "sgd"

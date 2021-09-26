@@ -190,10 +190,6 @@ def accuracy_lfw_6000_pairs(
         elif isinstance(output, (tuple, list)):
             f1, f2 = output[0]
 
-        print("output:", output)
-        print("F1: ", f1)
-        print("F2: ", f2)
-
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
 
         if head:
@@ -237,9 +233,9 @@ def accuracy_lfw_6000_pairs(
 
 @_register_board
 @_register_metric
-def accuracy_lfw_6000_pairs_ramil(
+def accuracy_lfw_6000_pairs_binary_classification(
         backbone: nn.Module,
-        head: nn.Module,
+        pair_classifier: nn.Module,
         lfw_path: str,
         lfw_pairs_txt_path: str,
         *,
@@ -295,8 +291,8 @@ def accuracy_lfw_6000_pairs_ramil(
     mls_values = []
 
     backbone = backbone.to(device)
-    if head is not None:
-        head = head.to(device)
+    if pair_classifier is not None:
+        pair_classifier = pair_classifier.to(device)
 
     for i in tqdm(range(N), desc="Evaluating on LFW 6000 pairs: "):
         p = pairs_lines[i].replace("\n", "").split("\t")
@@ -336,9 +332,6 @@ def accuracy_lfw_6000_pairs_ramil(
         elif isinstance(output, (tuple, list)):
             f1, f2 = output[0]
 
-        #print("output:", output)
-        #print("F1: ", f1)
-        #print("F2: ", f2)
         feature_stacked = torch.cat((f1, f2))
         output.update({"feature": feature_stacked})
 
@@ -346,17 +339,17 @@ def accuracy_lfw_6000_pairs_ramil(
 
         cosdistance = f1.dot(f2) / (f1.norm() * f2.norm() + 1e-5)
 
-        if head:
-            output.update(head(**output))
+        if pair_classifier:
+            output.update(pair_classifier(**output))
             #print("head_output", output["head_output"])
-            head_output = output["head_output"]
+            pair_classifier_output = output["pair_classifiers_output"]  # need fix
 
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(
-                    name1, name2, cosdistance.cpu(), head_output.item(), sameflag
+                    name1, name2, cosdistance.cpu(), torch.argmax(torch.exp(pair_classifier_output)).item(), sameflag
                 )
             )
-            mls_values.append(head_output.item())
+            mls_values.append(torch.argmax(torch.exp(pair_classifier_output)).item())
         else:
             predicts.append(
                 "{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance.cpu(), sameflag)
@@ -375,17 +368,18 @@ def accuracy_lfw_6000_pairs_ramil(
 
     accuracy_backbone = calculate_accuracy(2, np.arange(-1.0, 1.0, 0.005), predicts)
 
-    if head:
-        accuracy_head = calculate_accuracy(
+    if pair_classifier:
+        accuracy_pair_classifier = calculate_accuracy(
             3, np.linspace(np.min(mls_values), np.max(mls_values), 400), predicts
         )
 
     result = {}
     result["accuracy_backbone"] = np.mean(accuracy_backbone)
-    if head:
-        result["accuracy_head"] = np.mean(accuracy_head)
+    if pair_classifier:
+        result["accuracy_pair_classifier"] = np.mean(accuracy_pair_classifier)   # FIX THIS
 
     return result
 
+
 if __name__ == "__main__":
-    print("I ZACHEM?")
+    pass
