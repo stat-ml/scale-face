@@ -346,10 +346,10 @@ def accuracy_lfw_6000_pairs_binary_classification(
 
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(
-                    name1, name2, cosdistance.cpu(), pair_classifier_output.item(), sameflag
+                    name1, name2, cosdistance.cpu(), torch.argmax(torch.exp(pair_classifier_output)).item(), sameflag
                 )
             )
-            mls_values.append(pair_classifier_output.item())
+            mls_values.append(torch.argmax(torch.exp(pair_classifier_output)).item())
         else:
             predicts.append(
                 "{}\t{}\t{}\t{}\n".format(name1, name2, cosdistance.cpu(), sameflag)
