@@ -342,7 +342,7 @@ def accuracy_lfw_6000_pairs_binary_classification(
         if pair_classifier:
             output.update(pair_classifier(**output))
             #print("head_output", output["head_output"])
-            pair_classifier_output = output["head_output"]  # need fix
+            pair_classifier_output = output["pair_classifiers_output"]  # need fix
 
             predicts.append(
                 "{}\t{}\t{}\t{}\t{}\n".format(
@@ -376,7 +376,7 @@ def accuracy_lfw_6000_pairs_binary_classification(
     result = {}
     result["accuracy_backbone"] = np.mean(accuracy_backbone)
     if pair_classifier:
-        result["accuracy_head"] = np.mean(accuracy_pair_classifier)   # FIX THIS
+        result["accuracy_pair_classifier"] = np.mean(accuracy_pair_classifier)   # FIX THIS
 
     return result
 
