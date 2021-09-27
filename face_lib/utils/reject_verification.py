@@ -15,10 +15,9 @@ sys.path.insert(0, path)
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.utils.fusion import force_compare
 from face_lib.utils.feature_extractors import (
     extract_features_head,
-    extract_features_tta,
+    extract_features_gan,
 )
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
@@ -28,6 +27,9 @@ from face_lib.utils.fusion_metrics import (
     pair_uncertainty_harmonic_sum,
     pair_uncertainty_concatenated_harmonic,
     pair_uncertainty_cosine_analytic,
+    classifier_to_distance_wrapper,
+    classifier_to_uncertainty_wrapper,
+    split_wrapper,
 )
 import face_lib.utils.fusion_metrics as metrics
 
@@ -97,7 +99,9 @@ def get_features_sigmas_labels(
     head,
     dataset_path,
     pairs_table_path,
+    uncertainty_strategy="head",
     batch_size=64,
+    discriminator=None,
 ):
 
     pairs, label_vec = [], []
@@ -113,17 +117,46 @@ def get_features_sigmas_labels(
     image_paths = list(unique_imgs)
     img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
 
-    proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+    if uncertainty_strategy == "head":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
-    mu, sigma_sq = extract_features_head(
-        backbone,
-        head,
-        list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
-        batch_size,
-        proc_func=proc_func,
-        verbose=True,
-        device=device,
-    )
+        mu, sigma_sq = extract_features_head(
+            backbone,
+            head,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "GAN":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        if discriminator is None:
+            raise RuntimeError("Please determine a discriminator")
+        mu, sigma_sq = extract_features_gan(
+            backbone,
+            discriminator,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "classifier":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        # TODO: Change this to simple feature extractor without head
+        mu, sigma_sq = extract_features_head(
+            backbone,
+            head,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    else:
+        raise NotImplementedError("Don't know this type of uncertainty strategy")
 
     mu_1 = np.array([mu[img_to_idx[pair[0]]] for pair in pairs])
     mu_2 = np.array([mu[img_to_idx[pair[1]]] for pair in pairs])
@@ -144,8 +177,10 @@ def get_rejected_tar_far(
     pair_uncertainty_func,
     FARs,
 ):
+    #TODO : If something's broken, uncomment the line below
 
-    score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 
     sorted_indices = uncertainty_vec.argsort()
@@ -186,10 +221,15 @@ def eval_reject_verification(
     head,
     dataset_path,
     pairs_table_path,
+    uncertainty_strategy="head",
     batch_size=64,
+    distaces_batch_size=None,
     rejected_portions=None,
     FARs=None,
     distances_uncertainties=None,
+    discriminator=None,
+    classifier=None,
+    save_fig_path=None,
 ):
 
     if rejected_portions is None:
@@ -202,7 +242,8 @@ def eval_reject_verification(
         ]
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
-        backbone, head, dataset_path, pairs_table_path, batch_size=batch_size
+        backbone, head, dataset_path, pairs_table_path,
+        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -214,14 +255,31 @@ def eval_reject_verification(
     all_results = OrderedDict()
     for distance_name, uncertainty_name in distances_uncertainties:
         print(f"=== {distance_name} {uncertainty_name} ===")
+        # TODO : Fix device passing below
+        if distance_name == "classifier":
+            distance_func = classifier_to_distance_wrapper(
+                classifier, torch.device("cuda"))
+        else:
+            distance_func = name_to_distance_func[distance_name]
+
+        if uncertainty_name == "classifier":
+            uncertainty_func = classifier_to_uncertainty_wrapper(
+                classifier, torch.device("cuda"))
+        else:
+            uncertainty_func = name_to_uncertainty_func[uncertainty_name]
+
+        if distaces_batch_size:
+            distance_func = split_wrapper(distance_func, batch_size=distaces_batch_size)
+            uncertainty_func = split_wrapper(uncertainty_func, batch_size=distaces_batch_size)
+
         result_table = get_rejected_tar_far(
             mu_1,
             mu_2,
             sigma_sq_1,
             sigma_sq_2,
             label_vec,
-            distance_func=name_to_distance_func[distance_name],
-            pair_uncertainty_func=name_to_uncertainty_func[uncertainty_name],
+            distance_func=distance_func,
+            pair_uncertainty_func=uncertainty_func,
             FARs=FARs,
         )
 
@@ -240,28 +298,29 @@ def eval_reject_verification(
         for FAR, AUC in aucs.items():
             print(f"\tFAR={round(FAR, 5)} TAR_AUC : {round(AUC, 5)}")
 
-    for (distance_name, uncertainty_name), result_table in all_results.items():
-        title = (
-            pairs_table_path.split("/")[-1][-4]
-            + " "
-            + distance_name
-            + " "
-            + uncertainty_name
-        )
-        save_to_path = (
-            args.save_fig_path + "_" + distance_name + "_" + uncertainty_name + ".jpg"
-        )
-        if args.save_fig_path:
-            plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
+    if save_fig_path:
+        for (distance_name, uncertainty_name), result_table in all_results.items():
+            title = (
+                pairs_table_path.split("/")[-1][-4]
+                + " "
+                + distance_name
+                + " "
+                + uncertainty_name
+            )
+            save_to_path = (
+                os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
+            )
+            if save_fig_path:
+                plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
-    plot_TAR_FAR_different_methods(
-        all_results,
-        rejected_portions,
-        res_AUCs,
-        title=pairs_table_path.split("/")[-1][:-4],
-        save_figs_path=args.save_fig_path + "_" + "all_methods" + ".jpg",
-    )
-    torch.save(all_results, args.save_fig_path + "_table.pt")
+        plot_TAR_FAR_different_methods(
+            all_results,
+            rejected_portions,
+            res_AUCs,
+            title=pairs_table_path.split("/")[-1][:-4],
+            save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
+        )
+        torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
 
 if __name__ == "__main__":
@@ -271,6 +330,12 @@ if __name__ == "__main__":
         help="The path to the pre-trained model directory",
         type=str,
         required=True,
+    )
+    parser.add_argument(
+        "--discriminator_path",
+        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
+        type=str,
+        default=None
     )
     parser.add_argument(
         "--dataset_path",
@@ -285,13 +350,29 @@ if __name__ == "__main__":
         required=True,
     )
     parser.add_argument(
-        "--batch_size", help="Number of images per mini batch", type=int, default=64
+        "--batch_size",
+        help="Number of images per mini batch",
+        type=int,
+        default=64
+    )
+    parser.add_argument(
+        "--distaces_batch_size",
+        help="Number of embeddings in batch",
+        type=int,
+        default=None
     )
     parser.add_argument(
         "--config_path",
         help="The paths to config .yaml file",
         type=str,
         required=True,
+    )
+    parser.add_argument(
+        "--uncertainty_strategy",
+        help="Strategy to get uncertainty (ex. head/GAN/classifier)",
+        type=str,
+        default="head",
+        choices=["head", "GAN", "classifier"],
     )
     parser.add_argument(
         "--rejected_portions",
@@ -328,21 +409,43 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
+        raise RuntimeError("Directory exists")
+    else:
+        os.makedirs(args.save_fig_path, exist_ok=True)
 
     device = torch.device("cuda:" + str(args.device_id))
-
     model_args = cfg.load_config(args.config_path)
+    checkpoint = torch.load(args.checkpoint_path, map_location=device)
+
     backbone = mlib.model_dict[model_args.backbone["name"]](
         **utils.pop_element(model_args.backbone, "name")
     )
-    head = mlib.heads[model_args.head.name](
-        **utils.pop_element(model_args.head, "name")
-    )
-    backbone, head = backbone.to(device), head.to(device)
-
-    checkpoint = torch.load(args.checkpoint_path, map_location=device)
     backbone.load_state_dict(checkpoint["backbone"])
-    head.load_state_dict(checkpoint["head"])
+    backbone = backbone.to(device).eval()
+
+    # head = None
+    # if args.uncertainty_strategy == "head":
+    if True:
+        head = mlib.heads[model_args.head.name](
+            **utils.pop_element(model_args.head, "name")
+        )
+        head.load_state_dict(checkpoint["head"])
+        head = head.to(device).eval()
+
+    discriminator = None
+    if args.discriminator_path:
+        discriminator = mlib.StyleGanDiscriminator()
+        discriminator.load_state_dict(torch.load(args.discriminator_path)["d"])
+        discriminator.eval().to(device)
+
+    classifier = None
+    if args.uncertainty_strategy == "classifier":
+        classifier = mlib.classifiers[model_args.classifier["name"]](
+            **utils.pop_element(model_args.classifier, "name")
+        )
+        classifier.load_state_dict(checkpoint["classifier"])
+        classifier = classifier.eval().to(device)
 
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
@@ -357,8 +460,13 @@ if __name__ == "__main__":
         head,
         args.dataset_path,
         args.pairs_table_path,
+        uncertainty_strategy=args.uncertainty_strategy,
         batch_size=args.batch_size,
+        distaces_batch_size=args.distaces_batch_size,
         rejected_portions=rejected_portions,
         FARs=FARs,
         distances_uncertainties=distances_uncertainties,
+        discriminator=discriminator,
+        classifier=classifier,
+        save_fig_path=args.save_fig_path,
     )
