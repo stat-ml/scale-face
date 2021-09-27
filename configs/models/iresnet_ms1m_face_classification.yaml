@@ -2,10 +2,18 @@ title: "iresnet_ms1m_pfe"
 backbone:
     name: "iresnet50"
     learnable: false
-head:
-    name: "perceptron2"
-    in_feat: 25088
-    out_feat: 512
+#head:
+#    name: "multilayer_perceptron"
+#    in_feat: 1024
+#    out_feat: 2
+#    learnable: true
+#    criterion:
+#        name: "cross_entropy_loss"
+#        mean: false
+pair_classifier:
+    name: "multilayer_perceptron"
+    in_feat: 1024
+    out_feat: 2
     learnable: true
     criterion:
         name: "cross_entropy_loss"
