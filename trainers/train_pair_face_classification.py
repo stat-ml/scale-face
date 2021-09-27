@@ -37,10 +37,12 @@ class Trainer(TrainerBase):
                 **utils.pop_element(self.model_args.pair_classifier, "name"),
             )
 
+            #print("utils", utils.pop_element(self.model_args.pair_classifier, "name"))
+
             self.pair_classifier_criterion = mlib.criterions_dict[
                 self.model_args.pair_classifier.criterion.name
             ](
-#                **utils.pop_element(self.model_args.head.criterion, "name"),
+#                **utils.pop_element(self.model_args.pair_classifier.criterion, "name"),
             )
 
         self.start_epoch = 0

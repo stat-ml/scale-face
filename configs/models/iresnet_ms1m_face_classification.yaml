@@ -13,6 +13,7 @@ backbone:
 pair_classifier:
     name: "multilayer_perceptron"
     in_feat: 1024
+    hidden_layers_size: [512, 512, 512, 126]
     out_feat: 2
     learnable: true
     criterion:
