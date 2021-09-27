@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn import Parameter
 from face_lib.models import FaceModule
 
+
 class PFEHead(FaceModule):
     def __init__(self, in_feat=512, **kwargs):
         super(PFEHead, self).__init__(**kwargs)

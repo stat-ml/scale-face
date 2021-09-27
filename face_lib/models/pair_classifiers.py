@@ -5,18 +5,40 @@ from torch.nn import Parameter
 from face_lib.models import FaceModule
 
 
-class Perceptron(torch.nn.Module):
-    def __init__(self):
-        super(Perceptron, self).__init__()
-        self.fc = nn.Linear(1024, 1)
-        self.sigmoid = torch.nn.Sigmoid()
+# MLP - multilayer perceptron. Architecture: len(hidden_layers_size), [linear layers] -> linear(x, 2) -> log_softmax.
+# hidden_layers_size - tuple with layers size.
+class MLP(torch.nn.Module):
+    def __init__(self, in_feat=1024, hidden_layers_size=[512, 126], out_feat=2, **kwargs):
+        super(MLP, self).__init__()
+        print(kwargs)
+        self.in_feat = in_feat
+        self.out_feat = out_feat
 
-    def forward(self, x):
-        output = self.fc(x)
-        output = self.sigmoid(x)
-        return output
+        self.hidden = nn.ModuleList()
 
+        if not hidden_layers_size:
+            pass
+        else:
+            self.hidden.append(nn.Linear(self.in_feat, hidden_layers_size[0]))
 
+        for k in range(len(hidden_layers_size) - 1):
+            self.hidden.append(nn.Linear(hidden_layers_size[k], hidden_layers_size[k+1]))
+
+        if not hidden_layers_size:
+            self.hidden.append(nn.Linear(self.in_feat, self.out_feat))
+        else:
+            self.hidden.append(nn.Linear(hidden_layers_size[-1], self.out_feat))
+
+        self.log_softmax = torch.nn.LogSoftmax()
+
+    def forward(self, **kwargs):
+        x: torch.Tensor = kwargs["feature"]
+        for f in self.hidden:
+            x = f(x)
+        output = self.log_softmax(x)
+        return {"pair_classifiers_output": output}
+
+# Deprecated
 class Perceptron2(torch.nn.Module):
     def __init__(self, input_size=1024, hidden_size=1024, **kwargs):
         super(Perceptron2, self).__init__()
@@ -35,9 +57,9 @@ class Perceptron2(torch.nn.Module):
         output = self.fc2(relu)
         #output = self.sigmoid(output)
         output = self.log_softmax(output)
-        return {"pair_classifiers_output": output}  # FIX this
+        return {"pair_classifiers_output": output}
 
-
+# Deprecated
 class Perceptron2BN(torch.nn.Module):
     def __init__(self, input_size=1024, hidden_size=512, **kwargs):
         super(Perceptron2BN, self).__init__()
