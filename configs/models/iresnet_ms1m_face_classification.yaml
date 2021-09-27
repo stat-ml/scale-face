@@ -2,14 +2,6 @@ title: "iresnet_ms1m_pfe"
 backbone:
     name: "iresnet50"
     learnable: false
-#head:
-#    name: "multilayer_perceptron"
-#    in_feat: 1024
-#    out_feat: 2
-#    learnable: true
-#    criterion:
-#        name: "cross_entropy_loss"
-#        mean: false
 pair_classifier:
     name: "multilayer_perceptron"
     in_feat: 1024
@@ -39,7 +31,7 @@ batch_size: 256
 num_classes_batch: 4
 is_distributed: true
 iterations: 2000
-epochs: 10
+epochs: 3
 path_list: /gpfs/gpfs0/k.fedyanin/space/casia/list_data.txt
 in_size: [112, 112]
 logging:
