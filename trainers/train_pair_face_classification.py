@@ -32,17 +32,15 @@ class Trainer(TrainerBase):
             **utils.pop_element(self.model_args.backbone, "name"),
         )
 
-        if self.model_args.head:
-            self.pair_classifier = mlib.classifiers[self.model_args.classifier.name](
-                **utils.pop_element(self.model_args.classifier, "name"),
+        if self.model_args.pair_classifier:
+            self.pair_classifier = mlib.pair_classifiers[self.model_args.pair_classifier.name](
+                **utils.pop_element(self.model_args.pair_classifier, "name"),
             )
             self.pair_classifier_criterion = mlib.criterions_dict[
-                self.model_args.head.criterion.name
+                self.model_args.pair_classifier.criterion.name
             ](
-#                **utils.pop_element(self.model_args.head.criterion, "name"),
+#                **utils.pop_element(self.model_args.pair_classifier.criterion, "name"),
             )
-
-        #self.head_criterion = torch.nn.BCELoss()
 
         self.start_epoch = 0
         if self.args.resume:
@@ -65,7 +63,7 @@ class Trainer(TrainerBase):
                 p.requires_grad = False
             self.backbone.eval()
 
-        if self.model_args.head and self.model_args.head.learnable is False:
+        if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is False:
             for p in self.head.parameters():
                 p.requires_grad = False
             self.pair_classifier.eval()
@@ -73,7 +71,7 @@ class Trainer(TrainerBase):
         learnable_parameters = []
         if self.model_args.backbone.learnable is True:
             learnable_parameters += list(self.backbone.parameters())
-        if self.model_args.head and self.model_args.head.learnable is True:
+        if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is True:
             learnable_parameters += list(self.pair_classifier.parameters())
 
 
@@ -136,7 +134,7 @@ class Trainer(TrainerBase):
     @torch.no_grad()
     def _model_evaluate(self, epoch=0):
         self.backbone.eval()
-        if self.model_args.head:
+        if self.model_args.pair_classifier:
             self.pair_classifier.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
@@ -160,7 +158,7 @@ class Trainer(TrainerBase):
             self.backbone.train()
         else:
             self.backbone.eval()
-        if self.model_args.head.learnable:
+        if self.model_args.pair_classifier.learnable:
             self.pair_classifier.train()
         else:
             self.pair_classifier.eval()
