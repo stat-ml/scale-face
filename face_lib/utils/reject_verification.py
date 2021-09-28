@@ -441,10 +441,11 @@ if __name__ == "__main__":
 
     classifier = None
     if args.uncertainty_strategy == "classifier":
-        classifier = mlib.classifiers[model_args.classifier["name"]](
-            **utils.pop_element(model_args.classifier, "name")
+        classifier_name = model_args.classifier.pop("name")
+        classifier = mlib.classifiers[classifier_name](
+            **model_args.classifier,
         )
-        classifier.load_state_dict(checkpoint["classifier"])
+        classifier.load_state_dict(checkpoint["pair_classifier"])
         classifier = classifier.eval().to(device)
 
     rejected_portions = list(

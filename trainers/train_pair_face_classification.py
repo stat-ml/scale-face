@@ -33,8 +33,8 @@ class Trainer(TrainerBase):
         )
 
         if self.model_args.head:
-            self.pair_classifier = mlib.heads[self.model_args.head.name](
-                **utils.pop_element(self.model_args.head, "name"),
+            self.pair_classifier = mlib.classifiers[self.model_args.classifier.name](
+                **utils.pop_element(self.model_args.classifier, "name"),
             )
             self.pair_classifier_criterion = mlib.criterions_dict[
                 self.model_args.head.criterion.name
