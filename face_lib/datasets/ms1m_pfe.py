@@ -82,8 +82,6 @@ class MS1MDatasetPFE(Dataset):
             assert identity == idx
             imgs.append(img)
 
-        print("get_item_typres", type(imgs), type(idx))
-
         return imgs, idx
 
     def __len__(self):

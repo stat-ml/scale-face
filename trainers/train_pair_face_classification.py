@@ -32,6 +32,16 @@ class Trainer(TrainerBase):
             **utils.pop_element(self.model_args.backbone, "name"),
         )
 
+        if self.model_args.head:
+            self.head = mlib.heads[self.model_args.head.name](
+                **utils.pop_element(self.model_args.head, "name"),
+            )
+            self.head_criterion = mlib.criterions_dict[
+                self.model_args.head.criterion.name
+            ](
+                **utils.pop_element(self.model_args.head.criterion, "name"),
+            )
+
         if self.model_args.pair_classifier:
             self.pair_classifier = mlib.pair_classifiers[self.model_args.pair_classifier.name](
                 **utils.pop_element(self.model_args.pair_classifier, "name"),
@@ -50,10 +60,15 @@ class Trainer(TrainerBase):
             self.pair_classifier.load_state_dict(model_dict["pair_classifier"])
 
         if self.model_args.pretrained_backbone and self.args.resume is None:
-            backbone_dict = torch.load(
+            checkpoint = torch.load(
                 self.model_args.pretrained_backbone, map_location=self.device
             )
-            self.backbone.load_state_dict(backbone_dict)
+            if "backbone" in checkpoint.keys():
+                self.backbone.load_state_dict(checkpoint["backbone"])
+                if self.head and "head" in checkpoint.keys():
+                    self.head.load_state_dict(checkpoint["head"])
+            else:
+                self.backbone.load_state_dict(checkpoint)
 
         # TODO: we can write nn.Module wrapper to deal with parametrization like
         # freeze and etc.
@@ -63,6 +78,11 @@ class Trainer(TrainerBase):
                 p.requires_grad = False
             self.backbone.eval()
 
+        if self.model_args.head and self.model_args.head.learnable is False:
+            for p in self.head.parameters():
+                p.requires_grad = False
+            self.head.eval()
+
         if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is False:
             for p in self.head.parameters():
                 p.requires_grad = False
@@ -71,9 +91,10 @@ class Trainer(TrainerBase):
         learnable_parameters = []
         if self.model_args.backbone.learnable is True:
             learnable_parameters += list(self.backbone.parameters())
+        if self.model_args.head and self.model_args.head.learnable is True:
+            learnable_parameters += list(self.head.parameters())
         if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is True:
             learnable_parameters += list(self.pair_classifier.parameters())
-
 
         self.optimizer = utils.optimizers_map[self.model_args.optimizer.name](
             [{"params": learnable_parameters}],
@@ -227,40 +248,43 @@ class Trainer(TrainerBase):
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
             print(f"{('*' * 16)}Epoch {epoch}{('*' * 16)}")
-            train_loss = self._model_train(epoch)
             self._model_evaluate(epoch)
+            train_loss = self._model_train(epoch)
 
             if min_train_loss > train_loss:
                 print("%sNew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss
-                filename = os.path.join(self.checkpoints_path, "sota.pth")
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "backbone": self.backbone.state_dict(),
-                        "pair_classifier": self.pair_classifier.module.state_dict()
-                        if self.model_args.is_distributed
-                        else self.pair_classifier.state_dict(),
-                        "train_loss": min_train_loss,
-                    },
-                    filename,
-                )
+                self._save_model("sota.pth", epoch=epoch, train_loss=min_train_loss)
 
             if epoch % self.model_args.logging.save_freq == 0:
                 filename = "epoch_%d_train_loss_%.4f.pth" % (epoch, train_loss)
-                savename = os.path.join(self.checkpoints_path, filename)
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "backbone": self.backbone.state_dict(),
-                        "pair_classifier": self.pair_classifier.module.state_dict()
-                        if self.model_args.is_distributed
-                        else self.pair_classifier.state_dict(),
-                        "train_loss": train_loss,
-                    },
-                    savename,
-                )
+                self._save_model(filename, epoch=epoch, train_loss=train_loss)
+
+                # savename = os.path.join(self.checkpoints_path, filename)
+                # torch.save(
+                #     {
+                #         "epoch": epoch,
+                #         "backbone": self.backbone.state_dict(),
+                #         "pair_classifier": self.pair_classifier.module.state_dict()
+                #         if self.model_args.is_distributed
+                #         else self.pair_classifier.state_dict(),
+                #         "train_loss": train_loss,
+                #     },
+                #     savename,
+                # )
         print("Finished training")
+
+    def _save_model(self, name, epoch=None, train_loss=None):
+        savename = os.path.join(self.checkpoints_path, name)
+        ckpt = {
+            "epoch": epoch,
+            "backbone": self.backbone.state_dict(),
+            "train_loss": train_loss,
+            "pair_classifier": self.pair_classifier.module.state_dict() \
+                if self.model_args.is_distributed \
+                else self.pair_classifier.state_dict(),
+            "head": self.head.state_dict() if self.head else None}
+        torch.save(ckpt, savename)
 
     def _report_settings(self):
         str = "-" * 16
