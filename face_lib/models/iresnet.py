@@ -1,9 +1,18 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.utils import spectral_norm
+
 
 __all__ = ["iresnet18", "iresnet34", "iresnet50", "iresnet100"]
 
+
+def add_sn(m, n_power_iterations=3):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+         # print(dir(m))
+        return spectral_norm(m, n_power_iterations=n_power_iterations)
+    else:
+        return m
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1, dilation=1):
     """3x3 convolution with padding"""
@@ -213,6 +222,18 @@ class IResNetNorm(IResNet):
         return res
 
 
+class IResNetSpectral(IResNet):
+    def __init__(self, *args, n_power_iterations=3, **kwargs):
+        super(IResNetSpectral, self).__init__(*args, **kwargs)
+        self.apply(add_sn, n_power_iterations=n_power_iterations)
+
+
+class IResNetNormSpectral(IResNetNorm):
+    def __init__(self, *args, n_power_iterations=3, **kwargs):
+        super(IResNetNormSpectral, self).__init__(*args, **kwargs)
+        self.apply(lambda m: add_sn(m, n_power_iterations=n_power_iterations))
+
+
 def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNet(block, layers, **kwargs)
     if pretrained:
@@ -222,6 +243,20 @@ def _iresnet(arch, block, layers, pretrained, progress, **kwargs):
 
 def _iresnet_normalized(arch, block, layers, pretrained, progress, **kwargs):
     model = IResNetNorm(block, layers, **kwargs)
+    if pretrained:
+        raise ValueError()
+    return model
+
+
+def _iresnet_spectral(arch, block, layers, pretrained, progress, **kwargs):
+    model = IResNetSpectral(block, layers, **kwargs)
+    if pretrained:
+        raise ValueError()
+    return model
+
+
+def _iresnet_spectral_normalized(arch, block, layers, pretrained, progress, **kwargs):
+    model = IResNetNormSpectral(block, layers, **kwargs)
     if pretrained:
         raise ValueError()
     return model
@@ -253,5 +288,11 @@ def iresnet100(pretrained=False, progress=True, **kwargs):
 
 def iresnet50_normalized(pretrained=False, progress=True, **kwargs):
     return _iresnet_normalized(
+        "iresnet50", IBasicBlock, [3, 4, 14, 3], pretrained, progress, **kwargs
+    )
+
+
+def iresnet50_spectral_normalized(pretrained=False, progress=True, **kwargs):
+    return _iresnet_spectral_normalized(
         "iresnet50", IBasicBlock, [3, 4, 14, 3], pretrained, progress, **kwargs
     )
