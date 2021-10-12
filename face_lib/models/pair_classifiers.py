@@ -79,18 +79,26 @@ class Perceptron2BN(torch.nn.Module):
         output = self.sigmoid(output)
         return {"pair_classifiers_output": output}
 
+
 class SmartCosine(torch.nn.Module):
-    def __init__(self, input_size=1024, **kwargs):
+    def __init__(self, input_size=1024, bias=True, smart_init=False, **kwargs):
         super(SmartCosine, self).__init__()
         self.input_size = input_size
-        self.fc1 = torch.nn.Linear(self.input_size // 2, 2)
+        self.fc1 = torch.nn.Linear(self.input_size // 2, 2, bias=bias)
         self.log_softmax = torch.nn.LogSoftmax(dim=1)
+
+        if smart_init:
+            self._smart_init()
 
     def forward(self, **kwargs):
         x: torch.Tensor = kwargs["feature"]
         x1, x2 = x[:, :self.input_size // 2], x[:, self.input_size // 2:]
         output = self.log_softmax(self.fc1(x1 * x2))
         return {"pair_classifiers_output": output}
+
+    def _smart_init(self):
+        torch.nn.init.constant_(self.fc1.weight[0, :], -1.)
+        torch.nn.init.constant_(self.fc1.weight[1, :], 1.)
 
 
 class Bilinear(torch.nn.Module):

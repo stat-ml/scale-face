@@ -441,9 +441,9 @@ if __name__ == "__main__":
 
     classifier = None
     if args.uncertainty_strategy == "classifier":
-        classifier_name = model_args.classifier.pop("name")
-        classifier = mlib.classifiers[classifier_name](
-            **model_args.classifier,
+        classifier_name = model_args.pair_classifier.pop("name")
+        classifier = mlib.pair_classifiers[classifier_name](
+            **model_args.pair_classifier,
         )
         classifier.load_state_dict(checkpoint["pair_classifier"])
         classifier = classifier.eval().to(device)

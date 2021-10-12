@@ -14,8 +14,8 @@ head:
 pair_classifier:
     name: "smart_cosine"
     in_feat: 1024
-    bias: True
-    smart_init: False
+    bias: False
+    smart_init: True
     learnable: true
     criterion:
         name: "cross_entropy_loss"

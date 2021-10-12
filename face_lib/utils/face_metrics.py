@@ -332,7 +332,7 @@ def accuracy_lfw_6000_pairs_binary_classification(
         elif isinstance(output, (tuple, list)):
             f1, f2 = output[0]
 
-        feature_stacked = torch.cat((f1, f2))
+        feature_stacked = torch.cat((f1, f2)).unsqueeze(0)
         output.update({"feature": feature_stacked})
 
         #print("stacked_shape", feature_stacked.shape)
