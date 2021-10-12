@@ -35,7 +35,4 @@ pair_classifiers = {
     "multilayer_perceptron": MLP,
 }
 
-classifiers = {
-    "feedforward": Feedforward,
-    "feedforward_bn": FeedForwardBN,
-}
+

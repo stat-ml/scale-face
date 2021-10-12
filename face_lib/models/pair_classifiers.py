@@ -15,6 +15,7 @@ class MLP(torch.nn.Module):
         self.out_feat = out_feat
 
         self.hidden = nn.ModuleList()
+        self.relu = nn.ModuleList()
 
         if not hidden_layers_size:
             pass
@@ -23,6 +24,9 @@ class MLP(torch.nn.Module):
 
         for k in range(len(hidden_layers_size) - 1):
             self.hidden.append(nn.Linear(hidden_layers_size[k], hidden_layers_size[k+1]))
+            self.relu.append(nn.ReLU())
+
+        self.relu.append(nn.ReLU())
 
         if not hidden_layers_size:
             self.hidden.append(nn.Linear(self.in_feat, self.out_feat))
@@ -33,8 +37,10 @@ class MLP(torch.nn.Module):
 
     def forward(self, **kwargs):
         x: torch.Tensor = kwargs["feature"]
-        for f in self.hidden:
-            x = f(x)
+        for r, h in enumerate(self.hidden):
+            x = h(x)
+            if r < (len(self.hidden) - 1):
+                x = self.relu[r](x)
         output = self.log_softmax(x)
         return {"pair_classifiers_output": output}
 
