@@ -57,7 +57,7 @@ def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=No
     if title:
         ax.set_title(title)
     if save_fig_path:
-        fig.savefig(save_fig_path)
+        fig.savefig(save_fig_path, dpi=400)
     return fig
 
 
@@ -90,7 +90,7 @@ def plot_TAR_FAR_different_methods(
     if title:
         fig.suptitle(title)
     if save_figs_path:
-        fig.savefig(save_figs_path)
+        fig.savefig(save_figs_path, dpi=400)
     return fig
 
 
@@ -177,7 +177,7 @@ def get_rejected_tar_far(
     pair_uncertainty_func,
     FARs,
 ):
-    #TODO : If something's broken, uncomment the line below
+    # If something's broken, uncomment the line below
 
     # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
@@ -253,18 +253,18 @@ def eval_reject_verification(
     print("labels :", label_vec.shape, label_vec.dtype)
 
     all_results = OrderedDict()
+    device = next(classifier.parameters()).device
     for distance_name, uncertainty_name in distances_uncertainties:
         print(f"=== {distance_name} {uncertainty_name} ===")
-        # TODO : Fix device passing below
         if distance_name == "classifier":
             distance_func = classifier_to_distance_wrapper(
-                classifier, torch.device("cuda"))
+                classifier, device=device)
         else:
             distance_func = name_to_distance_func[distance_name]
 
         if uncertainty_name == "classifier":
             uncertainty_func = classifier_to_uncertainty_wrapper(
-                classifier, torch.device("cuda"))
+                classifier, device=device)
         else:
             uncertainty_func = name_to_uncertainty_func[uncertainty_name]
 
@@ -285,8 +285,6 @@ def eval_reject_verification(
 
         all_results[(distance_name, uncertainty_name)] = result_table
 
-    # Please don't fuck up here. The distance between edge points must be the same in all of the experiments.
-    # Otherwise the results are incomparable
     res_AUCs = OrderedDict()
     for method, table in all_results.items():
         res_AUCs[method] = {
@@ -301,11 +299,11 @@ def eval_reject_verification(
     if save_fig_path:
         for (distance_name, uncertainty_name), result_table in all_results.items():
             title = (
-                pairs_table_path.split("/")[-1][-4]
-                + " "
-                + distance_name
-                + " "
-                + uncertainty_name
+                    pairs_table_path.split("/")[-1][-4]
+                    + " "
+                    + distance_name
+                    + " "
+                    + uncertainty_name
             )
             save_to_path = (
                 os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
@@ -424,9 +422,8 @@ if __name__ == "__main__":
     backbone.load_state_dict(checkpoint["backbone"])
     backbone = backbone.to(device).eval()
 
-    # head = None
-    # if args.uncertainty_strategy == "head":
-    if True:
+    head = None
+    if args.uncertainty_strategy == "head" or (args.uncertainty_strategy == "classifier" and "head" in model_args):
         head = mlib.heads[model_args.head.name](
             **utils.pop_element(model_args.head, "name")
         )
