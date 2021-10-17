@@ -49,7 +49,7 @@ class Trainer(TrainerBase):
             self.pair_classifier_criterion = mlib.criterions_dict[
                 self.model_args.pair_classifier.criterion.name
             ](
-#                **utils.pop_element(self.model_args.pair_classifier.criterion, "name"),
+               **utils.pop_element(self.model_args.pair_classifier.criterion, "name"),
             )
 
         self.start_epoch = 0
@@ -70,8 +70,7 @@ class Trainer(TrainerBase):
             else:
                 self.backbone.load_state_dict(checkpoint)
 
-        # TODO: we can write nn.Module wrapper to deal with parametrization like
-        # freeze and etc.
+        # TODO: we can write nn.Module wrapper to deal with parametrization like freeze and etc.
 
         if self.model_args.backbone.learnable is False:
             for p in self.backbone.parameters():
@@ -201,17 +200,9 @@ class Trainer(TrainerBase):
             first_outputs = self.backbone(first_img)
             second_outputs = self.backbone(second_img)
 
-            # print("first_outputs", first_outputs["feature"].shape)
-            # print("second_outputs", second_outputs["feature"].shape)
-
             feature_stacked = torch.cat((first_outputs["feature"], second_outputs["feature"]), dim=1)
-            #print("stacked_shape_tarin", feature_stacked.shape)
 
             outputs = {"feature": feature_stacked}
-
-            # print("feature_stacked", outputs["feature"])
-            # print("feature_stacked", outputs["feature"].shape)
-
             outputs.update(self.pair_classifier(**outputs))
             outputs.update({"label": label})
 
@@ -248,8 +239,8 @@ class Trainer(TrainerBase):
 
         for epoch in range(self.start_epoch, self.model_args.epochs):
             print(f"{('*' * 16)}Epoch {epoch}{('*' * 16)}")
-            self._model_evaluate(epoch)
             train_loss = self._model_train(epoch)
+            self._model_evaluate(epoch)
 
             if min_train_loss > train_loss:
                 print("%sNew SOTA was found%s" % ("*" * 16, "*" * 16))
@@ -260,18 +251,6 @@ class Trainer(TrainerBase):
                 filename = "epoch_%d_train_loss_%.4f.pth" % (epoch, train_loss)
                 self._save_model(filename, epoch=epoch, train_loss=train_loss)
 
-                # savename = os.path.join(self.checkpoints_path, filename)
-                # torch.save(
-                #     {
-                #         "epoch": epoch,
-                #         "backbone": self.backbone.state_dict(),
-                #         "pair_classifier": self.pair_classifier.module.state_dict()
-                #         if self.model_args.is_distributed
-                #         else self.pair_classifier.state_dict(),
-                #         "train_loss": train_loss,
-                #     },
-                #     savename,
-                # )
         print("Finished training")
 
     def _save_model(self, name, epoch=None, train_loss=None):
