@@ -253,7 +253,7 @@ def eval_reject_verification(
     print("labels :", label_vec.shape, label_vec.dtype)
 
     all_results = OrderedDict()
-    device = next(classifier.parameters()).device
+    device = next(backbone.parameters()).device
     for distance_name, uncertainty_name in distances_uncertainties:
         print(f"=== {distance_name} {uncertainty_name} ===")
         if distance_name == "classifier":
