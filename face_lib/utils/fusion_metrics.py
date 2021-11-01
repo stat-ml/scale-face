@@ -1,3 +1,5 @@
+import torch
+import torch.nn.functional as F
 import numpy as np
 from warnings import warn
 
@@ -5,7 +7,7 @@ from .utils import harmonic_mean
 
 
 def l2_normalize(x, axis=None, eps=1e-8):
-    x = x / (eps + np.linalg.norm(x, axis=axis))
+    x = x / (eps + np.linalg.norm(x, axis=axis, keepdims=True))
     return x
 
 
@@ -125,6 +127,40 @@ def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return (sigma_sq_1 * sigma_sq_2 + (mu_1 ** 2) * sigma_sq_2 + (mu_2 ** 2) * sigma_sq_1).sum(axis=1)
 
 
+def classifier_to_distance_wrapper(classifier, device=torch.device("cpu")):
+    def wrapped_classifier(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+        inputs = torch.cat((torch.from_numpy(mu_1), torch.from_numpy(mu_2)), dim=1)
+        probes = F.softmax(classifier(feature=inputs.to(device), dim=1)["pair_classifiers_output"])
+        probes = probes.cpu().detach().numpy()
+        return probes[:, 1]  # TODO : It is supposed to be 1 - probes[:, 1] why ???
+    return wrapped_classifier
+
+
+def classifier_to_uncertainty_wrapper(classifier, device=torch.device("cpu")):
+    def wrapped_classifier(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+        inputs = torch.cat((torch.from_numpy(mu_1), torch.from_numpy(mu_2)), dim=1)
+        probes = F.softmax(classifier(feature=inputs.to(device))["pair_classifiers_output"])
+        probes = probes.cpu().detach().numpy()
+        return 1 - probes.max(axis=1) #  TODO : fix this, it is not supposed to be this way
+    return wrapped_classifier
+
+
+def split_wrapper(distance_func, batch_size=64):
+    def wrapped_distance(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+        distances = []
+        for mu_1_batch, mu_2_batch, sigma_sq_1_batch, sigma_sq_2_batch in zip(
+            np.array_split(mu_1, len(mu_1) // batch_size + 1),
+            np.array_split(mu_2, len(mu_2) // batch_size + 1),
+            np.array_split(sigma_sq_1, len(sigma_sq_1) // batch_size + 1),
+            np.array_split(sigma_sq_2, len(sigma_sq_2) // batch_size + 1),
+        ):
+            distances.append(distance_func(
+                mu_1_batch, mu_2_batch, sigma_sq_1_batch, sigma_sq_2_batch))
+
+        return np.concatenate(distances)
+    return wrapped_distance
+
+
 def find_thresholds_by_FAR(score_vec, label_vec, FARs=None, epsilon=1e-8):
     """
     Find thresholds given FARs
@@ -160,7 +196,7 @@ def find_thresholds_by_FAR(score_vec, label_vec, FARs=None, epsilon=1e-8):
     return thresholds
 
 
-def ROC(score_vec, label_vec, thresholds=None, FARs=None, get_false_indices=False):
+def ROC(score_vec: np.ndarray, label_vec, thresholds=None, FARs=None, get_false_indices=False):
     """
     Compute Receiver operating characteristic (ROC) with a score and label vector.
     """
