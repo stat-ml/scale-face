@@ -13,7 +13,7 @@ from face_lib.trainer import TrainerBase
 
 from torch.utils.tensorboard import SummaryWriter
 
-torch.backends.cudnn.bencmark = True
+torch.backends.cudnn.benchmark = True
 
 
 def _set_evaluation_metric_yaml(config: dict):

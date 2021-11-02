@@ -225,7 +225,7 @@ class IResNetNorm(IResNet):
 class IResNetSpectral(IResNet):
     def __init__(self, *args, n_power_iterations=3, **kwargs):
         super(IResNetSpectral, self).__init__(*args, **kwargs)
-        self.apply(add_sn, n_power_iterations=n_power_iterations)
+        self.apply(lambda m: add_sn(m, n_power_iterations=n_power_iterations))
 
 
 class IResNetNormSpectral(IResNetNorm):
