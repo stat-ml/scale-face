@@ -39,8 +39,4 @@ pair_classifiers = {
     "bilinear": Bilinear
 }
 
-classifiers = {
-    "perceptron2": Perceptron2,
-    "smart_cosine": SmartCosine,
-    "bilinear": Bilinear
-}
+
