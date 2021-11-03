@@ -6,7 +6,7 @@ import numpy as np
 import torchvision
 
 sys.path.append(".")
-from face_lib.datasets import MS1MDatasetPFE, DataLoaderX, ms1m_collate_fn
+from face_lib.datasets import MS1MDatasetPFE, MS1MDatasetRandomPairs, DataLoaderX
 from face_lib.utils import FACE_METRICS
 from face_lib import models as mlib, utils
 from face_lib.parser_cfg import training_args
@@ -42,21 +42,35 @@ class Trainer(TrainerBase):
                 **utils.pop_element(self.model_args.head.criterion, "name"),
             )
 
+        if self.model_args.pair_classifier:
+            self.pair_classifier = mlib.pair_classifiers[self.model_args.pair_classifier.name](
+                **utils.pop_element(self.model_args.pair_classifier, "name"),
+            )
+            self.pair_classifier_criterion = mlib.criterions_dict[
+                self.model_args.pair_classifier.criterion.name
+            ](
+               **utils.pop_element(self.model_args.pair_classifier.criterion, "name"),
+            )
+
         self.start_epoch = 0
         if self.args.resume:
             model_dict = torch.load(self.args.resume, map_location=self.device)
             self.start_epoch = model_dict["epoch"]
             self.backbone.load_state_dict(model_dict["backbone"])
-            self.head.load_state_dict(model_dict["head"])
+            self.pair_classifier.load_state_dict(model_dict["pair_classifier"])
 
         if self.model_args.pretrained_backbone and self.args.resume is None:
-            backbone_dict = torch.load(
+            checkpoint = torch.load(
                 self.model_args.pretrained_backbone, map_location=self.device
             )
-            self.backbone.load_state_dict(backbone_dict)
+            if "backbone" in checkpoint.keys():
+                self.backbone.load_state_dict(checkpoint["backbone"])
+                if self.head and "head" in checkpoint.keys():
+                    self.head.load_state_dict(checkpoint["head"])
+            else:
+                self.backbone.load_state_dict(checkpoint)
 
-        # TODO: we can write nn.Module wrapper to deal with parametrization like
-        # freeze and etc.
+        # TODO: we can write nn.Module wrapper to deal with parametrization like freeze and etc.
 
         if self.model_args.backbone.learnable is False:
             for p in self.backbone.parameters():
@@ -68,11 +82,18 @@ class Trainer(TrainerBase):
                 p.requires_grad = False
             self.head.eval()
 
+        if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is False:
+            for p in self.head.parameters():
+                p.requires_grad = False
+            self.pair_classifier.eval()
+
         learnable_parameters = []
         if self.model_args.backbone.learnable is True:
             learnable_parameters += list(self.backbone.parameters())
         if self.model_args.head and self.model_args.head.learnable is True:
             learnable_parameters += list(self.head.parameters())
+        if self.model_args.pair_classifier and self.model_args.pair_classifier.learnable is True:
+            learnable_parameters += list(self.pair_classifier.parameters())
 
         self.optimizer = utils.optimizers_map[self.model_args.optimizer.name](
             [{"params": learnable_parameters}],
@@ -85,16 +106,16 @@ class Trainer(TrainerBase):
 
         if self.device:
             self.backbone = self.backbone.to(self.device)
-            if self.head:
-                self.head = self.head.to(self.device)
+            if self.pair_classifier:
+                self.pair_classifier = self.pair_classifier.to(self.device)
 
         if self.model_args.is_distributed:
-            for p in self.head.parameters():
+            for p in self.pair_classifier.parameters():
                 dist.broadcast(p, 0)
-            self.head = self.head = torch.nn.parallel.DistributedDataParallel(
-                module=self.head, broadcast_buffers=False, device_ids=[self.local_rank]
+            self.pair_classifier = self.pair_classifier = torch.nn.parallel.DistributedDataParallel(
+                module=self.pair_classifier, broadcast_buffers=False, device_ids=[self.local_rank]
             )
-            self.head.train()
+            self.pair_classifier.train()
 
         # set evaluation metrics
         self.evaluation_metrics, self.evaluation_configs = [], []
@@ -107,10 +128,8 @@ class Trainer(TrainerBase):
 
     def _data_loader(self):
         if self.model_args.dataset.name == "ms1m":
-            self.trainset = MS1MDatasetPFE(
+            self.trainset = MS1MDatasetRandomPairs(
                 root_dir=self.model_args.dataset.path,
-                num_face_pb=self.model_args.dataset.num_face_pb,
-                local_rank=self.rank,
                 in_size=self.model_args.in_size,
             )
 
@@ -126,7 +145,6 @@ class Trainer(TrainerBase):
                 num_workers=0,
                 pin_memory=True,
                 drop_last=True,
-                collate_fn=ms1m_collate_fn,
             )
         else:
             raise NotImplementedError("Dataset is not implemented")
@@ -136,64 +154,59 @@ class Trainer(TrainerBase):
     @torch.no_grad()
     def _model_evaluate(self, epoch=0):
         self.backbone.eval()
-        if self.model_args.head:
-            self.head.eval()
+        if self.model_args.pair_classifier:
+            self.pair_classifier.eval()
         for metric in self.evaluation_configs:
             if metric.name == "lfw_6000_pairs":
-                pass
                 # Calculating accuracy does not seem reasonable in terms of PFE
-                # utils.accuracy_lfw_6000_pairs(
-                #     self.backbone,
-                #     self.head,
-                #     metric.lfw_path,
-                #     metric.lfw_pairs_txt_path,
-                #     N=metric.N,
-                #     n_folds=metric.n_folds,
-                #     device=self.device,
-                #     board=True,
-                #     board_writer=self.board,
-                #     board_iter=epoch,
-                # )
+                ac_res = utils.accuracy_lfw_6000_pairs_binary_classification(
+                    self.backbone,
+                    self.pair_classifier,
+                    metric.lfw_path,
+                    metric.lfw_pairs_txt_path,
+                    N=metric.N,
+                    n_folds=metric.n_folds,
+                    device=self.device,
+                    board=True,
+                    board_writer=self.board,
+                    board_iter=epoch,
+                )
+                print(ac_res)
 
     def _model_train(self, epoch=0):
         if self.model_args.backbone.learnable:
             self.backbone.train()
         else:
             self.backbone.eval()
-        if self.model_args.head.learnable:
-            self.head.train()
+        if self.model_args.pair_classifier.learnable:
+            self.pair_classifier.train()
         else:
-            self.head.eval()
-        self.head_criterion.train()
+            self.pair_classifier.eval()
+        self.pair_classifier_criterion.train()
 
         loss_recorder, batch_acc = [], []
-        for idx, (img, gty) in enumerate(self.trainloader):
+        for idx, (first_img, second_img, label) in enumerate(self.trainloader):
 
             _global_iteration = epoch * self.model_args.iterations + idx
 
-            img.requires_grad = False
-            gty.requires_grad = False
+            first_img.requires_grad = False
+            second_img.requires_grad = False
+            label.requires_grad = False
             if self.device:
-                img = img.to(self.device)
-                gty = gty.to(self.device)
+                first_img = first_img.to(self.device)
+                second_img = second_img.to(self.device)
+                label = label.to(self.device)
 
-            # feature, sig_feat = self.backbone(img)
-            # log_sig_sq = self.head(sig_feat)
-            # loss = self.head_criterion.forward(self.device, feature, gty, log_sig_sq)
+            first_outputs = self.backbone(first_img)
+            second_outputs = self.backbone(second_img)
 
-            # feature, sig_feat = self.backbone(img)
-            # sig_feature = {"bottleneck_feature": sig_feat}
-            # log_sig_sq = self.head(**sig_feature)
-            #
-            # outputs = {"gty": gty}
-            # outputs.update({"feature": feature})
-            # outputs.update(log_sig_sq)
+            feature_stacked = torch.cat((first_outputs["feature"], second_outputs["feature"]), dim=1)
 
-            outputs = self.backbone(img)
-            outputs.update(self.head(**outputs))
-            outputs.update({"gty": gty})
+            outputs = {"feature": feature_stacked}
+            outputs.update(self.pair_classifier(**outputs))
+            outputs.update({"label": label})
 
-            loss = self.head_criterion.forward(device=self.device, **outputs)
+            loss = self.pair_classifier_criterion(outputs["pair_classifiers_output"], label)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -213,41 +226,11 @@ class Trainer(TrainerBase):
                     )
                 )
                 self.board.add_scalar(
-                    f"train/{self.head_criterion if self.head else self.backbone_criterion}_loss_mean",
+                    f"train/{self.pair_classifier_criterion if self.pair_classifier else self.backbone_criterion}_loss_mean",
                     np.mean(loss_recorder),
                     _global_iteration,
                 )
-                # if (idx + 1) % (self.model_args.logging.print_freq * 50) == 0:
-                #     for metric in self.evaluation_configs:
-                #         if metric.name == "lfw_dilemma":
-                #             visual_img = utils.visualize_ambiguity_dilemma_lfw(
-                #                 self.backbone,
-                #                 self.backbone_criterion,
-                #                 metric.lfw_path,
-                #                 pfe_head=self.head,
-                #                 criterion_head=self.head_criterion,
-                #                 board=True,
-                #                 device=self.device,
-                #             )
-                #             self.board.add_image(
-                #                 "ambiguity_dilemma_lfw",
-                #                 visual_img.transpose(2, 0, 1),
-                #                 _global_iteration,
-                #             )
-                #         if metric.name == "lfw_dilemma":
-                #             pass
-                #             """
-                #             utils.visualize_low_high_similarity_pairs(
-                #                 self.backbone,
-                #                 self.backbone_criterion,
-                #                 metric.lfw_path,
-                #                 metric.lfw_pairs_txt_path,
-                #                 pfe_head=self.head,
-                #                 criterion_head=self.head_criterion,
-                #                 board=True,
-                #                 device=self.device,
-                #             )
-                #             """
+
         print("train_loss : %.4f" % train_loss)
         return train_loss
 
@@ -262,34 +245,25 @@ class Trainer(TrainerBase):
             if min_train_loss > train_loss:
                 print("%sNew SOTA was found%s" % ("*" * 16, "*" * 16))
                 min_train_loss = train_loss
-                filename = os.path.join(self.checkpoints_path, "sota.pth")
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict()
-                        if self.model_args.is_distributed
-                        else self.head.state_dict(),
-                        "train_loss": min_train_loss,
-                    },
-                    filename,
-                )
+                self._save_model("sota.pth", epoch=epoch, train_loss=min_train_loss)
 
             if epoch % self.model_args.logging.save_freq == 0:
                 filename = "epoch_%d_train_loss_%.4f.pth" % (epoch, train_loss)
-                savename = os.path.join(self.checkpoints_path, filename)
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "backbone": self.backbone.state_dict(),
-                        "head": self.head.module.state_dict()
-                        if self.model_args.is_distributed
-                        else self.head.state_dict(),
-                        "train_loss": train_loss,
-                    },
-                    savename,
-                )
+                self._save_model(filename, epoch=epoch, train_loss=train_loss)
+
         print("Finished training")
+
+    def _save_model(self, name, epoch=None, train_loss=None):
+        savename = os.path.join(self.checkpoints_path, name)
+        ckpt = {
+            "epoch": epoch,
+            "backbone": self.backbone.state_dict(),
+            "train_loss": train_loss,
+            "pair_classifier": self.pair_classifier.module.state_dict() \
+                if self.model_args.is_distributed \
+                else self.pair_classifier.state_dict(),
+            "head": self.head.state_dict() if self.head else None}
+        torch.save(ckpt, savename)
 
     def _report_settings(self):
         str = "-" * 16
@@ -300,9 +274,9 @@ class Trainer(TrainerBase):
         print("- USE_GPU   : {}".format(self.device))
         print("-" * 52)
         print("- Backbone   : {}".format(self.backbone.__class__))
-        print("- Head   : {}".format(self.head))
+        print("- Pair_classifier   : {}".format(self.pair_classifier))
         print("- Backbone Criterion   : {}".format(self.backbone_criterion))
-        print("- Head Criterion   : {}".format(self.head_criterion))
+        print("- Pair_classifier Criterion   : {}".format(self.pair_classifier_criterion))
         print("-" * 52)
 
 
