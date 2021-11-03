@@ -132,7 +132,7 @@ def classifier_to_distance_wrapper(classifier, device=torch.device("cpu")):
         inputs = torch.cat((torch.from_numpy(mu_1), torch.from_numpy(mu_2)), dim=1)
         probes = F.softmax(classifier(feature=inputs.to(device), dim=1)["pair_classifiers_output"], dim=-1)
         probes = probes.cpu().detach().numpy()
-        return probes[:, 1]  # TODO : It is supposed to be 1 - probes[:, 1] why ???
+        return probes[:, 1]
     return wrapped_classifier
 
 
@@ -141,7 +141,7 @@ def classifier_to_uncertainty_wrapper(classifier, device=torch.device("cpu")):
         inputs = torch.cat((torch.from_numpy(mu_1), torch.from_numpy(mu_2)), dim=1)
         probes = F.softmax(classifier(feature=inputs.to(device))["pair_classifiers_output"], dim=-1)
         probes = probes.cpu().detach().numpy()
-        return 1 - probes.max(axis=1) #  TODO : fix this, it is not supposed to be this way
+        return 1 - probes.max(axis=1)
     return wrapped_classifier
 
 

@@ -145,7 +145,6 @@ def get_features_sigmas_labels(
     elif uncertainty_strategy == "classifier":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
-        # TODO: Change this to simple feature extractor without head
         mu, sigma_sq = extract_features_head(
             backbone,
             head,
