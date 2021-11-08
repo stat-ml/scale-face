@@ -231,6 +231,7 @@ def eval_reject_verification(
     discriminator=None,
     classifier=None,
     save_fig_path=None,
+    verbose=False,
 ):
 
     if rejected_portions is None:
