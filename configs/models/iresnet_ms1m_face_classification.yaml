@@ -5,7 +5,7 @@ backbone:
 pair_classifier:
     name: "multilayer_perceptron"
     in_feat: 1024
-    hidden_layers_size: [512, 512, 512, 126]
+    hidden_layers_size: [512, 126]
     out_feat: 2
     learnable: true
     criterion:
@@ -31,7 +31,7 @@ batch_size: 256
 num_classes_batch: 4
 is_distributed: true
 iterations: 2000
-epochs: 3
+epochs: 10
 path_list: /gpfs/gpfs0/k.fedyanin/space/casia/list_data.txt
 in_size: [112, 112]
 logging:

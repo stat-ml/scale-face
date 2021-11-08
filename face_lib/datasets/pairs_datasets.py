@@ -11,7 +11,7 @@ from .ms1m_pfe import MS1MDatasetPFE
 
 
 class MS1MDatasetRandomPairs(MS1MDatasetPFE):
-    def __init__(self, root_dir, in_size, p_same=0.5,  **kwargs):
+    def __init__(self, root_dir, in_size, p_same=0.5, hor_flip_prob=0.5, **kwargs):
         super(MS1MDatasetPFE, self).__init__()
 
         self.p_same = p_same    # probability of pick the pair of same faces
@@ -19,7 +19,7 @@ class MS1MDatasetRandomPairs(MS1MDatasetPFE):
         self.transform = transforms.Compose(
             [
                 transforms.ToPILImage(),
-                transforms.RandomHorizontalFlip(),
+                transforms.RandomHorizontalFlip(hor_flip_prob),
                 transforms.Resize(size=in_size),
                 transforms.ToTensor(),
                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
@@ -50,7 +50,7 @@ class MS1MDatasetRandomPairs(MS1MDatasetPFE):
 
         first_face_img_idx = random.choice(range(left_idx, right_idx))
 
-        is_face_same = np.random.choice([0, 1], p=[1 - self.p_same, self.p_same])
+        is_face_same = int(np.random.random() < self.p_same)
         if(is_face_same == 1):
             list_range_idx = list(range(left_idx, right_idx))
             list_range_idx.remove(first_face_img_idx)
