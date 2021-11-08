@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 import torch
-# from torch._six import container_abcs
 import collections.abc
 from torch.cuda.amp import GradScaler
 
