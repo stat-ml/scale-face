@@ -102,6 +102,8 @@ def get_features_sigmas_labels(
     uncertainty_strategy="head",
     batch_size=64,
     discriminator=None,
+    device=torch.device("cuda:0"),
+    verbose=False,
 ):
 
     pairs, label_vec = [], []
@@ -126,7 +128,7 @@ def get_features_sigmas_labels(
             list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
             batch_size,
             proc_func=proc_func,
-            verbose=True,
+            verbose=verbose,
             device=device,
         )
     elif uncertainty_strategy == "GAN":
@@ -139,7 +141,7 @@ def get_features_sigmas_labels(
             list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
             batch_size,
             proc_func=proc_func,
-            verbose=True,
+            verbose=verbose,
             device=device,
         )
     elif uncertainty_strategy == "classifier":
@@ -151,7 +153,7 @@ def get_features_sigmas_labels(
             list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
             batch_size,
             proc_func=proc_func,
-            verbose=True,
+            verbose=verbose,
             device=device,
         )
     else:
@@ -242,7 +244,7 @@ def eval_reject_verification(
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
         backbone, head, dataset_path, pairs_table_path,
-        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator,
+        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator, verbose=verbose,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -404,6 +406,11 @@ if __name__ == "__main__":
         type=str,
         default=None,
     )
+    parser.add_argument(
+        "--verbose",
+        help="Dump verbose information",
+        action="store_true"
+    )
 
     args = parser.parse_args()
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
@@ -466,4 +473,5 @@ if __name__ == "__main__":
         discriminator=discriminator,
         classifier=classifier,
         save_fig_path=args.save_fig_path,
+        verbose=args.verbose,
     )
