@@ -1,0 +1,55 @@
+title: "scale_training"
+backbone:
+    name: "iresnet50_normalized"
+    learnable: false
+
+fc:
+    resume: True
+    num_classes: 93431
+
+scale_predictior:
+    name: "pfe_head_adjustable"
+    in_feat: 25088
+    out_feat: 1
+    learnable: true
+
+criterion:
+    name: "arcface_trainable"
+
+head: null
+
+optimizer:
+    name: "sgd"
+    lr: 0.001
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+scheduler:
+    name: "multistep_lr"
+    milestones: [3, 6, 9]
+    gamma: 0.1
+
+sample_rate: 1.0
+embedding_size: 512
+batch_size: 64
+
+opt_backbone:
+    name: "sgd"
+    lr: 0.1
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+opt_pfc:
+    name: "sgd"
+    lr: 0.1
+    weight_decay: 0.0005
+    momentum: 0.9
+    nesterov: true
+
+pretrained_backbone: /gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth
+num_epoch: 12
+#val_targets:
+#    - lfw
+fp16: false
+rec: /gpfs/gpfs0/k.fedyanin/space/ms1m
+is_distributed: true
