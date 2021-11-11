@@ -11,7 +11,7 @@ from .ms1m_pfe import MS1MDatasetPFE
 
 
 class MS1MDatasetRandomPairs(MS1MDatasetPFE):
-    def __init__(self, root_dir, in_size, p_same=0.5, hor_flip_prob=0.5 **kwargs):
+    def __init__(self, root_dir, in_size, p_same=0.5, hor_flip_prob=0.5, **kwargs):
         super(MS1MDatasetPFE, self).__init__()
 
         self.p_same = p_same    # probability of pick the pair of same faces

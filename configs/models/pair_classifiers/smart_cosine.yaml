@@ -12,7 +12,7 @@ head:
         name: "mlsloss"
 
 pair_classifier:
-    name: "smart_cosine"
+    name: "bilinear"
     in_feat: 1024
     bias: True
     smart_init: False
