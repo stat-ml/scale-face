@@ -5,10 +5,7 @@ backbone:
 
 scale_predictor:
     name: "MLPHead"
-
     num_feats: [25088, 512, 1]
     batch_norm: true
     exponent: "sigm_mul"
     fp16: false
-
-#pretrained_backbone: /gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth

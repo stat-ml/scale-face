@@ -110,6 +110,6 @@ python3 ./face_lib/utils/reject_verification.py \
   --uncertainty_strategy=scale \
   --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
   --rejected_portions $(seq 0 0.002 0.2) \
-  --distance_uncertainty_metrics cosine_mean cosine_harmonic-sum cosine_harmonic-harmonic MLS_harmonic-sum MLS_harmonic-harmonic \
+  --distance_uncertainty_metrics cosine_mean cosine_harmonic-sum cosine_harmonic-harmonic \
   --device_id=0 \
   --save_fig_path=/gpfs/data/gpfs0/r.kail/figures/test
