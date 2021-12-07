@@ -18,6 +18,7 @@ from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.feature_extractors import (
     extract_features_head,
     extract_features_gan,
+    extract_features_scale,
 )
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
@@ -102,6 +103,7 @@ def get_features_sigmas_labels(
     uncertainty_strategy="head",
     batch_size=64,
     discriminator=None,
+    scale_predictor=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -150,6 +152,18 @@ def get_features_sigmas_labels(
         mu, sigma_sq = extract_features_head(
             backbone,
             head,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "scale":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        mu, sigma_sq = extract_features_scale(
+            backbone,
+            scale_predictor,
             list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
             batch_size,
             proc_func=proc_func,
@@ -230,9 +244,14 @@ def eval_reject_verification(
     distances_uncertainties=None,
     discriminator=None,
     classifier=None,
+    scale_predictor=None,
     save_fig_path=None,
     verbose=False,
 ):
+
+    print(f"Scale_predctor : {scale_predictor}")
+    # import sys
+    # sys.exit(0)
 
     if rejected_portions is None:
         rejected_portions = [
@@ -245,7 +264,8 @@ def eval_reject_verification(
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
         backbone, head, dataset_path, pairs_table_path,
-        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator, verbose=verbose,
+        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
+        discriminator=discriminator, scale_predictor=scale_predictor,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -372,7 +392,7 @@ if __name__ == "__main__":
         help="Strategy to get uncertainty (ex. head/GAN/classifier)",
         type=str,
         default="head",
-        choices=["head", "GAN", "classifier"],
+        choices=["head", "GAN", "classifier", "scale"],
     )
     parser.add_argument(
         "--rejected_portions",
@@ -427,7 +447,7 @@ if __name__ == "__main__":
         **utils.pop_element(model_args.backbone, "name")
     )
     backbone.load_state_dict(checkpoint["backbone"])
-    backbone = backbone.to(device).eval()
+    backbone = backbone.eval().to(device)
 
     head = None
     if args.uncertainty_strategy == "head" or (args.uncertainty_strategy == "classifier" and "head" in model_args):
@@ -435,7 +455,7 @@ if __name__ == "__main__":
             **utils.pop_element(model_args.head, "name")
         )
         head.load_state_dict(checkpoint["head"])
-        head = head.to(device).eval()
+        head = head.eval().to(device)
 
     discriminator = None
     if args.discriminator_path:
@@ -451,6 +471,15 @@ if __name__ == "__main__":
         )
         classifier.load_state_dict(checkpoint["pair_classifier"])
         classifier = classifier.eval().to(device)
+
+    scale_predictor = None
+    if args.uncertainty_strategy == "scale":
+        scale_predictor_name = model_args.scale_predictor.pop("name")
+        scale_predictor = mlib.scale_predictors[scale_predictor_name](
+            **model_args.scale_predictor,
+        )
+        scale_predictor.load_state_dict(checkpoint["scale_predictor"])
+        scale_predcitor = scale_predictor.eval().to(device)
 
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
@@ -473,6 +502,7 @@ if __name__ == "__main__":
         distances_uncertainties=distances_uncertainties,
         discriminator=discriminator,
         classifier=classifier,
+        scale_predictor=scale_predictor,
         save_fig_path=args.save_fig_path,
         verbose=args.verbose,
     )

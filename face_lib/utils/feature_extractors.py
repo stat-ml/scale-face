@@ -324,3 +324,44 @@ def extract_features_gan(
     print("Mu :", mu.shape, "Uncertainty :", uncertainties.shape)
 
     return mu, uncertainties
+
+
+def extract_features_scale(
+    backbone,
+    scale_predictor,
+    images,
+    batch_size,
+    proc_func=None,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+    num_images = len(images)
+    mu = []
+    uncertainty = []
+    start_time = time.time()
+    for start_idx in tqdm(range(0, num_images, batch_size)):
+        if verbose:
+            elapsed_time = time.strftime(
+                "%H:%M:%S", time.gmtime(time.time() - start_time)
+            )
+            sys.stdout.write(
+                "# of images: %d Current image: %d Elapsed time: %s \t\r"
+                % (num_images, start_idx, elapsed_time)
+            )
+        end_idx = min(num_images, start_idx + batch_size)
+        images_batch = images[start_idx:end_idx]
+
+        batch = proc_func(images_batch)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        output = backbone(batch)
+        output.update(scale_predictor(**output))
+        mu.append(np.array(output["feature"].detach().cpu()))
+        uncertainty.append(np.array(output["scale"].exp().detach().cpu()))
+
+    mu = np.concatenate(mu, axis=0)
+    uncertainty = np.concatenate(uncertainty, axis=0)
+
+    if verbose:
+        print("")
+    return mu, uncertainty
+

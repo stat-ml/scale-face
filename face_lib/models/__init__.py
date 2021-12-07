@@ -6,6 +6,7 @@ from .pair_classifiers import MLP, SmartCosine, Bilinear
 from .iresnet import iresnet18, iresnet34, iresnet50, iresnet100, iresnet50_normalized, iresnet50_spectral_normalized
 from .partial_fc import PartialFC
 from .style_gan import StyleGanDiscriminator
+from .scale_predictors import MLPHead
 from torch.nn import BCELoss, CrossEntropyLoss
 
 model_dict = {
@@ -40,4 +41,7 @@ pair_classifiers = {
     "bilinear": Bilinear
 }
 
+scale_predictors = {
+    "MLPHead": MLPHead,
+}
 
