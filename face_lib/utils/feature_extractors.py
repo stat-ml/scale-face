@@ -356,7 +356,7 @@ def extract_features_scale(
         output = backbone(batch)
         output.update(scale_predictor(**output))
         mu.append(np.array(output["feature"].detach().cpu()))
-        uncertainty.append(np.array(output["scale"].exp().detach().cpu()))
+        uncertainty.append(- np.array(output["scale"].detach().cpu()))
 
     mu = np.concatenate(mu, axis=0)
     uncertainty = np.concatenate(uncertainty, axis=0)
