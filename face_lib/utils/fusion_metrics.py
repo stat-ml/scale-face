@@ -106,9 +106,16 @@ def pair_uncertainty_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return sigma_sq_1.sum(axis=1) + sigma_sq_2.sum(axis=1)
 
 
+def pair_uncertainty_log_mul(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return sigma_sq_1.log().sum(axis=1) + sigma_sq_2.log().sum(axis=1)
+
+
 def pair_uncertainty_harmonic_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return harmonic_mean(sigma_sq_1, axis=1) + harmonic_mean(sigma_sq_2, axis=1)
 
+
+def pair_uncertainty_harmonic_mul(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return harmonic_mean(sigma_sq_1, axis=1) * harmonic_mean(sigma_sq_2, axis=1)
 
 def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return harmonic_mean(
