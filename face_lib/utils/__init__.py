@@ -10,6 +10,7 @@ from .visualize_plots import (
     visualize_ambiguity_dilemma_lfw,
     visualize_in_out_class_distribution,
 )
+from .plots import plot_uncertainty_distribution, plot_rejected_TAR_FAR, plot_TAR_FAR_different_methods
 from .dataset import Dataset, MXFaceDataset, DataLoaderX
 from .fusion import eval_fusion_ijb
 

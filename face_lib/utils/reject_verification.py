@@ -27,13 +27,14 @@ from face_lib.utils.fusion_metrics import (
     pair_uncertainty_sum,
     pair_uncertainty_harmonic_sum,
     pair_uncertainty_harmonic_mul,
-    pair_uncertainty_log_mul,
+    pair_uncertainty_mul,
     pair_uncertainty_concatenated_harmonic,
     pair_uncertainty_cosine_analytic,
     classifier_to_distance_wrapper,
     classifier_to_uncertainty_wrapper,
     split_wrapper,
 )
+import face_lib.utils.plots as plots
 import face_lib.utils.fusion_metrics as metrics
 
 name_to_distance_func = {
@@ -44,59 +45,12 @@ name_to_distance_func = {
 
 name_to_uncertainty_func = {
     "mean": pair_uncertainty_sum,
-    "mul": pair_uncertainty_log_mul,
+    "mul": pair_uncertainty_mul,
     "harmonic-sum": pair_uncertainty_harmonic_sum,
     "harmonic-mul": pair_uncertainty_harmonic_mul,
     "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
     "cosine-analytic": pair_uncertainty_cosine_analytic,
 }
-
-
-def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=None):
-    fig, ax = plt.subplots()
-    for FAR, TARs in table.items():
-        ax.plot(rejected_portions, TARs, label="TAR@FAR=" + str(FAR), marker=" ")
-    fig.legend()
-    ax.set_xlabel("Rejected portion")
-    ax.set_ylabel("TAR")
-    if title:
-        ax.set_title(title)
-    if save_fig_path:
-        fig.savefig(save_fig_path, dpi=400)
-    return fig
-
-
-def plot_TAR_FAR_different_methods(
-    results, rejected_portions, AUCs, title=None, save_figs_path=None
-):
-    plots_indices = {
-        FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
-    }
-    fig, axes = plt.subplots(
-        ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 8)
-    )
-    for (distance_name, uncertainty_name), table in results.items():
-        for FAR, TARs in table.items():
-            auc = AUCs[(distance_name, uncertainty_name)][FAR]
-            axes[plots_indices[FAR]].plot(
-                rejected_portions,
-                TARs,
-                label=distance_name
-                + "_"
-                + uncertainty_name
-                + "_AUC="
-                + str(round(auc, 5)),
-                marker=" ",
-            )
-            axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
-            axes[plots_indices[FAR]].set_xlabel("Rejected portion")
-            axes[plots_indices[FAR]].set_ylabel("TAR")
-            axes[plots_indices[FAR]].legend()
-    if title:
-        fig.suptitle(title)
-    if save_figs_path:
-        fig.savefig(save_figs_path, dpi=400)
-    return fig
 
 
 def get_features_sigmas_labels(
@@ -195,6 +149,7 @@ def get_rejected_tar_far(
     distance_func,
     pair_uncertainty_func,
     FARs,
+    uncertainty_ax=None,
 ):
     # If something's broken, uncomment the line below
 
@@ -231,6 +186,9 @@ def get_rejected_tar_far(
     #     for tar in TARs:
     #         print(round(tar, 5), end=" ")
     #     print()
+
+    plots.plot_uncertainty_distribution(
+        uncertainty_vec[sorted_indices], label_vec, ax=uncertainty_ax)
 
     return result_table
 
@@ -278,9 +236,16 @@ def eval_reject_verification(
     print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
     print("labels :", label_vec.shape, label_vec.dtype)
 
+    uncertainty_fig, uncertainty_axes = None, [None] * len(distances_uncertainties)
+    if save_fig_path is not None:
+        uncertainty_fig, uncertainty_axes = plt.subplots(
+            nrows=1, ncols=len(distances_uncertainties),
+            figsize=(9 * len(distances_uncertainties), 8))
+
     all_results = OrderedDict()
     device = next(backbone.parameters()).device
-    for distance_name, uncertainty_name in distances_uncertainties:
+
+    for (distance_name, uncertainty_name), uncertainty_ax in zip(distances_uncertainties, uncertainty_axes):
         print(f"=== {distance_name} {uncertainty_name} ===")
         if distance_name == "classifier":
             distance_func = classifier_to_distance_wrapper(
@@ -307,7 +272,11 @@ def eval_reject_verification(
             distance_func=distance_func,
             pair_uncertainty_func=uncertainty_func,
             FARs=FARs,
+            uncertainty_ax=uncertainty_ax,
         )
+
+        if save_fig_path is not None:
+            uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
 
         all_results[(distance_name, uncertainty_name)] = result_table
 
@@ -335,15 +304,18 @@ def eval_reject_verification(
                 os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
             )
             if save_fig_path:
-                plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
+                plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
-        plot_TAR_FAR_different_methods(
+        plots.plot_TAR_FAR_different_methods(
             all_results,
             rejected_portions,
             res_AUCs,
             title=pairs_table_path.split("/")[-1][:-4],
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
+
+        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainty.jpg"), dpi=400)
+
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
 
@@ -359,7 +331,7 @@ if __name__ == "__main__":
         "--discriminator_path",
         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
         type=str,
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--dataset_path",
@@ -377,13 +349,13 @@ if __name__ == "__main__":
         "--batch_size",
         help="Number of images per mini batch",
         type=int,
-        default=64
+        default=64,
     )
     parser.add_argument(
         "--distaces_batch_size",
         help="Number of embeddings in batch",
         type=int,
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--config_path",
@@ -434,7 +406,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         help="Dump verbose information",
-        action="store_true"
+        action="store_true",
     )
 
     args = parser.parse_args()
