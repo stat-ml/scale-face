@@ -140,65 +140,13 @@ def get_features_sigmas_labels(
     return mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec
 
 
-def get_rejected_tar_far(
-    mu_1,
-    mu_2,
-    sigma_sq_1,
-    sigma_sq_2,
-    label_vec,
-    distance_func,
-    pair_uncertainty_func,
-    FARs,
-    uncertainty_ax=None,
-):
-    # If something's broken, uncomment the line below
-
-    # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-    score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-    uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-
-    sorted_indices = uncertainty_vec.argsort()
-    score_vec = score_vec[sorted_indices]
-    label_vec = label_vec[sorted_indices]
-    assert score_vec.shape == label_vec.shape
-
-    result_table = defaultdict(list)
-    result_fars = defaultdict(list)
-    for rejected_portion in tqdm(rejected_portions):
-        cur_len = int(score_vec.shape[0] * (1 - rejected_portion))
-        tars, fars, thresholds = metrics.ROC(
-            score_vec[:cur_len], label_vec[:cur_len], FARs=FARs
-        )
-        for far, tar in zip(FARs, tars):
-            result_table[far].append(tar)
-        for wanted_far, real_far in zip(FARs, fars):
-            result_fars[wanted_far].append(real_far)
-
-    # print("Result fars :")
-    # for wanted_far, resulted_fars in result_fars.items():
-    #     print(f"\tWanted FAR : {wanted_far} resulted fars : ", end="")
-    #     for far in resulted_fars:
-    #         print(round(far, 5), end=" ")
-    #     print()
-    # print("TAR@FARs :")
-    # for far, TARs in result_table.items():
-    #     print(f"\tFAR : {far} TARS : ", end="")
-    #     for tar in TARs:
-    #         print(round(tar, 5), end=" ")
-    #     print()
-
-    plots.plot_uncertainty_distribution(
-        uncertainty_vec[sorted_indices], label_vec, ax=uncertainty_ax)
-
-    return result_table
-
-
 def eval_reject_verification(
     backbone,
     head,
     dataset_path,
     pairs_table_path,
     uncertainty_strategy="head",
+    uncertainty_mode="uncertainty",
     batch_size=64,
     distaces_batch_size=None,
     rejected_portions=None,
@@ -271,6 +219,7 @@ def eval_reject_verification(
             label_vec,
             distance_func=distance_func,
             pair_uncertainty_func=uncertainty_func,
+            uncertainty_mode=uncertainty_mode,
             FARs=FARs,
             uncertainty_ax=uncertainty_ax,
         )
@@ -317,6 +266,68 @@ def eval_reject_verification(
         uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainty.jpg"), dpi=400)
 
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
+
+
+def get_rejected_tar_far(
+    mu_1,
+    mu_2,
+    sigma_sq_1,
+    sigma_sq_2,
+    label_vec,
+    distance_func,
+    pair_uncertainty_func,
+    FARs,
+    uncertainty_mode="uncertainty",
+    uncertainty_ax=None,
+):
+    # If something's broken, uncomment the line below
+
+    # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+
+    sorted_indices = uncertainty_vec.argsort()
+    score_vec = score_vec[sorted_indices]
+    label_vec = label_vec[sorted_indices]
+    uncertainty_vec = uncertainty_vec[sorted_indices]
+    assert score_vec.shape == label_vec.shape
+
+    if uncertainty_mode == "uncertainty":
+        pass
+    elif uncertainty_mode == "confidence":
+        score_vec, label_vec, uncertainty_vec = score_vec[::-1], label_vec[::-1], uncertainty_vec[::-1]
+    else:
+        raise RuntimeError("Don't know this type uncertainty mode")
+
+    result_table = defaultdict(list)
+    result_fars = defaultdict(list)
+    for rejected_portion in tqdm(rejected_portions):
+        cur_len = int(score_vec.shape[0] * (1 - rejected_portion))
+        tars, fars, thresholds = metrics.ROC(
+            score_vec[:cur_len], label_vec[:cur_len], FARs=FARs
+        )
+        for far, tar in zip(FARs, tars):
+            result_table[far].append(tar)
+        for wanted_far, real_far in zip(FARs, fars):
+            result_fars[wanted_far].append(real_far)
+
+    # print("Result fars :")
+    # for wanted_far, resulted_fars in result_fars.items():
+    #     print(f"\tWanted FAR : {wanted_far} resulted fars : ", end="")
+    #     for far in resulted_fars:
+    #         print(round(far, 5), end=" ")
+    #     print()
+    # print("TAR@FARs :")
+    # for far, TARs in result_table.items():
+    #     print(f"\tFAR : {far} TARS : ", end="")
+    #     for tar in TARs:
+    #         print(round(tar, 5), end=" ")
+    #     print()
+
+    plots.plot_uncertainty_distribution(
+        uncertainty_vec, label_vec, ax=uncertainty_ax)
+
+    return result_table
 
 
 if __name__ == "__main__":
@@ -369,6 +380,13 @@ if __name__ == "__main__":
         type=str,
         default="head",
         choices=["head", "GAN", "classifier", "scale"],
+    )
+    parser.add_argument(
+        "--uncertainty_mode",
+        help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
+        type=str,
+        default="uncertainty",
+        choices=["uncertainty", "confidence"],
     )
     parser.add_argument(
         "--rejected_portions",
@@ -471,6 +489,7 @@ if __name__ == "__main__":
         args.dataset_path,
         args.pairs_table_path,
         uncertainty_strategy=args.uncertainty_strategy,
+        uncertainty_mode=args.uncertainty_mode,
         batch_size=args.batch_size,
         distaces_batch_size=args.distaces_batch_size,
         rejected_portions=rejected_portions,

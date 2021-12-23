@@ -108,6 +108,7 @@ python3 ./face_lib/utils/reject_verification.py \
   --config_path=./configs/models/scale/sigm_mul.yaml \
   --batch_size=64 \
   --uncertainty_strategy=scale \
+  --uncertainty_mode=confidence \
   --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
   --rejected_portions $(seq 0 0.002 0.5) \
   --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
