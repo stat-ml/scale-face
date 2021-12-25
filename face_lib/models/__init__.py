@@ -1,11 +1,12 @@
 from .base import FaceModule
-from .losses import MLSLoss, AngleLoss, ArcFace, CosFace, MLS, ProbLoss
+from .losses import MLSLoss, AngleLoss, ArcFace, CosFace, MLS, ProbLoss, ArcFaceTrainable
 from .spherenet import SphereNet20
 from .heads import PFEHead, PFEHeadAdjustable, ProbHead, PFEHeadAdjustableSpectralSimple
 from .pair_classifiers import MLP, SmartCosine, Bilinear
 from .iresnet import iresnet18, iresnet34, iresnet50, iresnet100, iresnet50_normalized, iresnet50_spectral_normalized
 from .partial_fc import PartialFC
 from .style_gan import StyleGanDiscriminator
+from .scale_predictors import MLPHead
 from torch.nn import BCELoss, CrossEntropyLoss
 
 model_dict = {
@@ -20,6 +21,7 @@ criterions_dict = {
     "mlsloss": MLSLoss,
     "angle_loss": AngleLoss,
     "arcface": ArcFace,
+    "arcface_trainable": ArcFaceTrainable,
     "cosface": CosFace,
     "probloss": ProbLoss,
     "bce_loss": BCELoss,
@@ -39,4 +41,7 @@ pair_classifiers = {
     "bilinear": Bilinear
 }
 
+scale_predictors = {
+    "MLPHead": MLPHead,
+}
 

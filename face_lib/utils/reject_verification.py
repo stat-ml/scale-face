@@ -18,6 +18,7 @@ from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.feature_extractors import (
     extract_features_head,
     extract_features_gan,
+    extract_features_scale,
 )
 from face_lib.utils.fusion_metrics import (
     pair_euc_score,
@@ -25,12 +26,15 @@ from face_lib.utils.fusion_metrics import (
     pair_MLS_score,
     pair_uncertainty_sum,
     pair_uncertainty_harmonic_sum,
+    pair_uncertainty_harmonic_mul,
+    pair_uncertainty_mul,
     pair_uncertainty_concatenated_harmonic,
     pair_uncertainty_cosine_analytic,
     classifier_to_distance_wrapper,
     classifier_to_uncertainty_wrapper,
     split_wrapper,
 )
+import face_lib.utils.plots as plots
 import face_lib.utils.fusion_metrics as metrics
 
 name_to_distance_func = {
@@ -41,57 +45,12 @@ name_to_distance_func = {
 
 name_to_uncertainty_func = {
     "mean": pair_uncertainty_sum,
+    "mul": pair_uncertainty_mul,
     "harmonic-sum": pair_uncertainty_harmonic_sum,
+    "harmonic-mul": pair_uncertainty_harmonic_mul,
     "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
     "cosine-analytic": pair_uncertainty_cosine_analytic,
 }
-
-
-def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=None):
-    fig, ax = plt.subplots()
-    for FAR, TARs in table.items():
-        ax.plot(rejected_portions, TARs, label="TAR@FAR=" + str(FAR), marker=" ")
-    fig.legend()
-    ax.set_xlabel("Rejected portion")
-    ax.set_ylabel("TAR")
-    if title:
-        ax.set_title(title)
-    if save_fig_path:
-        fig.savefig(save_fig_path, dpi=400)
-    return fig
-
-
-def plot_TAR_FAR_different_methods(
-    results, rejected_portions, AUCs, title=None, save_figs_path=None
-):
-    plots_indices = {
-        FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
-    }
-    fig, axes = plt.subplots(
-        ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 8)
-    )
-    for (distance_name, uncertainty_name), table in results.items():
-        for FAR, TARs in table.items():
-            auc = AUCs[(distance_name, uncertainty_name)][FAR]
-            axes[plots_indices[FAR]].plot(
-                rejected_portions,
-                TARs,
-                label=distance_name
-                + "_"
-                + uncertainty_name
-                + "_AUC="
-                + str(round(auc, 5)),
-                marker=" ",
-            )
-            axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
-            axes[plots_indices[FAR]].set_xlabel("Rejected portion")
-            axes[plots_indices[FAR]].set_ylabel("TAR")
-            axes[plots_indices[FAR]].legend()
-    if title:
-        fig.suptitle(title)
-    if save_figs_path:
-        fig.savefig(save_figs_path, dpi=400)
-    return fig
 
 
 def get_features_sigmas_labels(
@@ -102,6 +61,7 @@ def get_features_sigmas_labels(
     uncertainty_strategy="head",
     batch_size=64,
     discriminator=None,
+    scale_predictor=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -156,6 +116,18 @@ def get_features_sigmas_labels(
             verbose=verbose,
             device=device,
         )
+    elif uncertainty_strategy == "scale":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        mu, sigma_sq = extract_features_scale(
+            backbone,
+            scale_predictor,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
     else:
         raise NotImplementedError("Don't know this type of uncertainty strategy")
 
@@ -168,61 +140,13 @@ def get_features_sigmas_labels(
     return mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec
 
 
-def get_rejected_tar_far(
-    mu_1,
-    mu_2,
-    sigma_sq_1,
-    sigma_sq_2,
-    label_vec,
-    distance_func,
-    pair_uncertainty_func,
-    FARs,
-):
-    # If something's broken, uncomment the line below
-
-    # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-    score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-    uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
-
-    sorted_indices = uncertainty_vec.argsort()
-    score_vec = score_vec[sorted_indices]
-    label_vec = label_vec[sorted_indices]
-    assert score_vec.shape == label_vec.shape
-
-    result_table = defaultdict(list)
-    result_fars = defaultdict(list)
-    for rejected_portion in tqdm(rejected_portions):
-        cur_len = int(score_vec.shape[0] * (1 - rejected_portion))
-        tars, fars, thresholds = metrics.ROC(
-            score_vec[:cur_len], label_vec[:cur_len], FARs=FARs
-        )
-        for far, tar in zip(FARs, tars):
-            result_table[far].append(tar)
-        for wanted_far, real_far in zip(FARs, fars):
-            result_fars[wanted_far].append(real_far)
-
-    # print("Result fars :")
-    # for wanted_far, resulted_fars in result_fars.items():
-    #     print(f"\tWanted FAR : {wanted_far} resulted fars : ", end="")
-    #     for far in resulted_fars:
-    #         print(round(far, 5), end=" ")
-    #     print()
-    # print("TAR@FARs :")
-    # for far, TARs in result_table.items():
-    #     print(f"\tFAR : {far} TARS : ", end="")
-    #     for tar in TARs:
-    #         print(round(tar, 5), end=" ")
-    #     print()
-
-    return result_table
-
-
 def eval_reject_verification(
     backbone,
     head,
     dataset_path,
     pairs_table_path,
     uncertainty_strategy="head",
+    uncertainty_mode="uncertainty",
     batch_size=64,
     distaces_batch_size=None,
     rejected_portions=None,
@@ -230,9 +154,14 @@ def eval_reject_verification(
     distances_uncertainties=None,
     discriminator=None,
     classifier=None,
+    scale_predictor=None,
     save_fig_path=None,
     verbose=False,
 ):
+
+    print(f"Scale_predctor : {scale_predictor}")
+    # import sys
+    # sys.exit(0)
 
     if rejected_portions is None:
         rejected_portions = [
@@ -245,7 +174,8 @@ def eval_reject_verification(
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
         backbone, head, dataset_path, pairs_table_path,
-        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, discriminator=discriminator, verbose=verbose,
+        uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
+        discriminator=discriminator, scale_predictor=scale_predictor,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -254,9 +184,16 @@ def eval_reject_verification(
     print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
     print("labels :", label_vec.shape, label_vec.dtype)
 
+    uncertainty_fig, uncertainty_axes = None, [None] * len(distances_uncertainties)
+    if save_fig_path is not None:
+        uncertainty_fig, uncertainty_axes = plt.subplots(
+            nrows=1, ncols=len(distances_uncertainties),
+            figsize=(9 * len(distances_uncertainties), 8))
+
     all_results = OrderedDict()
     device = next(backbone.parameters()).device
-    for distance_name, uncertainty_name in distances_uncertainties:
+
+    for (distance_name, uncertainty_name), uncertainty_ax in zip(distances_uncertainties, uncertainty_axes):
         print(f"=== {distance_name} {uncertainty_name} ===")
         if distance_name == "classifier":
             distance_func = classifier_to_distance_wrapper(
@@ -282,8 +219,13 @@ def eval_reject_verification(
             label_vec,
             distance_func=distance_func,
             pair_uncertainty_func=uncertainty_func,
+            uncertainty_mode=uncertainty_mode,
             FARs=FARs,
+            uncertainty_ax=uncertainty_ax,
         )
+
+        if save_fig_path is not None:
+            uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
 
         all_results[(distance_name, uncertainty_name)] = result_table
 
@@ -311,16 +253,81 @@ def eval_reject_verification(
                 os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
             )
             if save_fig_path:
-                plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
+                plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
-        plot_TAR_FAR_different_methods(
+        plots.plot_TAR_FAR_different_methods(
             all_results,
             rejected_portions,
             res_AUCs,
             title=pairs_table_path.split("/")[-1][:-4],
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
+
+        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainty.jpg"), dpi=400)
+
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
+
+
+def get_rejected_tar_far(
+    mu_1,
+    mu_2,
+    sigma_sq_1,
+    sigma_sq_2,
+    label_vec,
+    distance_func,
+    pair_uncertainty_func,
+    FARs,
+    uncertainty_mode="uncertainty",
+    uncertainty_ax=None,
+):
+    # If something's broken, uncomment the line below
+
+    # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+
+    sorted_indices = uncertainty_vec.argsort()
+    score_vec = score_vec[sorted_indices]
+    label_vec = label_vec[sorted_indices]
+    uncertainty_vec = uncertainty_vec[sorted_indices]
+    assert score_vec.shape == label_vec.shape
+
+    if uncertainty_mode == "uncertainty":
+        pass
+    elif uncertainty_mode == "confidence":
+        score_vec, label_vec, uncertainty_vec = score_vec[::-1], label_vec[::-1], uncertainty_vec[::-1]
+    else:
+        raise RuntimeError("Don't know this type uncertainty mode")
+
+    result_table = defaultdict(list)
+    result_fars = defaultdict(list)
+    for rejected_portion in tqdm(rejected_portions):
+        cur_len = int(score_vec.shape[0] * (1 - rejected_portion))
+        tars, fars, thresholds = metrics.ROC(
+            score_vec[:cur_len], label_vec[:cur_len], FARs=FARs
+        )
+        for far, tar in zip(FARs, tars):
+            result_table[far].append(tar)
+        for wanted_far, real_far in zip(FARs, fars):
+            result_fars[wanted_far].append(real_far)
+
+    # print("Result fars :")
+    # for wanted_far, resulted_fars in result_fars.items():
+    #     print(f"\tWanted FAR : {wanted_far} resulted fars : ", end="")
+    #     for far in resulted_fars:
+    #         print(round(far, 5), end=" ")
+    #     print()
+    # print("TAR@FARs :")
+    # for far, TARs in result_table.items():
+    #     print(f"\tFAR : {far} TARS : ", end="")
+    #     for tar in TARs:
+    #         print(round(tar, 5), end=" ")
+    #     print()
+
+    plots.plot_uncertainty_distribution(
+        uncertainty_vec, label_vec, ax=uncertainty_ax)
+
+    return result_table
 
 
 if __name__ == "__main__":
@@ -335,7 +342,7 @@ if __name__ == "__main__":
         "--discriminator_path",
         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
         type=str,
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--dataset_path",
@@ -353,13 +360,13 @@ if __name__ == "__main__":
         "--batch_size",
         help="Number of images per mini batch",
         type=int,
-        default=64
+        default=64,
     )
     parser.add_argument(
         "--distaces_batch_size",
         help="Number of embeddings in batch",
         type=int,
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--config_path",
@@ -372,7 +379,14 @@ if __name__ == "__main__":
         help="Strategy to get uncertainty (ex. head/GAN/classifier)",
         type=str,
         default="head",
-        choices=["head", "GAN", "classifier"],
+        choices=["head", "GAN", "classifier", "scale"],
+    )
+    parser.add_argument(
+        "--uncertainty_mode",
+        help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
+        type=str,
+        default="uncertainty",
+        choices=["uncertainty", "confidence"],
     )
     parser.add_argument(
         "--rejected_portions",
@@ -410,7 +424,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         help="Dump verbose information",
-        action="store_true"
+        action="store_true",
     )
 
     args = parser.parse_args()
@@ -427,7 +441,7 @@ if __name__ == "__main__":
         **utils.pop_element(model_args.backbone, "name")
     )
     backbone.load_state_dict(checkpoint["backbone"])
-    backbone = backbone.to(device).eval()
+    backbone = backbone.eval().to(device)
 
     head = None
     if args.uncertainty_strategy == "head" or (args.uncertainty_strategy == "classifier" and "head" in model_args):
@@ -435,7 +449,7 @@ if __name__ == "__main__":
             **utils.pop_element(model_args.head, "name")
         )
         head.load_state_dict(checkpoint["head"])
-        head = head.to(device).eval()
+        head = head.eval().to(device)
 
     discriminator = None
     if args.discriminator_path:
@@ -452,6 +466,15 @@ if __name__ == "__main__":
         classifier.load_state_dict(checkpoint["pair_classifier"])
         classifier = classifier.eval().to(device)
 
+    scale_predictor = None
+    if args.uncertainty_strategy == "scale":
+        scale_predictor_name = model_args.scale_predictor.pop("name")
+        scale_predictor = mlib.scale_predictors[scale_predictor_name](
+            **model_args.scale_predictor,
+        )
+        scale_predictor.load_state_dict(checkpoint["scale_predictor"])
+        scale_predcitor = scale_predictor.eval().to(device)
+
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
     )
@@ -466,6 +489,7 @@ if __name__ == "__main__":
         args.dataset_path,
         args.pairs_table_path,
         uncertainty_strategy=args.uncertainty_strategy,
+        uncertainty_mode=args.uncertainty_mode,
         batch_size=args.batch_size,
         distaces_batch_size=args.distaces_batch_size,
         rejected_portions=rejected_portions,
@@ -473,6 +497,7 @@ if __name__ == "__main__":
         distances_uncertainties=distances_uncertainties,
         discriminator=discriminator,
         classifier=classifier,
+        scale_predictor=scale_predictor,
         save_fig_path=args.save_fig_path,
         verbose=args.verbose,
     )
