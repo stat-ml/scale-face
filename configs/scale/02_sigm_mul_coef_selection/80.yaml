@@ -1,4 +1,4 @@
-title: "iresnet_ms1m_pair_classifier_smart_cosine"
+title: "scale_sigm_mul_coef_selection"
 backbone:
     name: "iresnet50_normalized"
     learnable: false
@@ -7,5 +7,6 @@ scale_predictor:
     name: "MLPHead"
     num_feats: [25088, 512, 1]
     batch_norm: true
-    exponent: "sigm_sum_mul"
+    exponent: "sigm_mul"
+    coefficient: 80.
     fp16: false
