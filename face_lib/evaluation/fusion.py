@@ -1,43 +1,29 @@
 import sys
-import argparse
-from collections import defaultdict
 import numpy as np
 import pandas as pd
 import torch
+from collections import defaultdict
 from pathlib import Path
 
 path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
 
-#from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
-from face_lib.datasets import IJBDataset
+from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.imageprocessing import preprocess_tta
-from face_lib.utils.feature_extractors import (
+from face_lib.evaluation.feature_extractors import (
     extract_features_head,
     extract_features_tta,
     extract_features_fourier,
     extract_features_grad,
     extract_features_ssim,
 )
-from face_lib.utils.fusion_metrics import (
-    pair_euc_score,
-    pair_cosine_score,
-    pair_MLS_score,
-    l2_normalize,
-    aggregate_PFE,
-    aggregate_min,
-    aggregate_softmax,
-)
 
-name_to_distance_func = {
-    "euc": pair_euc_score,
-    "cosine": pair_cosine_score,
-    "MLS": pair_MLS_score,
-}
-
+from face_lib.evaluation import name_to_distance_func, l2_normalize
+from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
+from face_lib.evaluation.argument_parser import parse_args_fusion
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -244,72 +230,7 @@ def dump_fusion_ijb(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-A dataset directory",
-        type=str,
-        default="data/ijba_mtcnncaffe_aligned",
-    )
-    parser.add_argument(
-        "--protocol_path",
-        help="The path to the IJB-A protocol directory",
-        type=str,
-        default="proto/IJB-A",
-    )
-    parser.add_argument(
-        "--protocol", help="The dataset to test", type=str, default="ijbc"
-    )
-    parser.add_argument(
-        "--config_path", help="The paths to config .yaml file", type=str, default=None
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head or TTA)",
-        type=str,
-        default="head",
-    )
-    parser.add_argument(
-        "--fusion_distance_methods",
-        help="Pairs of distance metric and fusion distance to evaluate with, separated with '_' (ex. mean_cosine)",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--FARs",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--device_id",
-        help="Device on which the algorithm will be ran",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="increase output verbosity",
-    )
-    parser.add_argument(
-        "--save_table_path",
-        help="Path where the resulted table will be dumped",
-        type=str,
-        default="/gpfs/gpfs0/r.kail/tables/result.pkl",
-    )
-    args = parser.parse_args()
+    args = parse_args_fusion()
 
     device = torch.device("cuda:" + str(args.device_id))
 

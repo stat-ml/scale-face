@@ -102,7 +102,6 @@ def extract_features_tta(
 
 def extract_features_ssim(
     backbone,
-    head,
     images,
     batch_size,
     proc_func=None,
@@ -152,7 +151,6 @@ def extract_features_ssim(
 
 def extract_features_grad(
     backbone,
-    head,
     images,
     batch_size,
     proc_func=None,
@@ -201,7 +199,6 @@ def extract_features_grad(
 
 def extract_features_fourier(
     backbone,
-    head,
     images,
     batch_size,
     proc_func=None,

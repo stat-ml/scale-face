@@ -3,7 +3,7 @@ import numpy as np
 
 from collections import namedtuple
 
-import face_lib.utils.fusion_metrics as metrics
+import face_lib.utils.metrics as metrics
 
 VerificationFold = namedtuple(
     "VerificationFold",
