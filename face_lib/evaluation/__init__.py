@@ -9,12 +9,16 @@ from .distance_uncertainty_funcs import (
     pair_uncertainty_harmonic_mul,
     pair_uncertainty_concatenated_harmonic,
     pair_uncertainty_cosine_analytic,
+    pair_scale_mul_cosine_score,
+    pair_scale_harmonic_cosine_score,
 )
 
 name_to_distance_func = {
     "euc": pair_euc_score,
     "cosine": pair_cosine_score,
     "MLS": pair_MLS_score,
+    "scale-mul-cosine": pair_scale_mul_cosine_score,
+    "scale-harmonic-cosine": pair_scale_harmonic_cosine_score
 }
 
 name_to_uncertainty_func = {

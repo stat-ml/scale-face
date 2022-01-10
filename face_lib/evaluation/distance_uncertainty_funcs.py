@@ -45,6 +45,22 @@ def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
     return -dist
 
 
+def pair_scale_mul_cosine_score(x1, x2, scale1=None, scale2=None):
+    x1, x2 = np.array(x1), np.array(x2)
+    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2
+    return dist
+
+
+def pair_scale_harmonic_cosine_score(x1, x2, scale1=None, scale2=None):
+    x1, x2 = np.array(x1), np.array(x2)
+    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
 def pair_uncertainty_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return sigma_sq_1.sum(axis=1) + sigma_sq_2.sum(axis=1)
 
