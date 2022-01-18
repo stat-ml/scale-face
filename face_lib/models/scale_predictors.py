@@ -4,10 +4,11 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class MLPHead(nn.Module):
-    def __init__(self, num_feats=(512, 1), batch_norm=True, exponent="exp", fp16=False, coefficient=64., **kwargs):
+    def __init__(self, num_feats=(512, 1), batch_norm=True, exponent=True, fp16=False, coefficient=64., **kwargs):
         super(MLPHead, self).__init__()
         assert len(num_feats) >= 2
 
@@ -47,6 +48,8 @@ class MLPHead(nn.Module):
                 x = self.coefficient + torch.sigmoid(x)
             if self.exponent == "sigm_sum_mul":
                 x = self.coefficient + self.coefficient * torch.sigmoid(x)
+            if self.exponent == "relu":
+                x = self.coefficient * F.relu(x)
             if self.exponent == "lin":
                 x = x
         return {"scale": x}
