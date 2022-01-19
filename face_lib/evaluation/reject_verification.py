@@ -1,56 +1,33 @@
 import os
 import sys
-import argparse
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 from path import Path
 from tqdm import tqdm
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
-import matplotlib.pyplot as plt
 
 path = str(Path(__file__).parent.parent.parent.abspath())
 sys.path.insert(0, path)
 
+import face_lib.utils.metrics as metrics
+import face_lib.evaluation.plots as plots
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.utils.feature_extractors import (
+from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
+from face_lib.evaluation.argument_parser import parse_args_reject_verification
+from face_lib.evaluation.feature_extractors import (
     extract_features_head,
     extract_features_gan,
     extract_features_scale,
 )
-from face_lib.utils.fusion_metrics import (
-    pair_euc_score,
-    pair_cosine_score,
-    pair_MLS_score,
-    pair_uncertainty_sum,
-    pair_uncertainty_harmonic_sum,
-    pair_uncertainty_harmonic_mul,
-    pair_uncertainty_mul,
-    pair_uncertainty_concatenated_harmonic,
-    pair_uncertainty_cosine_analytic,
+from face_lib.evaluation.wrappers import (
     classifier_to_distance_wrapper,
     classifier_to_uncertainty_wrapper,
     split_wrapper,
 )
-import face_lib.utils.plots as plots
-import face_lib.utils.fusion_metrics as metrics
-
-name_to_distance_func = {
-    "euc": pair_euc_score,
-    "cosine": pair_cosine_score,
-    "MLS": pair_MLS_score,
-}
-
-name_to_uncertainty_func = {
-    "mean": pair_uncertainty_sum,
-    "mul": pair_uncertainty_mul,
-    "harmonic-sum": pair_uncertainty_harmonic_sum,
-    "harmonic-mul": pair_uncertainty_harmonic_mul,
-    "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
-    "cosine-analytic": pair_uncertainty_cosine_analytic,
-}
 
 
 def get_features_sigmas_labels(
@@ -158,10 +135,6 @@ def eval_reject_verification(
     save_fig_path=None,
     verbose=False,
 ):
-
-    print(f"Scale_predctor : {scale_predictor}")
-    # import sys
-    # sys.exit(0)
 
     if rejected_portions is None:
         rejected_portions = [
@@ -331,103 +304,8 @@ def get_rejected_tar_far(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--discriminator_path",
-        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-C dataset directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--pairs_table_path",
-        help="Path to csv file with pairs names",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "--distaces_batch_size",
-        help="Number of embeddings in batch",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head/GAN/classifier)",
-        type=str,
-        default="head",
-        choices=["head", "GAN", "classifier", "scale"],
-    )
-    parser.add_argument(
-        "--uncertainty_mode",
-        help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
-        type=str,
-        default="uncertainty",
-        choices=["uncertainty", "confidence"],
-    )
-    parser.add_argument(
-        "--rejected_portions",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--FARs",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--distance_uncertainty_metrics",
-        help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--figure_path",
-        help="The figure will be saved to this path",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--device_id",
-        help="Gpu id on which the algorithm will be launched",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--save_fig_path",
-        help="Path to save figure to",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--verbose",
-        help="Dump verbose information",
-        action="store_true",
-    )
+    args = parse_args_reject_verification()
 
-    args = parser.parse_args()
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
         raise RuntimeError("Directory exists")
     else:

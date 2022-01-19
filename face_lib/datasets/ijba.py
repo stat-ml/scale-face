@@ -22,7 +22,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
 import os
 import numpy as np
 
@@ -35,7 +34,7 @@ from collections import namedtuple
 # path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
 # print("\n\npath : ", path)
 # sys.path.insert(0, path)
-import face_lib.utils.fusion_metrics as metrics
+import face_lib.utils.metrics as metrics
 
 VerificationFold = namedtuple(
     "VerificationFold",
