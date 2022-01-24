@@ -1,0 +1,5 @@
+title: "config to infer how embedding norm behaves as an uncertainty measure"
+backbone:
+    name: "iresnet50"
+    learnable: false
+

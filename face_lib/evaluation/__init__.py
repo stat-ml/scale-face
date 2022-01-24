@@ -4,10 +4,12 @@ from .distance_uncertainty_funcs import (
     pair_cosine_score,
     pair_MLS_score,
     pair_uncertainty_sum,
+    pair_uncertainty_squared_sum,
     pair_uncertainty_mul,
     pair_uncertainty_harmonic_sum,
     pair_uncertainty_harmonic_mul,
     pair_uncertainty_concatenated_harmonic,
+    pair_uncertainty_squared_harmonic,
     pair_uncertainty_cosine_analytic,
     pair_scale_mul_cosine_score,
     pair_scale_harmonic_cosine_score,
@@ -27,9 +29,11 @@ name_to_distance_func = {
 
 name_to_uncertainty_func = {
     "mean": pair_uncertainty_sum,
+    "squared-sum": pair_uncertainty_squared_sum,
     "mul": pair_uncertainty_mul,
     "harmonic-sum": pair_uncertainty_harmonic_sum,
     "harmonic-mul": pair_uncertainty_harmonic_mul,
     "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
+    "squared-harmonic": pair_uncertainty_squared_harmonic,
     "cosine-analytic": pair_uncertainty_cosine_analytic,
 }

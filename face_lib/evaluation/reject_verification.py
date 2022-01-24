@@ -22,6 +22,7 @@ from face_lib.evaluation.feature_extractors import (
     extract_features_head,
     extract_features_gan,
     extract_features_scale,
+    extract_features_emb_norm,
 )
 from face_lib.evaluation.wrappers import (
     classifier_to_distance_wrapper,
@@ -105,6 +106,17 @@ def get_features_sigmas_labels(
             verbose=verbose,
             device=device,
         )
+    elif uncertainty_strategy == "emb_norm":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        mu, sigma_sq = extract_features_emb_norm(
+            backbone,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
     else:
         raise NotImplementedError("Don't know this type of uncertainty strategy")
 
@@ -137,13 +149,9 @@ def eval_reject_verification(
 ):
 
     if rejected_portions is None:
-        rejected_portions = [
-            0.0,
-        ]
+        rejected_portions = [0.0,]
     if FARs is None:
-        FARs = [
-            0.0,
-        ]
+        FARs = [0.0,]
 
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
         backbone, head, dataset_path, pairs_table_path,

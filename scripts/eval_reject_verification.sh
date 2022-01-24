@@ -99,17 +99,32 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-# Scale
-python3 ./face_lib/evaluation/reject_verification.py \
-  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
-  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000_prob_0.5.csv \
-  --config_path=./configs/scale/sigm_mul.yaml \
-  --batch_size=64 \
-  --uncertainty_strategy=scale \
-  --uncertainty_mode=confidence \
-  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
-  --rejected_portions $(seq 0 0.002 0.5) \
-  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
-  --device_id=0 \
-  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+## Scale
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000_prob_0.5.csv \
+#  --config_path=./configs/scale/sigm_mul.yaml \
+#  --batch_size=64 \
+#  --uncertainty_strategy=scale \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
+#  --device_id=0 \
+#  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+
+## L2 norm of vector
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/arcface/backbones/classic_packed.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/models/arcface_emb_norm.yaml \
+#  --batch_size=32 \
+#  --uncertainty_strategy=emb_norm \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
+#  --device_id=0 \
+#  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
