@@ -7,6 +7,5 @@ scale_predictor:
     name: "MLPHead"
     num_feats: [25088, 512, 1]
     batch_norm: true
-    exponent: "sigm_mul"
-    coefficient: 64.
+    activation: "exp"
     fp16: false

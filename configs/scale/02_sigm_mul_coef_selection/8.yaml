@@ -8,5 +8,5 @@ scale_predictor:
     num_feats: [25088, 512, 1]
     batch_norm: true
     exponent: "sigm_mul"
-    coefficient: 8.
+    activation: 8.
     fp16: false
