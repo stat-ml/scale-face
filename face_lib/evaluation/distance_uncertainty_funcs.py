@@ -81,6 +81,10 @@ def pair_uncertainty_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return sigma_sq_1.sum(axis=1) + sigma_sq_2.sum(axis=1)
 
 
+def pair_uncertainty_squared_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return sigma_sq_1.sum(axis=1) ** 2 + sigma_sq_2.sum(axis=1) ** 2
+
+
 def pair_uncertainty_mul(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return sigma_sq_1.prod(axis=1) * sigma_sq_2.prod(axis=1)
 
@@ -91,6 +95,7 @@ def pair_uncertainty_harmonic_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
 
 def pair_uncertainty_harmonic_mul(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return harmonic_mean(sigma_sq_1, axis=1) * harmonic_mean(sigma_sq_2, axis=1)
+
 
 def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return harmonic_mean(
@@ -103,6 +108,14 @@ def pair_uncertainty_concatenated_harmonic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
         ),
         axis=1,
     )
+
+
+def pair_uncertainty_squared_harmonic(mu_1, mu_2, uncertainty_1, uncertainty_2):
+    return harmonic_mean(
+        np.concatenate(
+            (uncertainty_1 ** 2, uncertainty_2 ** 2,),
+            axis=1,),
+        axis=1)
 
 
 def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
