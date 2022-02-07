@@ -13,6 +13,7 @@ model_dict = {
     "spherenet20": SphereNet20,
     "partial_fc": PartialFC,
     "iresnet50": iresnet50,
+    "iresnet100": iresnet100,
     "iresnet50_normalized": iresnet50_normalized,
     "iresnet50_spectral_normalized": iresnet50_spectral_normalized,
 }

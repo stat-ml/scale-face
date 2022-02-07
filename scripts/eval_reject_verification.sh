@@ -128,3 +128,18 @@
 #  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+
+## Evaluate MagFace
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/packed_magface.pt \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/models/magface.yaml \
+#  --batch_size=32 \
+#  --uncertainty_strategy=magface \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
+#  --device_id=0 \
+#  --save_fig_path=/beegfs/home/r.kail/faces/figures/test

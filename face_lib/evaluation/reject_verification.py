@@ -15,7 +15,7 @@ import face_lib.utils.metrics as metrics
 import face_lib.evaluation.plots as plots
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
-from face_lib.utils.imageprocessing import preprocess
+from face_lib.utils.imageprocessing import preprocess, preprocess_magface
 from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
 from face_lib.evaluation.argument_parser import parse_args_reject_verification
 from face_lib.evaluation.feature_extractors import (
@@ -108,6 +108,17 @@ def get_features_sigmas_labels(
         )
     elif uncertainty_strategy == "emb_norm":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        mu, sigma_sq = extract_features_emb_norm(
+            backbone,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "magface":
+        proc_func = lambda images: preprocess_magface(images, [112, 112], is_training=False)
 
         mu, sigma_sq = extract_features_emb_norm(
             backbone,

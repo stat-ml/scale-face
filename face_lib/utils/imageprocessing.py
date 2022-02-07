@@ -132,6 +132,8 @@ def standardize_images(images, standard):
     elif standard == "scale":
         mean = 0.0
         std = 255.0
+    else:
+        raise RuntimeError("Don't know this type")
     images_new = images.astype(np.float32)
     images_new = (images_new - mean) / std
     return images_new
@@ -381,3 +383,42 @@ def preprocess_gan(
         images = images[:, :, :, None]
     return images
 
+
+def preprocess_magface(
+    images, center_crop_size, mode="RGB", align: tuple = None, *, is_training=False
+):
+    """
+    #TODO: docs, describe mode parameter
+    """
+    # TODO: this is not preprocess actually
+    if type(images[0]) == str:
+        image_paths = images
+        images = []
+        for image_path in image_paths:
+            images.append(imageio.imread(image_path, pilmode=mode))
+        images = np.stack(images, axis=0)
+    else:
+        assert type(images) == np.ndarray
+        assert images.ndim == 4
+
+    # Process images
+    preprocess_train = [
+        ["center_crop", center_crop_size],
+        ["random_flip"],
+        ["standardize", "mean_scale"],
+    ]
+    preprocess_test = [
+        ["center_crop", center_crop_size],
+        ["standardize", "scale"],
+    ]
+    proc_funcs = preprocess_train if is_training else preprocess_test
+
+    for proc in proc_funcs:
+        proc_name, proc_args = proc[0], proc[1:]
+        assert (
+            proc_name in register
+        ), "Not a registered preprocessing function: {}".format(proc_name)
+        images = register[proc_name](images, *proc_args)
+    if len(images.shape) == 3:
+        images = images[:, :, :, None]
+    return images
