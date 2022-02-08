@@ -193,8 +193,12 @@ def eval_reject_verification(
     print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
     print("labels :", label_vec.shape, label_vec.dtype)
 
+    distance_fig, distance_axes = None, [None] * len(distances_uncertainties)
     uncertainty_fig, uncertainty_axes = None, [None] * len(distances_uncertainties)
     if save_fig_path is not None:
+        distance_fig, distance_axes = plt.subplots(
+            nrows=1, ncols=len(distances_uncertainties),
+            figsize=(9 * len(distances_uncertainties), 8))
         uncertainty_fig, uncertainty_axes = plt.subplots(
             nrows=1, ncols=len(distances_uncertainties),
             figsize=(9 * len(distances_uncertainties), 8))
@@ -202,7 +206,8 @@ def eval_reject_verification(
     all_results = OrderedDict()
     device = next(backbone.parameters()).device
 
-    for (distance_name, uncertainty_name), uncertainty_ax in zip(distances_uncertainties, uncertainty_axes):
+    for (distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
+            zip(distances_uncertainties, distance_axes, uncertainty_axes):
         print(f"=== {distance_name} {uncertainty_name} ===")
         if distance_name == "classifier":
             distance_func = classifier_to_distance_wrapper(
@@ -230,10 +235,12 @@ def eval_reject_verification(
             pair_uncertainty_func=uncertainty_func,
             uncertainty_mode=uncertainty_mode,
             FARs=FARs,
+            distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
         )
 
         if save_fig_path is not None:
+            distance_ax.set_title(f"{distance_name} {uncertainty_name}")
             uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
 
         all_results[(distance_name, uncertainty_name)] = result_table
@@ -272,7 +279,8 @@ def eval_reject_verification(
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
 
-        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainty.jpg"), dpi=400)
+        distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
+        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
 
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
@@ -287,6 +295,7 @@ def get_rejected_tar_far(
     pair_uncertainty_func,
     FARs,
     uncertainty_mode="uncertainty",
+    distance_ax=None,
     uncertainty_ax=None,
 ):
     # If something's broken, uncomment the line below
@@ -333,8 +342,11 @@ def get_rejected_tar_far(
     #         print(round(tar, 5), end=" ")
     #     print()
 
-    plots.plot_uncertainty_distribution(
-        uncertainty_vec, label_vec, ax=uncertainty_ax)
+    plots.plot_distribution(
+        score_vec, label_vec, xlabel_name="Distances", ylabel_name="Amount", ax=distance_ax)
+
+    plots.plot_distribution(
+        uncertainty_vec, label_vec, xlabel_name="Uncertainties", ylabel_name="Amount", ax=uncertainty_ax)
 
     return result_table
 
