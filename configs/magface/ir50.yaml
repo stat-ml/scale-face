@@ -1,0 +1,4 @@
+title: "config to infer how embedding norm of magface model behaves as an uncertainty measure"
+backbone:
+    name: "iresnet50"
+    learnable: false

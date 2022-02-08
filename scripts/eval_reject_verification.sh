@@ -131,10 +131,10 @@
 
 ## Evaluate MagFace
 #python3 ./face_lib/evaluation/reject_verification.py \
-#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/packed_magface.pt \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/ms1mv2_ir50_ddp/adapted.pth \
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
 #  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
-#  --config_path=./configs/models/magface.yaml \
+#  --config_path=./configs/magface/ir50.yaml \
 #  --batch_size=32 \
 #  --uncertainty_strategy=magface \
 #  --uncertainty_mode=confidence \
@@ -142,4 +142,19 @@
 #  --rejected_portions $(seq 0 0.002 0.5) \
 #  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
 #  --device_id=0 \
-#  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+#  --save_fig_path=/trinity/home/r.kail/faces/figures/test
+
+## Arcface backbone + MagFace uncertainty
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/arcface_ir50_and_magface_ir100.pt \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/magface/arcface+uncertainty_model.yaml \
+#  --batch_size=16 \
+#  --uncertainty_strategy=backbone+uncertainty_model \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
+#  --device_id=0 \
+#  --save_fig_path=/beegfs/home/r.kail/faces/figures/19_arcface+magface
