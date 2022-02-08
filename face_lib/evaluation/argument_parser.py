@@ -50,7 +50,7 @@ def parse_args_reject_verification():
         help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
         type=str,
         default="head",
-        choices=["head", "GAN", "classifier", "scale", "emb_norm", "magface"],
+        choices=["head", "GAN", "classifier", "scale", "emb_norm", "magface", "backbone+uncertainty_model"],
     )
     parser.add_argument(
         "--uncertainty_mode",

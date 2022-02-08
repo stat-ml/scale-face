@@ -402,3 +402,47 @@ def extract_features_emb_norm(
         print("")
     return mu, uncertainty
 
+def extract_features_backbone_uncertainty(
+    backbone,
+    uncertainty_model,
+    images,
+    batch_size,
+    backbone_proc_func=None,
+    uncertainty_proc_func=None,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+
+    num_images = len(images)
+    mu = []
+    uncertainty = []
+    start_time = time.time()
+    for start_idx in tqdm(range(0, num_images, batch_size)):
+        if verbose:
+            elapsed_time = time.strftime(
+                "%H:%M:%S", time.gmtime(time.time() - start_time)
+            )
+            sys.stdout.write(
+                "# of images: %d Current image: %d Elapsed time: %s \t\r"
+                % (num_images, start_idx, elapsed_time)
+            )
+        end_idx = min(num_images, start_idx + batch_size)
+        images_batch = images[start_idx:end_idx]
+
+        batch = backbone_proc_func(images_batch)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        output = backbone(batch)
+        mu.append(np.array(output["feature"].detach().cpu()))
+
+        batch = uncertainty_proc_func(images_batch)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        output = uncertainty_model(batch)
+        cur_uncertainty = torch.linalg.norm(output["feature"], dim=1, keepdims=True)
+        uncertainty.append(np.array(cur_uncertainty.detach().cpu()))
+
+    mu = np.concatenate(mu, axis=0)
+    uncertainty = np.concatenate(uncertainty, axis=0)
+
+    if verbose:
+        print("")
+    return mu, uncertainty
