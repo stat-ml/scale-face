@@ -11,6 +11,19 @@ def l2_normalize(x, axis=None, eps=1e-8):
     return x
 
 
+def cosine_similarity(x1, x2):
+    x1, x2 = np.array(x1), np.array(x2)
+    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
+    return np.sum(x1 * x2, axis=1)
+
+
+def centered_cosine_similarity(x1, x2):
+    cos_sim = cosine_similarity(x1, x2)
+    cos_sim -= cos_sim.mean()
+    cos_sim /= cos_sim.std()
+    return cos_sim
+
+
 def pair_euc_score(x1, x2, unc1=None, unc2=None):
     x1, x2 = np.array(x1), np.array(x2)
     dist = np.sum(np.square(x1 - x2), axis=1)
@@ -18,10 +31,11 @@ def pair_euc_score(x1, x2, unc1=None, unc2=None):
 
 
 def pair_cosine_score(x1, x2, unc1=None, unc2=None):
-    x1, x2 = np.array(x1), np.array(x2)
-    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
-    dist = np.sum(x1 * x2, axis=1)
-    return dist
+    return cosine_similarity(x1, x2)
+
+
+def pair_centered_cosine_score(x1, x2, unc1=None, unc2=None):
+    return centered_cosine_similarity(x1, x2)
 
 
 def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
@@ -46,34 +60,58 @@ def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
 
 
 def pair_scale_mul_cosine_score(x1, x2, scale1=None, scale2=None):
-    x1, x2 = np.array(x1), np.array(x2)
-    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
     scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
-    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2
+    dist = cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2
     return dist
 
 
 def pair_scale_harmonic_cosine_score(x1, x2, scale1=None, scale2=None):
-    x1, x2 = np.array(x1), np.array(x2)
-    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
     scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
-    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2 / (scale1 + scale2)
+    dist = cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
     return dist
 
 
 def pair_sqrt_scale_mul_cosine_score(x1, x2, scale1=None, scale2=None):
-    x1, x2 = np.array(x1), np.array(x2)
-    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
     scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
-    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2
+    dist = cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2
     return dist
 
 
 def pair_sqrt_scale_harmonic_cosine_score(x1, x2, scale1=None, scale2=None):
-    x1, x2 = np.array(x1), np.array(x2)
-    x1, x2 = l2_normalize(x1, axis=1), l2_normalize(x2, axis=1)
     scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
-    dist = np.sum(x1 * x2, axis=1) * scale1 * scale2 / (scale1 + scale2)
+    dist = cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
+def pair_scale_mul_centered_cosine_score(x1, x2, scale1=None, scale2=None):
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = centered_cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_scale_harmonic_centered_cosine_score(x1, x2, scale1=None, scale2=None):
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = centered_cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
+def pair_sqrt_scale_mul_centered_cosine_score(x1, x2, scale1=None, scale2=None):
+    scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
+    dist = centered_cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_sqrt_scale_harmonic_centered_cosine_score(x1, x2, scale1=None, scale2=None):
+    scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
+    dist = centered_cosine_similarity(x1, x2)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
     return dist
 
 

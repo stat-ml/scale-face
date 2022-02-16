@@ -1,18 +1,19 @@
 import matplotlib.pyplot as plt
 
 
-def plot_uncertainty_distribution(
-    uncertainties, labels,
-    fig_name="", n_bins=40, ax=None,
+def plot_distribution(
+    values, labels,
+    fig_name="", xlabel_name="", ylabel_name="", n_bins=40, ax=None,
 ):
     if ax is None:
         return None
 
-    ax.hist(uncertainties[labels], bins=n_bins, color="r", label="positive", alpha=0.3)
-    ax.hist(uncertainties[~labels], bins=n_bins, color="b", label="negative", alpha=0.3)
+    ax.hist(values[labels], bins=n_bins, color="r", label="positive", alpha=0.3)
+    ax.hist(values[~labels], bins=n_bins, color="b", label="negative", alpha=0.3)
 
-    ax.set_xlabel("Uncertainty")
     ax.set_title(fig_name)
+    ax.set_xlabel(xlabel_name)
+    ax.set_ylabel(ylabel_name)
     ax.legend()
 
 

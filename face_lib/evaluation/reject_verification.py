@@ -23,6 +23,7 @@ from face_lib.evaluation.feature_extractors import (
     extract_features_gan,
     extract_features_scale,
     extract_features_emb_norm,
+    extract_features_backbone_uncertainty,
 )
 from face_lib.evaluation.wrappers import (
     classifier_to_distance_wrapper,
@@ -40,6 +41,7 @@ def get_features_sigmas_labels(
     batch_size=64,
     discriminator=None,
     scale_predictor=None,
+    uncertainty_model=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -128,6 +130,20 @@ def get_features_sigmas_labels(
             verbose=verbose,
             device=device,
         )
+    elif uncertainty_strategy == "backbone+uncertainty_model":
+        backbone_proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        uncertainty_proc_func = lambda images: preprocess_magface(images, [112, 112], is_training=False)
+
+        mu, sigma_sq = extract_features_backbone_uncertainty(
+            backbone,
+            uncertainty_model,
+            list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            batch_size,
+            backbone_proc_func=backbone_proc_func,
+            uncertainty_proc_func=uncertainty_proc_func,
+            verbose=verbose,
+            device=device,
+        )
     else:
         raise NotImplementedError("Don't know this type of uncertainty strategy")
 
@@ -155,6 +171,7 @@ def eval_reject_verification(
     discriminator=None,
     classifier=None,
     scale_predictor=None,
+    uncertainty_model=None,
     save_fig_path=None,
     verbose=False,
 ):
@@ -167,7 +184,7 @@ def eval_reject_verification(
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_sigmas_labels(
         backbone, head, dataset_path, pairs_table_path,
         uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
-        discriminator=discriminator, scale_predictor=scale_predictor,
+        discriminator=discriminator, scale_predictor=scale_predictor, uncertainty_model=uncertainty_model,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -176,8 +193,12 @@ def eval_reject_verification(
     print("sigma_sq_2 :", sigma_sq_2.shape, sigma_sq_2.dtype)
     print("labels :", label_vec.shape, label_vec.dtype)
 
+    distance_fig, distance_axes = None, [None] * len(distances_uncertainties)
     uncertainty_fig, uncertainty_axes = None, [None] * len(distances_uncertainties)
     if save_fig_path is not None:
+        distance_fig, distance_axes = plt.subplots(
+            nrows=1, ncols=len(distances_uncertainties),
+            figsize=(9 * len(distances_uncertainties), 8))
         uncertainty_fig, uncertainty_axes = plt.subplots(
             nrows=1, ncols=len(distances_uncertainties),
             figsize=(9 * len(distances_uncertainties), 8))
@@ -185,7 +206,8 @@ def eval_reject_verification(
     all_results = OrderedDict()
     device = next(backbone.parameters()).device
 
-    for (distance_name, uncertainty_name), uncertainty_ax in zip(distances_uncertainties, uncertainty_axes):
+    for (distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
+            zip(distances_uncertainties, distance_axes, uncertainty_axes):
         print(f"=== {distance_name} {uncertainty_name} ===")
         if distance_name == "classifier":
             distance_func = classifier_to_distance_wrapper(
@@ -213,10 +235,12 @@ def eval_reject_verification(
             pair_uncertainty_func=uncertainty_func,
             uncertainty_mode=uncertainty_mode,
             FARs=FARs,
+            distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
         )
 
         if save_fig_path is not None:
+            distance_ax.set_title(f"{distance_name} {uncertainty_name}")
             uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
 
         all_results[(distance_name, uncertainty_name)] = result_table
@@ -255,7 +279,8 @@ def eval_reject_verification(
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
 
-        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainty.jpg"), dpi=400)
+        distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
+        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
 
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
@@ -270,6 +295,7 @@ def get_rejected_tar_far(
     pair_uncertainty_func,
     FARs,
     uncertainty_mode="uncertainty",
+    distance_ax=None,
     uncertainty_ax=None,
 ):
     # If something's broken, uncomment the line below
@@ -316,8 +342,11 @@ def get_rejected_tar_far(
     #         print(round(tar, 5), end=" ")
     #     print()
 
-    plots.plot_uncertainty_distribution(
-        uncertainty_vec, label_vec, ax=uncertainty_ax)
+    plots.plot_distribution(
+        score_vec, label_vec, xlabel_name="Distances", ylabel_name="Amount", ax=distance_ax)
+
+    plots.plot_distribution(
+        uncertainty_vec, label_vec, xlabel_name="Uncertainties", ylabel_name="Amount", ax=uncertainty_ax)
 
     return result_table
 
@@ -372,6 +401,15 @@ if __name__ == "__main__":
         scale_predictor.load_state_dict(checkpoint["scale_predictor"])
         scale_predcitor = scale_predictor.eval().to(device)
 
+    uncertainty_model = None
+    if args.uncertainty_strategy == "backbone+uncertainty_model":
+        uncertainty_model_name = model_args.uncertainty_model.pop("name")
+        uncertainty_model = mlib.model_dict[uncertainty_model_name](
+            **model_args.uncertainty_model,
+        )
+        uncertainty_model.load_state_dict(checkpoint["uncertainty_model"])
+        uncertainty_model = uncertainty_model.eval().to(device)
+
     rejected_portions = list(
         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
     )
@@ -395,6 +433,7 @@ if __name__ == "__main__":
         discriminator=discriminator,
         classifier=classifier,
         scale_predictor=scale_predictor,
+        uncertainty_model=uncertainty_model,
         save_fig_path=args.save_fig_path,
         verbose=args.verbose,
     )
