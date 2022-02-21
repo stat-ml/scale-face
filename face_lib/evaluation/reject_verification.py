@@ -13,15 +13,9 @@ sys.path.insert(0, path)
 from face_lib.utils import cfg
 import face_lib.utils.metrics as metrics
 import face_lib.evaluation.plots as plots
-from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
 from face_lib.evaluation.argument_parser import parse_args_reject_verification
 from face_lib.evaluation.feature_extractors import get_features_uncertainties_labels
 from face_lib.evaluation.utils import get_required_models, get_distance_uncertainty_funcs
-from face_lib.evaluation.wrappers import (
-    classifier_to_distance_wrapper,
-    classifier_to_uncertainty_wrapper,
-    split_wrapper,
-)
 
 
 def eval_reject_verification(
@@ -41,6 +35,7 @@ def eval_reject_verification(
     scale_predictor=None,
     uncertainty_model=None,
     save_fig_path=None,
+    device=torch.device("cpu"),
     verbose=False,
 ):
 
@@ -72,7 +67,6 @@ def eval_reject_verification(
             figsize=(9 * len(distances_uncertainties), 8))
 
     all_results = OrderedDict()
-    device = next(backbone.parameters()).device
 
     for (distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(distances_uncertainties, distance_axes, uncertainty_axes):
@@ -239,5 +233,6 @@ if __name__ == "__main__":
         scale_predictor=scale_predictor,
         uncertainty_model=uncertainty_model,
         save_fig_path=args.save_fig_path,
+        device=device,
         verbose=args.verbose,
     )
