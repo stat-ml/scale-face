@@ -17,6 +17,7 @@ from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_fusion
 
+
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
     number_of_templates = 0
