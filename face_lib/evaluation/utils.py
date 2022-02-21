@@ -1,6 +1,12 @@
 import torch
 
 from face_lib import models as mlib, utils
+from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
+from face_lib.evaluation.wrappers import (
+    classifier_to_distance_wrapper,
+    classifier_to_uncertainty_wrapper,
+    split_wrapper,
+)
 
 
 def get_required_models(
@@ -59,3 +65,27 @@ def get_required_models(
 
     return backbone, head, discriminator, classifier, scale_predictor, uncertainty_model
 
+
+def get_distance_uncertainty_funcs(
+        distance_name, uncertainty_name,
+        classifier=None, device=torch.device("cpu"), distaces_batch_size=None):
+
+    assert uncertainty_name != "classifier" or classifier is not None
+
+    if distance_name == "classifier":
+        distance_func = classifier_to_distance_wrapper(
+            classifier, device=device)
+    else:
+        distance_func = name_to_distance_func[distance_name]
+
+    if uncertainty_name == "classifier":
+        uncertainty_func = classifier_to_uncertainty_wrapper(
+            classifier, device=device)
+    else:
+        uncertainty_func = name_to_uncertainty_func[uncertainty_name]
+
+    if distaces_batch_size:
+        distance_func = split_wrapper(distance_func, batch_size=distaces_batch_size)
+        uncertainty_func = split_wrapper(uncertainty_func, batch_size=distaces_batch_size)
+
+    return distance_func, uncertainty_func

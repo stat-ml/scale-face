@@ -16,7 +16,7 @@ import face_lib.evaluation.plots as plots
 from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
 from face_lib.evaluation.argument_parser import parse_args_reject_verification
 from face_lib.evaluation.feature_extractors import get_features_uncertainties_labels
-from face_lib.evaluation.utils import get_required_models
+from face_lib.evaluation.utils import get_required_models, get_distance_uncertainty_funcs
 from face_lib.evaluation.wrappers import (
     classifier_to_distance_wrapper,
     classifier_to_uncertainty_wrapper,
@@ -77,21 +77,14 @@ def eval_reject_verification(
     for (distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(distances_uncertainties, distance_axes, uncertainty_axes):
         print(f"=== {distance_name} {uncertainty_name} ===")
-        if distance_name == "classifier":
-            distance_func = classifier_to_distance_wrapper(
-                classifier, device=device)
-        else:
-            distance_func = name_to_distance_func[distance_name]
 
-        if uncertainty_name == "classifier":
-            uncertainty_func = classifier_to_uncertainty_wrapper(
-                classifier, device=device)
-        else:
-            uncertainty_func = name_to_uncertainty_func[uncertainty_name]
-
-        if distaces_batch_size:
-            distance_func = split_wrapper(distance_func, batch_size=distaces_batch_size)
-            uncertainty_func = split_wrapper(uncertainty_func, batch_size=distaces_batch_size)
+        distance_func, uncertainty_func = get_distance_uncertainty_funcs(
+            distance_name=distance_name,
+            uncertainty_name=uncertainty_name,
+            classifier=classifier,
+            device=device,
+            distaces_batch_size=distaces_batch_size,
+        )
 
         result_table = get_rejected_tar_far(
             mu_1,
