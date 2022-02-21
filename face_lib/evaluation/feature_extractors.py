@@ -1,10 +1,13 @@
+import os
 import sys
 import time
 import torch
 import numpy as np
 from tqdm import tqdm
+from scipy import ndimage
+from skimage.metrics import structural_similarity as ssim
 
-from face_lib.utils.imageprocessing import preprocess_gan
+from face_lib.utils.imageprocessing import preprocess, preprocess_tta, preprocess_gan, preprocess_magface
 
 
 def extract_features_head(
@@ -402,6 +405,7 @@ def extract_features_emb_norm(
         print("")
     return mu, uncertainty
 
+
 def extract_features_backbone_uncertainty(
     backbone,
     uncertainty_model,
@@ -446,3 +450,197 @@ def extract_features_backbone_uncertainty(
     if verbose:
         print("")
     return mu, uncertainty
+
+
+def extract_features_uncertainties_from_list(
+    backbone,
+    head,
+    image_paths,
+    uncertainty_strategy="head",
+    batch_size=64,
+    discriminator=None,
+    scale_predictor=None,
+    uncertainty_model=None,
+    device=torch.device("cuda:0"),
+    verbose=False,
+):
+    if uncertainty_strategy == "head":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_head(
+            backbone,
+            head,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+
+    elif uncertainty_strategy == "TTA":
+        proc_func = lambda images: preprocess_tta(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_tta(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "fourier":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_fourier(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "grad":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_grad(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "ssim":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_ssim(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=True,
+            device=device,
+        )
+    elif uncertainty_strategy == "GAN":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        if discriminator is None:
+            raise RuntimeError("Please determine a discriminator")
+        features, uncertainties = extract_features_gan(
+            backbone,
+            discriminator,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "classifier":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_head(
+            backbone,
+            head,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "scale":
+        assert scale_predictor is not None
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_scale(
+            backbone,
+            scale_predictor,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "emb_norm":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_emb_norm(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "magface":
+        proc_func = lambda images: preprocess_magface(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_emb_norm(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "backbone+uncertainty_model":
+        backbone_proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        uncertainty_proc_func = lambda images: preprocess_magface(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_backbone_uncertainty(
+            backbone,
+            uncertainty_model,
+            image_paths,
+            batch_size,
+            backbone_proc_func=backbone_proc_func,
+            uncertainty_proc_func=uncertainty_proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    else:
+        raise NotImplementedError("Don't know this type of uncertainty strategy")
+
+    return features, uncertainties
+
+
+def get_features_uncertainties_labels(
+    backbone,
+    head,
+    dataset_path,
+    pairs_table_path,
+    uncertainty_strategy="head",
+    batch_size=64,
+    discriminator=None,
+    scale_predictor=None,
+    uncertainty_model=None,
+    device=torch.device("cuda:0"),
+    verbose=False,
+):
+
+    pairs, label_vec = [], []
+    unique_imgs = set()
+    with open(pairs_table_path, "r") as f:
+        for line in f.readlines():
+            left_path, right_path, label = line.split(",")
+            pairs.append((left_path, right_path))
+            label_vec.append(int(label))
+            unique_imgs.add(left_path)
+            unique_imgs.add(right_path)
+
+    image_paths = list(unique_imgs)
+    img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
+
+    features, uncertainties = extract_features_uncertainties_from_list(
+        backbone,
+        head,
+        image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+        uncertainty_strategy=uncertainty_strategy,
+        batch_size=batch_size,
+        discriminator=discriminator,
+        scale_predictor=scale_predictor,
+        uncertainty_model=uncertainty_model,
+        device=device,
+        verbose=verbose,
+    )
+
+    mu_1 = np.array([features[img_to_idx[pair[0]]] for pair in pairs])
+    mu_2 = np.array([features[img_to_idx[pair[1]]] for pair in pairs])
+    unc_1 = np.array([uncertainties[img_to_idx[pair[0]]] for pair in pairs])
+    unc_2 = np.array([uncertainties[img_to_idx[pair[1]]] for pair in pairs])
+    label_vec = np.array(label_vec, dtype=bool)
+
+    return mu_1, mu_2, unc_1, unc_2, label_vec
+
