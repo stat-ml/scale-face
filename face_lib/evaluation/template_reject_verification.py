@@ -22,6 +22,7 @@ from face_lib.evaluation.reject_verification import get_rejected_tar_far
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_template_reject_verification
+print('imported')
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -100,7 +101,7 @@ def eval_template_reject_verification(
     distaces_batch_size=None,
     rejected_portions=None,
     FARs=None,
-    fusions_distances_uncertaintyies=None,
+    fusions_distances_uncertainties=None,
     head=None,
     discriminator=None,
     classifier=None,
@@ -116,7 +117,7 @@ def eval_template_reject_verification(
         FARs = [0.0,]
 
     all_results = OrderedDict()
-    n_figures = len(fusions_distances_uncertaintyies)
+    n_figures = len(fusions_distances_uncertainties)
     distance_fig, distance_axes = None, [None] * n_figures
     uncertainty_fig, uncertainty_axes = None, [None] * n_figures
     if save_fig_path is not None:
@@ -143,6 +144,7 @@ def eval_template_reject_verification(
     #     uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
     #     discriminator=discriminator, scale_predictor=scale_predictor,
     # )
+    uncertainty_model = None  # ADDED
 
     features, uncertainties = extract_features_uncertainties_from_list(
         backbone,
@@ -232,8 +234,10 @@ def eval_template_reject_verification(
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
 
-if __name__ == "__main__":
+
+def main():
     args = parse_args_template_reject_verification()
+    print(args)
 
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
         raise RuntimeError("Directory exists")
@@ -242,6 +246,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:" + str(args.device_id))
     model_args = cfg.load_config(args.config_path)
+    print(model_args)
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
 
     backbone, head, discriminator, classifier, scale_predictor, uncertainty_model = \
@@ -266,7 +271,7 @@ if __name__ == "__main__":
         distaces_batch_size=args.distaces_batch_size,
         rejected_portions=rejected_portions,
         FARs=FARs,
-        fusions_distances_uncertaintyies=fusions_distances_uncertainties,
+        fusions_distances_uncertainties=fusions_distances_uncertainties,
         head=head,
         discriminator=discriminator,
         classifier=classifier,
@@ -275,3 +280,7 @@ if __name__ == "__main__":
         device=device,
         verbose=args.verbose,
     )
+
+
+if __name__ == "__main__":
+    main()
