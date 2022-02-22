@@ -227,3 +227,6 @@ class IJBATest:
             np.std(TARs_all, axis=0),
             np.mean(FARs_all, axis=0),
         )
+
+    def get_features_uncertainties_labels(self):
+        raise NotImplementedError("This functionality is not implemented for IJBA")

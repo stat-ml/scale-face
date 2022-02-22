@@ -118,7 +118,6 @@ def eval_fusion_ijb(
         verbose=verbose,
     )
 
-
     print(f"mu : {features.shape} sigma : {uncertainties.shape}")
 
     result = defaultdict(dict)
