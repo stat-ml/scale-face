@@ -109,6 +109,7 @@ def eval_template_reject_verification(
     save_fig_path=None,
     device=torch.device("cpu"),
     verbose=False,
+    uncertainty_model=None
 ):
 
     if rejected_portions is None:
@@ -144,7 +145,6 @@ def eval_template_reject_verification(
     #     uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
     #     discriminator=discriminator, scale_predictor=scale_predictor,
     # )
-    uncertainty_model = None  # ADDED
 
     features, uncertainties = extract_features_uncertainties_from_list(
         backbone,
@@ -234,7 +234,6 @@ def eval_template_reject_verification(
         torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
 
-
 def main():
     args = parse_args_template_reject_verification()
     print(args)
@@ -279,6 +278,7 @@ def main():
         save_fig_path=args.save_fig_path,
         device=device,
         verbose=args.verbose,
+        uncertainty_model=uncertainty_model
     )
 
 
