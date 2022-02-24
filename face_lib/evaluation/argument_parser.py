@@ -1,6 +1,8 @@
 import argparse
 
-uncertainty_methods = ["head", "GAN", "classifier", "scale", "emb_norm", "magface", "backbone+uncertainty_model"]
+uncertainty_methods = [
+    "head", "GAN", "classifier", "scale", "emb_norm",
+    "magface", "backbone+uncertainty_model", "magface_precalculated", ]
 uncertainty_modes = ["uncertainty", "confidence"]
 known_datasets = ["ijba", "ijbc"]
 
@@ -62,6 +64,12 @@ def parse_args_reject_verification():
         type=str,
         default="uncertainty",
         choices=uncertainty_modes,
+    )
+    parser.add_argument(
+        "--precalculated_path",
+        help="The path to a file with precalculated vectors and their names",
+        type=str,
+        default=None,
     )
     parser.add_argument(
         "--rejected_portions",
@@ -233,6 +241,12 @@ def parse_args_template_reject_verification():
         type=str,
         default="uncertainty",
         choices=uncertainty_modes,
+    )
+    parser.add_argument(
+        "--precalculated_path",
+        help="The path to a file with precalculated vectors and their names",
+        type=str,
+        default=None,
     )
     parser.add_argument(
         "--FARs",

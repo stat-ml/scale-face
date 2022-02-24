@@ -8,6 +8,7 @@ from scipy import ndimage
 from skimage.metrics import structural_similarity as ssim
 
 from face_lib.utils.imageprocessing import preprocess, preprocess_tta, preprocess_gan, preprocess_magface
+from face_lib.evaluation.utils import get_precalculated_embeddings
 
 
 def extract_features_head(
@@ -606,6 +607,7 @@ def get_features_uncertainties_labels(
     discriminator=None,
     scale_predictor=None,
     uncertainty_model=None,
+    precalculated_path=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -620,21 +622,26 @@ def get_features_uncertainties_labels(
             unique_imgs.add(left_path)
             unique_imgs.add(right_path)
 
-    image_paths = list(unique_imgs)
-    img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
+    if uncertainty_strategy == "magface_precalculated":
+        features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
+        # TODO: Fair calculation of uncertainty
+        uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
+    else:
+        image_paths = list(unique_imgs)
+        img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
 
-    features, uncertainties = extract_features_uncertainties_from_list(
-        backbone,
-        head,
-        image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
-        uncertainty_strategy=uncertainty_strategy,
-        batch_size=batch_size,
-        discriminator=discriminator,
-        scale_predictor=scale_predictor,
-        uncertainty_model=uncertainty_model,
-        device=device,
-        verbose=verbose,
-    )
+        features, uncertainties = extract_features_uncertainties_from_list(
+            backbone,
+            head,
+            image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            discriminator=discriminator,
+            scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model,
+            device=device,
+            verbose=verbose,
+        )
 
     mu_1 = np.array([features[img_to_idx[pair[0]]] for pair in pairs])
     mu_2 = np.array([features[img_to_idx[pair[1]]] for pair in pairs])
