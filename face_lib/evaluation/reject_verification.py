@@ -92,6 +92,7 @@ def eval_reject_verification(
             FARs=FARs,
             distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
+            rejected_portions=rejected_portions
         )
 
         if save_fig_path is not None:
@@ -152,6 +153,7 @@ def get_rejected_tar_far(
     uncertainty_mode="uncertainty",
     distance_ax=None,
     uncertainty_ax=None,
+    rejected_portions=None
 ):
     # If something's broken, uncomment the line below
 

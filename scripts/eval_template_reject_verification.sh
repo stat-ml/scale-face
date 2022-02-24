@@ -19,7 +19,7 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
   --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/small \
   --protocol=ijbc \
-  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
+  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/pseudo_archive \
   --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \
   --batch_size=64 \
   --distaces_batch_size=8 \
@@ -31,3 +31,4 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+#  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \

@@ -1,3 +1,13 @@
+# make the short list
+#
+#
+#
+#
+#
+#
+#
+
+
 import os
 import sys
 import numpy as np
@@ -23,6 +33,7 @@ from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_template_reject_verification
 print('imported')
+
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -134,7 +145,7 @@ def eval_template_reject_verification(
         tester = IJBATest(testset["abspath"].values)
         tester.init_proto(protocol_path)
     elif protocol == "ijbc":
-        tester = IJBCTest(testset["abspath"].values)
+        tester = IJBCTest(testset["abspath"].values[:100])
         tester.init_proto(protocol_path)
     else:
         raise ValueError('Unkown protocol. Only accept "ijba" or "ijbc".')
@@ -191,6 +202,7 @@ def eval_template_reject_verification(
             FARs=FARs,
             distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
+            rejected_portions=rejected_portions
         )
 
         if save_fig_path is not None:

@@ -89,7 +89,6 @@ def read_pairs(pair_file):
     return pairs
 
 
-
 class IJBCTest:
     def __init__(self, image_paths):
         self.image_paths = image_paths
