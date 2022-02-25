@@ -1,8 +1,9 @@
+# Check the pipeline through
 # make the short list
-#
-#
-#
-#
+# make the short self-contained setup
+# new IJB-C
+# Should we update the mu?
+# Cleaned the match from missing
 #
 #
 #
@@ -55,6 +56,7 @@ def aggregate_templates(templates, mu, sigma_sq, method):
                     concatenate=False,
                 )
                 t.feature = t.mu
+                # TODO: update the mu?
             if method == "min":
                 t.mu, t.sigma_sq = aggregate_min(
                     mu[t.indices],
@@ -123,6 +125,7 @@ def eval_template_reject_verification(
     uncertainty_model=None
 ):
 
+    # Setup the plots
     if rejected_portions is None:
         rejected_portions = [0.0,]
     if FARs is None:
@@ -140,6 +143,7 @@ def eval_template_reject_verification(
             nrows=1, ncols=n_figures,
             figsize=(9 * n_figures, 8))
 
+    # Setup the data
     testset = IJBDataset(dataset_path)
     if protocol == "ijba":
         tester = IJBATest(testset["abspath"].values)
@@ -157,6 +161,7 @@ def eval_template_reject_verification(
     #     discriminator=discriminator, scale_predictor=scale_predictor,
     # )
 
+    # returns features and uncertainties for a list of images
     features, uncertainties = extract_features_uncertainties_from_list(
         backbone,
         head,

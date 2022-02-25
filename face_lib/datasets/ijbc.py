@@ -89,6 +89,18 @@ def read_pairs(pair_file):
     return pairs
 
 
+class IJBCTemplates:
+    def __init__(self):
+        pass
+
+    def init_proto(self, folder):
+        pass
+
+    def test_verification(self, compare_func, FARs=None, verbose=True):
+        tars, std, fars = [], [], []
+        return tars, std, fars
+
+
 class IJBCTest:
     def __init__(self, image_paths):
         self.image_paths = image_paths
