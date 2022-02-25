@@ -1,5 +1,3 @@
-# Check the pipeline through
-# make the short list
 # make the short self-contained setup
 # new IJB-C
 # Should we update the mu?
@@ -144,15 +142,14 @@ def eval_template_reject_verification(
             figsize=(9 * n_figures, 8))
 
     # Setup the data
+    if protocol != "ijbc":
+        raise ValueError('Unkown protocol. Only accept "ijbc" at the moment.')
+
     testset = IJBDataset(dataset_path)
-    if protocol == "ijba":
-        tester = IJBATest(testset["abspath"].values)
-        tester.init_proto(protocol_path)
-    elif protocol == "ijbc":
-        tester = IJBCTest(testset["abspath"].values[:100])
-        tester.init_proto(protocol_path)
-    else:
-        raise ValueError('Unkown protocol. Only accept "ijba" or "ijbc".')
+    image_paths = testset["abspath"].values
+    tester = IJBCTest(image_paths)
+    tester.init_proto(protocol_path)
+
 
     # print(f"{tester.image_paths.dtype=} {tester.image_paths.shape=} {tester.image_paths[0]=}")
     # mu_1, mu_2, uncertainty_1, uncertainty_2, label_vec = get_features_uncertainties_labels(
@@ -223,16 +220,16 @@ def eval_template_reject_verification(
             far: auc(rejected_portions, TARs) for far, TARs in table.items()
         }
 
-    for (distance_name, uncertainty_name), aucs in res_AUCs.items():
-        print(distance_name, uncertainty_name)
+    for (fusion_name, distance_name, uncertainty_name), aucs in res_AUCs.items():
+        print(fusion_name, distance_name, uncertainty_name)
         for FAR, AUC in aucs.items():
             print(f"\tFAR={round(FAR, 5)} TAR_AUC : {round(AUC, 5)}")
 
     if save_fig_path:
-        for (distance_name, uncertainty_name), result_table in all_results.items():
+        for (fusion_name, distance_name, uncertainty_name), result_table in all_results.items():
             title = "Template" + distance_name + " " + uncertainty_name
             save_to_path = (
-                os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
+                os.path.join(save_fig_path, fusion_name + '_' + distance_name + "_" + uncertainty_name + ".jpg")
             )
             if save_fig_path:
                 plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)

@@ -40,15 +40,14 @@ def plot_TAR_FAR_different_methods(
     fig, axes = plt.subplots(
         ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 8)
     )
-    for (distance_name, uncertainty_name), table in results.items():
+    for key, table in results.items():
         for FAR, TARs in table.items():
-            auc = AUCs[(distance_name, uncertainty_name)][FAR]
+            auc = AUCs[key][FAR]
+            label = '_'.join(key)
             axes[plots_indices[FAR]].plot(
                 rejected_portions,
                 TARs,
-                label=distance_name
-                + "_"
-                + uncertainty_name
+                label=label
                 + "_AUC="
                 + str(round(auc, 5)),
                 marker=" ",
