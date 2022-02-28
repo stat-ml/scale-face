@@ -5,6 +5,7 @@ uncertainty_methods = [
     "magface", "backbone+uncertainty_model", "magface_precalculated", ]
 uncertainty_modes = ["uncertainty", "confidence"]
 known_datasets = ["ijba", "ijbc"]
+distribution_datasets = ["IJBC", "LFW", "MS1MV2"]
 
 
 def parse_args_reject_verification():
@@ -291,6 +292,99 @@ def parse_args_template_reject_verification():
         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
         type=str,
         default=None,
+    )
+
+    return parser.parse_args()
+
+
+def parse_args_dataset_distribution():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--checkpoint_path",
+        help="The path to the pre-trained model directory",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--dataset_path",
+        help="The path to the IJB-C dataset directory",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--image_paths_table",
+        help="Path to a file with image's paths",
+        type=str,
+        required=False,
+        default=None,
+    )
+    parser.add_argument(
+        "--dataset_name",
+        help="The dataset to test",
+        type=str,
+        default="ijbc",
+        choices=distribution_datasets,
+    )
+    # parser.add_argument(
+    #     "--protocol_path",
+    #     help="Path to csv file with pairs names",
+    #     type=str,
+    #     required=True,
+    # )
+    parser.add_argument(
+        "--config_path",
+        help="The paths to config .yaml file",
+        type=str,
+        required=True,
+    )
+    parser.add_argument(
+        "--batch_size",
+        help="Number of images per mini batch",
+        type=int,
+        default=64,
+    )
+    parser.add_argument(
+        "--uncertainty_strategy",
+        help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
+        type=str,
+        default="head",
+        choices=uncertainty_methods,
+    )
+    parser.add_argument(
+        "--discriminator_path",
+        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
+        type=str,
+        default=None,
+    )
+    # parser.add_argument(
+    #     "--uncertainty_mode",
+    #     help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
+    #     type=str,
+    #     default="uncertainty",
+    #     choices=uncertainty_modes,
+    # )
+    # parser.add_argument(
+    #     "--precalculated_path",
+    #     help="The path to a file with precalculated vectors and their names",
+    #     type=str,
+    #     default=None,
+    # )
+    parser.add_argument(
+        "--device_id",
+        help="Gpu id on which the algorithm will be launched",
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
+        "--save_fig_path",
+        help="Path to save figure to",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--verbose",
+        help="Dump verbose information",
+        action="store_true",
     )
 
     return parser.parse_args()

@@ -17,6 +17,22 @@ def plot_distribution(
     ax.legend()
 
 
+def plot_uncertainty_distribution(
+    values, save_fig_path, n_bins=40,
+    fig_name="", xlabel_name="", ylabel_name="",
+):
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    ax.hist(values, bins=n_bins, density=True, color="b", alpha=0.3)
+
+    ax.set_title(fig_name)
+    ax.set_xlabel(xlabel_name)
+    ax.set_ylabel(ylabel_name)
+
+    if save_fig_path:
+        fig.savefig(save_fig_path, dpi=400)
+
+
 def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=None):
     fig, ax = plt.subplots()
     for FAR, TARs in table.items():
