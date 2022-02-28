@@ -147,8 +147,18 @@ def eval_template_reject_verification(
 
     testset = IJBDataset(dataset_path)
     image_paths = testset["abspath"].values
+
     tester = IJBCTest(image_paths)
     tester.init_proto(protocol_path)
+
+    """
+    We need tester for the following atm
+    - collect image paths? but we have it passed
+    - verification templates list. What is this exactly?
+    - features/uncertainties/labels list. But we already had it, no?
+    
+    
+    """
 
 
     # print(f"{tester.image_paths.dtype=} {tester.image_paths.shape=} {tester.image_paths[0]=}")
@@ -159,18 +169,38 @@ def eval_template_reject_verification(
     # )
 
     # returns features and uncertainties for a list of images
-    features, uncertainties = extract_features_uncertainties_from_list(
-        backbone,
-        head,
-        image_paths=tester.image_paths,
-        uncertainty_strategy=uncertainty_strategy,
-        batch_size=batch_size,
-        discriminator=discriminator,
-        scale_predictor=scale_predictor,
-        uncertainty_model=uncertainty_model,
-        device=device,
-        verbose=verbose,
-    )
+    CACHE = False
+    from pathlib import Path
+    import pickle
+    from tqdm import tqdm
+
+    short_paths = ["/".join(Path(p).parts[-2:]) for p in tester.image_paths]
+    if CACHE:
+        with open(Path(save_fig_path) / 'features.pickle', 'rb') as f:
+            feature_dict = pickle.load(f)
+        with open(Path(save_fig_path) / 'scales.pickle', 'rb') as f:
+            scale_dict = pickle.load(f)
+        features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
+        uncertainties = np.array([scale_dict[pth] for pth in tqdm(short_paths)])
+    else:
+        features, uncertainties = extract_features_uncertainties_from_list(
+            backbone,
+            head,
+            image_paths=tester.image_paths,
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            discriminator=discriminator,
+            scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model,
+            device=device,
+            verbose=verbose,
+        )
+        feature_dict = {p: feature for p, feature in zip(short_paths, features)}
+        with open(Path(save_fig_path) / 'features.pickle', 'wb') as f:
+            pickle.dump(feature_dict, f)
+        scale_dict = {p: scale for p, scale in zip(short_paths, uncertainties)}
+        with open(Path(save_fig_path) / 'scales.pickle', 'wb') as f:
+            pickle.dump(scale_dict, f)
 
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \

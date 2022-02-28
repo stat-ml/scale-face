@@ -17,7 +17,7 @@
 # Scale with batching
 python3 ./face_lib/evaluation/template_reject_verification.py \
   --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
-  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/small \
+  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_images_identity \
   --protocol=ijbc \
   --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/pseudo_archive \
   --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \
@@ -33,3 +33,4 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 #  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
 #  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/small \
