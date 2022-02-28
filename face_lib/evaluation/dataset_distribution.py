@@ -8,9 +8,10 @@ path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
 
 from face_lib.utils import cfg
+from face_lib.datasets import MXFaceDataset
 import face_lib.evaluation.plots as plots
 from face_lib.evaluation.utils import get_required_models
-from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list
+from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list, extract_uncertainties_from_dataset
 from face_lib.evaluation.argument_parser import parse_args_dataset_distribution
 
 
@@ -45,8 +46,26 @@ def get_uncertainties_image_list(
     return uncertainties.squeeze(axis=1)
 
 
-def get_uncertainties_MS1MV2():
-    pass
+def get_uncertainties_MS1MV2(
+    backbone,
+    dataset_path=None,
+    uncertainty_strategy="scale",
+    batch_size=64,
+    scale_predictor=None,
+    device=torch.device("cpu"),
+    verbose=False
+):
+    dataset = MXFaceDataset(
+        root_dir=dataset_path,
+        local_rank=0
+    )
+    
+    uncertainty = extract_uncertainties_from_dataset(
+        backbone=backbone, scale_predictor=scale_predictor, dataset=dataset,
+        batch_size=batch_size, verbose=verbose, device=device,
+    )
+
+    return uncertainty
 
 
 def draw_figures(
@@ -75,6 +94,15 @@ def draw_figures(
             scale_predictor=scale_predictor,
             device=device,
             verbose=verbose,)
+    elif dataset_name == "MS1MV2":
+        uncertainties = get_uncertainties_MS1MV2(
+            backbone=backbone,
+            dataset_path=dataset_path,
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            scale_predictor=scale_predictor,
+            device=device,
+            verbose=verbose, )
     else:
         raise KeyError("Don't know this type of dataset")
 

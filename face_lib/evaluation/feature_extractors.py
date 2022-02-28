@@ -597,6 +597,38 @@ def extract_features_uncertainties_from_list(
     return features, uncertainties
 
 
+def extract_uncertainties_from_dataset(
+    backbone,
+    scale_predictor,
+    dataset,
+    batch_size,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+
+    dataloader = torch.utils.data.DataLoader(
+        dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=4,
+    )
+
+    uncertainties = []
+
+    with torch.no_grad():
+        for batch, labels in tqdm(dataloader):
+            batch = batch.to(device)
+            output = backbone(batch)
+            output.update(scale_predictor(**output))
+            # mu.append(np.array(output["feature"].detach().cpu()))
+            uncertainties.append(np.array(output["scale"].detach().cpu()))
+
+    # mu = np.concatenate(mu, axis=0)
+    uncertainties = np.concatenate(uncertainties, axis=0)
+
+    if verbose:
+        print("")
+    # return mu, uncertainties
+    return uncertainties
+
+
 def get_features_uncertainties_labels(
     backbone,
     head,

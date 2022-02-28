@@ -10,12 +10,23 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/22_dataset_distribution/test
 
-# LFW
+## LFW
+#python3 ./face_lib/evaluation/dataset_distribution.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth \
+#  --dataset_path=/gpfs/data/gpfs0/k.fedyanin/space/lfw/data_aligned_112_112 \
+#  --image_paths_table=/gpfs/data/gpfs0/k.fedyanin/space/lfw_protocols/images_list.txt \
+#  --dataset_name=LFW \
+#  --config_path=./configs/scale/02_sigm_mul_coef_selection/64.yaml \
+#  --batch_size=64 \
+#  --uncertainty_strategy=scale \
+#  --device_id=0 \
+#  --save_fig_path=/beegfs/home/r.kail/faces/figures/22_dataset_distribution/test
+
+# MS1M
 python3 ./face_lib/evaluation/dataset_distribution.py \
   --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth \
-  --dataset_path=/gpfs/data/gpfs0/k.fedyanin/space/lfw/data_aligned_112_112 \
-  --image_paths_table=/gpfs/data/gpfs0/k.fedyanin/space/lfw_protocols/images_list.txt \
-  --dataset_name=LFW \
+  --dataset_path=/gpfs/data/gpfs0/k.fedyanin/space/ms1m \
+  --dataset_name=MS1MV2 \
   --config_path=./configs/scale/02_sigm_mul_coef_selection/64.yaml \
   --batch_size=64 \
   --uncertainty_strategy=scale \
