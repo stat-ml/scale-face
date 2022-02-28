@@ -25,11 +25,12 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --distaces_batch_size=8 \
   --uncertainty_strategy=scale \
   --uncertainty_mode=confidence \
-  --FARs 0.001 0.005 0.01 0.05 \
+  --FARs 0.01 0.05 \
   --rejected_portions $(seq 0 0.002 0.5) \
-  --fusion_distance_uncertainty_metrics mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul \
+  --fusion_distance_uncertainty_metrics PFE_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul \
   --device_id=0 \
-  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
+  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
+  --verbose
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 #  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
 #  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \

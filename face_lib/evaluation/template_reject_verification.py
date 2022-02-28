@@ -1,10 +1,6 @@
-# make the short self-contained setup
 # new IJB-C
 # Should we update the mu?
 # Cleaned the match from missing
-#
-#
-#
 
 
 import os
@@ -16,11 +12,16 @@ import matplotlib.pyplot as plt
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
 from pathlib import Path
+import pickle
+from tqdm import tqdm
+
+print('Imported pt 0')
 
 path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
+print('Imported pt 1')
 
-from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
+from face_lib.datasets import IJBDataset, IJBATest, IJBCTest, IJBCTemplates
 from face_lib.utils import cfg
 import face_lib.evaluation.plots as plots
 from face_lib.evaluation.utils import get_required_models, get_distance_uncertainty_funcs
@@ -147,46 +148,23 @@ def eval_template_reject_verification(
 
     testset = IJBDataset(dataset_path)
     image_paths = testset["abspath"].values
+    short_paths = ["/".join(Path(p).parts[-2:]) for p in image_paths]
 
-    tester = IJBCTest(image_paths)
-    tester.init_proto(protocol_path)
-
-    """
-    We need tester for the following atm
-    - collect image paths? but we have it passed
-    - verification templates list. What is this exactly?
-    - features/uncertainties/labels list. But we already had it, no?
-    
-    
-    """
-
-
-    # print(f"{tester.image_paths.dtype=} {tester.image_paths.shape=} {tester.image_paths[0]=}")
-    # mu_1, mu_2, uncertainty_1, uncertainty_2, label_vec = get_features_uncertainties_labels(
-    #     backbone, head, dataset_path, tester.image_paths,
-    #     uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
-    #     discriminator=discriminator, scale_predictor=scale_predictor,
-    # )
 
     # returns features and uncertainties for a list of images
-    CACHE = False
-    from pathlib import Path
-    import pickle
-    from tqdm import tqdm
-
-    short_paths = ["/".join(Path(p).parts[-2:]) for p in tester.image_paths]
+    CACHE = True
     if CACHE:
         with open(Path(save_fig_path) / 'features.pickle', 'rb') as f:
             feature_dict = pickle.load(f)
         with open(Path(save_fig_path) / 'scales.pickle', 'rb') as f:
-            scale_dict = pickle.load(f)
+            uncertainty_dict = pickle.load(f)
         features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
-        uncertainties = np.array([scale_dict[pth] for pth in tqdm(short_paths)])
+        uncertainties = np.array([uncertainty_dict[pth] for pth in tqdm(short_paths)])
     else:
         features, uncertainties = extract_features_uncertainties_from_list(
             backbone,
             head,
-            image_paths=tester.image_paths,
+            image_paths=image_paths,
             uncertainty_strategy=uncertainty_strategy,
             batch_size=batch_size,
             discriminator=discriminator,
@@ -198,9 +176,12 @@ def eval_template_reject_verification(
         feature_dict = {p: feature for p, feature in zip(short_paths, features)}
         with open(Path(save_fig_path) / 'features.pickle', 'wb') as f:
             pickle.dump(feature_dict, f)
-        scale_dict = {p: scale for p, scale in zip(short_paths, uncertainties)}
+        uncertainty_dict = {p: scale for p, scale in zip(short_paths, uncertainties)}
         with open(Path(save_fig_path) / 'scales.pickle', 'wb') as f:
-            pickle.dump(scale_dict, f)
+            pickle.dump(uncertainty_dict, f)
+
+    tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
+    tester.init_proto(protocol_path)
 
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
@@ -217,7 +198,7 @@ def eval_template_reject_verification(
 
         if fusion_name != prev_fusion_name:
             aggregate_templates(
-                tester.verification_templates, features, uncertainties, fusion_name)
+                tester.verification_templates(), features, uncertainties, fusion_name)
 
         feat_1, feat_2, unc_1, unc_2, label_vec = \
             tester.get_features_uncertainties_labels(verbose=verbose)

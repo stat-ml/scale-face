@@ -7,8 +7,8 @@ DIRECTORY = Path("/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1")
 
 # 1000 false
 # 100 true
-POS_NUM = 1000
-NEG_NUM = 10000
+POS_NUM = 5000
+NEG_NUM = 50000
 
 
 def main():
