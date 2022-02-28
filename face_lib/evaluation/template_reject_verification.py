@@ -1,6 +1,7 @@
 # new IJB-C
 # Should we update the mu?
 # Cleaned the match from missing
+# Should we apply normalization?
 
 
 import os
@@ -35,54 +36,68 @@ from face_lib.evaluation.argument_parser import parse_args_template_reject_verif
 print('imported')
 
 
-def aggregate_templates(templates, mu, sigma_sq, method):
-    sum_fuse_len = 0
-    number_of_templates = 0
-    for i, t in enumerate(templates):
-        if len(t.indices) > 0:
-            if method == "random":
-                t.feature = l2_normalize(mu[np.random.choice(t.indices)])
-                t.sigma_sq = None
-            if method == "mean":
-                t.feature = l2_normalize(np.mean(mu[t.indices], axis=0))
-                # FIXME: This is not right, better think how to it right
-                t.sigma_sq = np.mean(sigma_sq[t.indices], axis=0)
-            if method == "PFE":
-                t.mu, t.sigma_sq = aggregate_PFE(
-                    mu[t.indices],
-                    sigma_sq=sigma_sq[t.indices],
-                    normalize=True,
-                    concatenate=False,
-                )
-                t.feature = t.mu
-                # TODO: update the mu?
-            if method == "min":
-                t.mu, t.sigma_sq = aggregate_min(
-                    mu[t.indices],
-                    sigma_sq=sigma_sq[t.indices],
-                    normalize=True,
-                    concatenate=False,
-                )
-                t.feature = t.mu
-            if "softmax" in method:
-                temperature = float(method.split("-")[1])
-                t.feature = aggregate_softmax(
-                    mu[t.indices],
-                    sigma_sq=sigma_sq[t.indices],
-                    temperature=temperature,
-                    normalize=True,
-                    concatenate=False,
-                )
-                t.sigma_sq = None
-        else:
-            t.feature = None
-        if i % 1000 == 0:
-            sys.stdout.write("Fusing templates {}/{}...\t\r".format(i, len(templates)))
+def aggregate_templates(templates, method):
+    for t in templates:
+        if method == 'first':
+            t.mu = l2_normalize(t.features[0])
+            t.sigma_sq = t.sigmas[0]
+        elif method == 'PFE':
+            t.mu, t.sigma_sq = aggregate_PFE(
+                t.features,
+                sigma_sq=t.sigmas,
+                normalize=True,
+                concatenate=False,
+            )
 
-        sum_fuse_len += len(t.indices)
-        number_of_templates += int(len(t.indices) > 0)
-    print("")
-    print("Mean aggregated size : ", sum_fuse_len / number_of_templates)
+
+# def aggregate_templates(templates, mu, sigma_sq, method):
+#     sum_fuse_len = 0
+#     number_of_templates = 0
+#     for i, t in enumerate(templates):
+#         if len(t.indices) > 0:
+#             if method == "random":
+#                 t.feature = l2_normalize(mu[np.random.choice(t.indices)])
+#                 t.sigma_sq = None
+#             if method == "mean":
+#                 t.feature = l2_normalize(np.mean(mu[t.indices], axis=0))
+#                 # FIXME: This is not right, better think how to it right
+#                 t.sigma_sq = np.mean(sigma_sq[t.indices], axis=0)
+#             if method == "PFE":
+#                 t.mu, t.sigma_sq = aggregate_PFE(
+#                     mu[t.indices],
+#                     sigma_sq=sigma_sq[t.indices],
+#                     normalize=True,
+#                     concatenate=False,
+#                 )
+#                 t.feature = t.mu
+#                 # TODO: update the mu?
+#             if method == "min":
+#                 t.mu, t.sigma_sq = aggregate_min(
+#                     mu[t.indices],
+#                     sigma_sq=sigma_sq[t.indices],
+#                     normalize=True,
+#                     concatenate=False,
+#                 )
+#                 t.feature = t.mu
+#             if "softmax" in method:
+#                 temperature = float(method.split("-")[1])
+#                 t.feature = aggregate_softmax(
+#                     mu[t.indices],
+#                     sigma_sq=sigma_sq[t.indices],
+#                     temperature=temperature,
+#                     normalize=True,
+#                     concatenate=False,
+#                 )
+#                 t.sigma_sq = None
+#         else:
+#             t.feature = None
+#         if i % 1000 == 0:
+#             sys.stdout.write("Fusing templates {}/{}...\t\r".format(i, len(templates)))
+#
+#         sum_fuse_len += len(t.indices)
+#         number_of_templates += int(len(t.indices) > 0)
+#     print("")
+#     print("Mean aggregated size : ", sum_fuse_len / number_of_templates)
 
 
 def force_compare(compare_func, verbose=False):
@@ -197,8 +212,7 @@ def eval_template_reject_verification(
         )
 
         if fusion_name != prev_fusion_name:
-            aggregate_templates(
-                tester.verification_templates(), features, uncertainties, fusion_name)
+            aggregate_templates(tester.verification_templates(), fusion_name)
 
         feat_1, feat_2, unc_1, unc_2, label_vec = \
             tester.get_features_uncertainties_labels(verbose=verbose)

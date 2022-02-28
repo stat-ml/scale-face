@@ -35,3 +35,4 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
 #  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/small \
+#  --fusion_distance_uncertainty_metrics PFE_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul \
