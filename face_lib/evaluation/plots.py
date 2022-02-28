@@ -18,7 +18,7 @@ def plot_distribution(
 
 
 def plot_uncertainty_distribution(
-    values, save_fig_path, n_bins=40,
+    values, save_fig_path, n_bins=50,
     fig_name="", xlabel_name="", ylabel_name="",
 ):
     fig, ax = plt.subplots(figsize=(10, 10))

@@ -14,7 +14,7 @@ from face_lib.evaluation.feature_extractors import extract_features_uncertaintie
 from face_lib.evaluation.argument_parser import parse_args_dataset_distribution
 
 
-def get_uncertainties_IJBC(
+def get_uncertainties_image_list(
     backbone,
     dataset_path=None,
     image_paths_table=None,
@@ -45,10 +45,6 @@ def get_uncertainties_IJBC(
     return uncertainties.squeeze(axis=1)
 
 
-def get_uncertainties_LFW():
-    pass
-
-
 def get_uncertainties_MS1MV2():
     pass
 
@@ -67,8 +63,8 @@ def draw_figures(
     device=torch.device("cpu"),
     verbose=False,
 ):
-    if dataset_name == "IJBC":
-        uncertainties = get_uncertainties_IJBC(
+    if dataset_name == "IJBC" or dataset_name == "LFW":
+        uncertainties = get_uncertainties_image_list(
             backbone=backbone,
             dataset_path=dataset_path,
             image_paths_table=image_paths_table,
@@ -81,9 +77,6 @@ def draw_figures(
             verbose=verbose,)
     else:
         raise KeyError("Don't know this type of dataset")
-
-    print(type(uncertainties))
-    print(f"{uncertainties.shape=} {uncertainties.dtype}")
 
     np.save(os.path.join(save_fig_path, "uncertainties.npy"), uncertainties)
 
