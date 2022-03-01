@@ -22,7 +22,7 @@ path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
 print('Imported pt 1')
 
-from face_lib.datasets import IJBDataset, IJBATest, IJBCTest, IJBCTemplates
+from face_lib.datasets import IJBDataset, IJBATest, IJBCTemplates
 from face_lib.utils import cfg
 import face_lib.evaluation.plots as plots
 from face_lib.evaluation.utils import get_required_models, get_distance_uncertainty_funcs
@@ -136,7 +136,8 @@ def eval_template_reject_verification(
     save_fig_path=None,
     device=torch.device("cpu"),
     verbose=False,
-    uncertainty_model=None
+    uncertainty_model=None,
+    cached_embeddings=False
 ):
 
     # Setup the plots
@@ -167,14 +168,13 @@ def eval_template_reject_verification(
 
 
     # returns features and uncertainties for a list of images
-    CACHE = True
-    if CACHE:
+    if cached_embeddings:
         with open(Path(save_fig_path) / 'features.pickle', 'rb') as f:
             feature_dict = pickle.load(f)
         with open(Path(save_fig_path) / 'scales.pickle', 'rb') as f:
             uncertainty_dict = pickle.load(f)
-        features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
-        uncertainties = np.array([uncertainty_dict[pth] for pth in tqdm(short_paths)])
+        # features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
+        # uncertainties = np.array([uncertainty_dict[pth] for pth in tqdm(short_paths)])
     else:
         features, uncertainties = extract_features_uncertainties_from_list(
             backbone,
@@ -317,7 +317,8 @@ def main():
         save_fig_path=args.save_fig_path,
         device=device,
         verbose=args.verbose,
-        uncertainty_model=uncertainty_model
+        uncertainty_model=uncertainty_model,
+        cached_embeddings=args.cached_embeddings
     )
 
 

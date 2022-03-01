@@ -1,5 +1,6 @@
 from pathlib import Path
 import pandas as pd
+from tqdm import tqdm
 
 # DIRECTORY = Path('/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/pseudo_archive')
 DIRECTORY = Path("/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1")
@@ -7,8 +8,8 @@ DIRECTORY = Path("/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1")
 
 # 1000 false
 # 100 true
-POS_NUM = 5000
-NEG_NUM = 50000
+POS_NUM = 20000
+NEG_NUM = 500000
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
 
     idx = []
 
-    for index, row in matches.iterrows():
+    for index, row in tqdm(matches.iterrows(), total=len(matches)):
         try:
             subject_1 = subject_by_template.loc[row['ENROLL_TEMPLATE_ID'], 'SUBJECT_ID']
             subject_2 = subject_by_template.loc[row['VERIF_TEMPLATE_ID'], "SUBJECT_ID"]

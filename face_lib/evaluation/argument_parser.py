@@ -268,6 +268,11 @@ def parse_args_template_reject_verification():
         default=None,
     )
     parser.add_argument(
+        "--cached_embeddings",
+        help="Use precalculated embeddings from backbone",
+        action="store_true",
+    )
+    parser.add_argument(
         "--verbose",
         help="Dump verbose information",
         action="store_true",
