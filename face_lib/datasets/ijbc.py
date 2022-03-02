@@ -85,13 +85,21 @@ class IJBCTemplates:
         enroll_path = self.proto_folder / 'enroll_templates.csv'
         verif_path = self.proto_folder / 'verif_templates.csv'
         # self.pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
-        self.pairs = pd.read_csv(self.proto_folder / 'match.csv', header=None).to_numpy()
+        self.pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
+        # self.pairs = pd.read_csv(self.proto_folder / 'match.csv').to_numpy()
         self.templates_dict.update(
             build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
         )
         self.templates_dict.update(
             build_templates(verif_path, self.feature_dict, self.uncertainty_dict)
         )
+        self.pairs = self._clean_pairs(self.pairs, self.templates_dict)
+
+    def _clean_pairs(self, pairs, templates_dict):
+        print('len before', len(pairs))
+        pairs = np.array([p for p in pairs if (p[0] in self.templates_dict and p[1] in templates_dict)])
+        print('len after', len(pairs))
+        return pairs
 
     def get_features_uncertainties_labels(self, verbose=False):
         features1 = np.array([

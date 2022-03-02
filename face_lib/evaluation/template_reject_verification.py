@@ -1,12 +1,15 @@
-# new IJB-C
-# Should we update the mu?
-# Cleaned the match from missing
+# What is a global plan
+# make a reject by photo for templates
+# Check that quality increases
+
+
 # Should we apply normalization?
 
 
 import os
 import sys
 import numpy as np
+from datetime import datetime
 import pandas as pd
 import torch
 import matplotlib.pyplot as plt
@@ -166,7 +169,6 @@ def eval_template_reject_verification(
     image_paths = testset["abspath"].values
     short_paths = ["/".join(Path(p).parts[-2:]) for p in image_paths]
 
-
     # returns features and uncertainties for a list of images
     if cached_embeddings:
         with open(Path(save_fig_path) / 'features.pickle', 'rb') as f:
@@ -231,6 +233,11 @@ def eval_template_reject_verification(
             uncertainty_ax=uncertainty_ax,
             rejected_portions=rejected_portions
         )
+        del(feat_1)
+        del(feat_2)
+        del(unc_1)
+        del(unc_2)
+        del(label_vec)
 
         if save_fig_path is not None:
             distance_ax.set_title(f"{distance_name} {uncertainty_name}")
@@ -259,18 +266,19 @@ def eval_template_reject_verification(
             if save_fig_path:
                 plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         plots.plot_TAR_FAR_different_methods(
             all_results,
             rejected_portions,
             res_AUCs,
             title="Template reject verification",
-            save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
+            save_figs_path=os.path.join(save_fig_path, f"all_methods_{timestamp}.jpg")
         )
 
-        distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
-        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
+        distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
+        uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
-        torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
+        torch.save(all_results, os.path.join(save_fig_path, f"table_{timestamp}.pt"))
 
 
 def main():
@@ -283,6 +291,7 @@ def main():
         os.makedirs(args.save_fig_path, exist_ok=True)
 
     device = torch.device("cuda:" + str(args.device_id))
+
     model_args = cfg.load_config(args.config_path)
     print(model_args)
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
