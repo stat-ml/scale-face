@@ -43,7 +43,10 @@ def plot_TAR_FAR_different_methods(
     for key, table in results.items():
         for FAR, TARs in table.items():
             auc = AUCs[key][FAR]
-            label = '_'.join(key)
+            if type(key) != str:
+                label = '_'.join(key)
+            else:
+                label = key
             axes[plots_indices[FAR]].plot(
                 rejected_portions,
                 TARs,

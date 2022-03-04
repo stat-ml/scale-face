@@ -11,7 +11,6 @@ PFE - pfe aggregation, mls distance, image ue value
 scale - mean aggregation, cosine distance, image ue value
 """
 
-
 # What is template-image verification?
 # We aggregate the enroll templates (make the list)
 # then we took first image from verify templates and constant for
@@ -33,12 +32,8 @@ from pathlib import Path
 import pickle
 from tqdm import tqdm
 
-print('Imported pt 0')
-
 path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
-print('Imported pt 1')
-
 from face_lib.datasets import IJBDataset, IJBATest, IJBCTemplates
 from face_lib.utils import cfg
 import face_lib.evaluation.plots as plots
@@ -50,7 +45,6 @@ from face_lib.evaluation.reject_verification import get_rejected_tar_far
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_template_reject_verification
-print('imported')
 
 
 def aggregate_templates(templates, method):
@@ -70,6 +64,7 @@ def aggregate_templates(templates, method):
             t.sigma_sq = np.mean(t.sigmas, axis=0)
         else:
             raise ValueError(f"Wrong aggregate method {method}")
+
 
 def eval_template_reject_verification(
     backbone,
