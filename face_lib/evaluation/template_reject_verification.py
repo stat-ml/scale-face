@@ -1,7 +1,23 @@
-# What is the steps
-# The uncertainty on enroll is not important
-# We reject by verify
-# Ok, now let's regenerate the
+"""
+The script to compare template-image verification protocol, based on IJB-C
+It could calculate the PFE, magface, Scale results
+Though it requires preprocessed with face detector images
+  and pretrained with train_scripts checkpoints
+For the options see scripts/eval_template_reject_verification.sh
+
+optimal setups for methods:
+magface - mean aggregation, cosine distance, image ue value
+PFE - pfe aggregation, mls distance, image ue value
+scale - mean aggregation, cosine distance, image ue value
+"""
+
+
+# What is template-image verification?
+# We aggregate the enroll templates (make the list)
+# then we took first image from verify templates and constant for 
+
+# check that pfe ue bigger for verify single images
+
 
 import os
 import sys
