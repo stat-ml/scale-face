@@ -1,10 +1,7 @@
-# What is a global plan
-# make a reject by photo for templates
-# Check that quality increases
-
-
-# Should we apply normalization?
-
+# What is the steps
+# The uncertainty on enroll is not important
+# We reject by verify
+# Ok, now let's regenerate the
 
 import os
 import sys
@@ -51,74 +48,11 @@ def aggregate_templates(templates, method):
                 normalize=True,
                 concatenate=False,
             )
-
-
-# def aggregate_templates(templates, mu, sigma_sq, method):
-#     sum_fuse_len = 0
-#     number_of_templates = 0
-#     for i, t in enumerate(templates):
-#         if len(t.indices) > 0:
-#             if method == "random":
-#                 t.feature = l2_normalize(mu[np.random.choice(t.indices)])
-#                 t.sigma_sq = None
-#             if method == "mean":
-#                 t.feature = l2_normalize(np.mean(mu[t.indices], axis=0))
-#                 # FIXME: This is not right, better think how to it right
-#                 t.sigma_sq = np.mean(sigma_sq[t.indices], axis=0)
-#             if method == "PFE":
-#                 t.mu, t.sigma_sq = aggregate_PFE(
-#                     mu[t.indices],
-#                     sigma_sq=sigma_sq[t.indices],
-#                     normalize=True,
-#                     concatenate=False,
-#                 )
-#                 t.feature = t.mu
-#                 # TODO: update the mu?
-#             if method == "min":
-#                 t.mu, t.sigma_sq = aggregate_min(
-#                     mu[t.indices],
-#                     sigma_sq=sigma_sq[t.indices],
-#                     normalize=True,
-#                     concatenate=False,
-#                 )
-#                 t.feature = t.mu
-#             if "softmax" in method:
-#                 temperature = float(method.split("-")[1])
-#                 t.feature = aggregate_softmax(
-#                     mu[t.indices],
-#                     sigma_sq=sigma_sq[t.indices],
-#                     temperature=temperature,
-#                     normalize=True,
-#                     concatenate=False,
-#                 )
-#                 t.sigma_sq = None
-#         else:
-#             t.feature = None
-#         if i % 1000 == 0:
-#             sys.stdout.write("Fusing templates {}/{}...\t\r".format(i, len(templates)))
-#
-#         sum_fuse_len += len(t.indices)
-#         number_of_templates += int(len(t.indices) > 0)
-#     print("")
-#     print("Mean aggregated size : ", sum_fuse_len / number_of_templates)
-
-
-def force_compare(compare_func, verbose=False):
-    def compare(t1, t2, s1, s2):
-        score_vec = np.zeros(len(t1))
-        for i in range(len(t1)):
-            if t1[i] is None or t2[i] is None:
-                score_vec[i] = -9999
-            else:
-                score_vec[i] = compare_func(t1[i][None], t2[i][None], s1[i], s2[i])
-            if verbose and i % 1000 == 0:
-                sys.stdout.write("Matching pair {}/{}...\t\r".format(i, len(t1)))
-        if verbose:
-            print("")
-        return score_vec
-
-    return compare
-
+        elif method == 'mean':
+            t.mu = np.mean(t.features, axis=0)
+            t.sigma_sq = np.mean(t.sigmas, axis=0)
+        else:
+            raise ValueError(f"Wrong aggregate method {method}")
 
 def eval_template_reject_verification(
     backbone,
@@ -171,9 +105,9 @@ def eval_template_reject_verification(
 
     # returns features and uncertainties for a list of images
     if cached_embeddings:
-        with open(Path(save_fig_path) / 'features.pickle', 'rb') as f:
+        with open(Path(save_fig_path) / f'{uncertainty_strategy}_features.pickle', 'rb') as f:
             feature_dict = pickle.load(f)
-        with open(Path(save_fig_path) / 'scales.pickle', 'rb') as f:
+        with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'rb') as f:
             uncertainty_dict = pickle.load(f)
         # features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
         # uncertainties = np.array([uncertainty_dict[pth] for pth in tqdm(short_paths)])
@@ -191,10 +125,10 @@ def eval_template_reject_verification(
             verbose=verbose,
         )
         feature_dict = {p: feature for p, feature in zip(short_paths, features)}
-        with open(Path(save_fig_path) / 'features.pickle', 'wb') as f:
+        with open(Path(save_fig_path) / f'{uncertainty_strategy}_features.pickle', 'wb') as f:
             pickle.dump(feature_dict, f)
         uncertainty_dict = {p: scale for p, scale in zip(short_paths, uncertainties)}
-        with open(Path(save_fig_path) / 'scales.pickle', 'wb') as f:
+        with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'wb') as f:
             pickle.dump(uncertainty_dict, f)
 
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
@@ -272,13 +206,14 @@ def eval_template_reject_verification(
             rejected_portions,
             res_AUCs,
             title="Template reject verification",
-            save_figs_path=os.path.join(save_fig_path, f"all_methods_{timestamp}.jpg")
+            save_figs_path=os.path.join(save_fig_path, f"all_methods_{uncertainty_strategy}_{timestamp}.jpg")
         )
 
         distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
         torch.save(all_results, os.path.join(save_fig_path, f"table_{timestamp}.pt"))
+    import ipdb; ipdb.set_trace()
 
 
 def main():
