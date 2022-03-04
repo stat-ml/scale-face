@@ -73,8 +73,14 @@ class IJBCTemplates:
         self.feature_dict = feature_dict
         self.uncertainty_dict = uncertainty_dict
 
-    def verification_templates(self):
+    def all_templates(self):
         return self.templates_dict.values()
+
+    def enroll_templates(self):
+        return self._enroll_templates
+
+    def verification_templates(self):
+        return self._verification_templates
 
     def init_proto(self, proto_folder):
         """
@@ -85,15 +91,18 @@ class IJBCTemplates:
         enroll_path = self.proto_folder / 'enroll_templates.csv'
         verif_path = self.proto_folder / 'verif_templates.csv'
         # self.pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
-        self.pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
+        self._pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
         # self.pairs = pd.read_csv(self.proto_folder / 'match.csv').to_numpy()
-        self.templates_dict.update(
-            build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
-        )
-        self.templates_dict.update(
-            build_templates(verif_path, self.feature_dict, self.uncertainty_dict)
-        )
-        self.pairs = self._clean_pairs(self.pairs, self.templates_dict)
+
+        enroll_dict = build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
+        self.templates_dict.update(enroll_dict)
+        self._enroll_templates = enroll_dict.values()
+
+        verify_dict = build_templates(verif_path, self.feature_dict, self.uncertainty_dict)
+        self.templates_dict.update(verify_dict)
+        self._verification_templates = verify_dict.values()
+
+        self._pairs = self._clean_pairs(self._pairs, self.templates_dict)
 
     def _clean_pairs(self, pairs, templates_dict):
         print('len before', len(pairs))
@@ -101,24 +110,31 @@ class IJBCTemplates:
         print('len after', len(pairs))
         return pairs
 
-    def get_features_uncertainties_labels(self, verbose=False):
+    def get_features_uncertainties_labels(self, verify_only_ue=True):
+        """
+        returns features, uncertainties and labels for pairs
+        if verify_only_ue flag set, ignores the uncertainty from enroll templates
+        """
         features1 = np.array([
-            self.templates_dict[t].mu for t in tqdm(self.pairs[:, 0], desc='Features')
+            self.templates_dict[t].mu for t in tqdm(self._pairs[:, 0], desc='Features')
         ])
         features2 = np.array([
-            self.templates_dict[t].mu for t in tqdm(self.pairs[:, 1])
+            self.templates_dict[t].mu for t in tqdm(self._pairs[:, 1])
         ])
-        sigmas_sq1 = np.array([
-            self.templates_dict[t].sigma_sq for t in tqdm(self.pairs[:, 0], desc='Sigmas')
-        ])
+        if verify_only_ue:
+            sigmas_sq1 = np.ones((len(self._pairs), 1))
+        else:
+            sigmas_sq1 = np.array([
+                self.templates_dict[t].sigma_sq for t in tqdm(self._pairs[:, 0], desc='Sigmas')
+            ])
         sigmas_sq2 = np.array([
-            self.templates_dict[t].sigma_sq for t in self.pairs[:, 1]
+            self.templates_dict[t].sigma_sq for t in self._pairs[:, 1]
         ])
         labels1 = np.array([
-            self.templates_dict[t].subject_id for t in tqdm(self.pairs[:, 0], desc='Labels')
+            self.templates_dict[t].subject_id for t in tqdm(self._pairs[:, 0], desc='Labels')
         ])
         labels2 = np.array([
-            self.templates_dict[t].subject_id for t in self.pairs[:, 1]
+            self.templates_dict[t].subject_id for t in self._pairs[:, 1]
         ])
         label_vec = (labels1 == labels2)
 

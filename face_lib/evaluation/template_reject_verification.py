@@ -14,9 +14,10 @@ scale - mean aggregation, cosine distance, image ue value
 
 # What is template-image verification?
 # We aggregate the enroll templates (make the list)
-# then we took first image from verify templates and constant for 
+# then we took first image from verify templates and constant for
 
 # check that pfe ue bigger for verify single images
+# correct mls sigma aggregation?
 
 
 import os
@@ -125,9 +126,9 @@ def eval_template_reject_verification(
             feature_dict = pickle.load(f)
         with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'rb') as f:
             uncertainty_dict = pickle.load(f)
-        # features = np.array([feature_dict[pth] for pth in tqdm(short_paths)])
-        # uncertainties = np.array([uncertainty_dict[pth] for pth in tqdm(short_paths)])
     else:
+        if uncertainty_strategy == 'magface':
+            raise ValueError("Can't compute magface here")
         features, uncertainties = extract_features_uncertainties_from_list(
             backbone,
             head,
@@ -150,6 +151,7 @@ def eval_template_reject_verification(
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
     tester.init_proto(protocol_path)
 
+    verify_only_ue = True
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
@@ -162,12 +164,15 @@ def eval_template_reject_verification(
             device=device,
             distaces_batch_size=distaces_batch_size,
         )
-
         if fusion_name != prev_fusion_name:
-            aggregate_templates(tester.verification_templates(), fusion_name)
+            if verify_only_ue:
+                aggregate_templates(tester.enroll_templates(), fusion_name)
+                aggregate_templates(tester.verification_templates(), 'first')
+            else:
+                aggregate_templates(tester.all_templates(), fusion_name)
 
         feat_1, feat_2, unc_1, unc_2, label_vec = \
-            tester.get_features_uncertainties_labels(verbose=verbose)
+            tester.get_features_uncertainties_labels(verify_only_ue=verify_only_ue)
 
         result_table = get_rejected_tar_far(
             feat_1,
@@ -183,6 +188,8 @@ def eval_template_reject_verification(
             uncertainty_ax=uncertainty_ax,
             rejected_portions=rejected_portions
         )
+
+        # delete arrays to prevent memory leak
         del(feat_1)
         del(feat_2)
         del(unc_1)
