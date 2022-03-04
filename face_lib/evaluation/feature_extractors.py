@@ -7,7 +7,12 @@ from tqdm import tqdm
 from scipy import ndimage
 from skimage.metrics import structural_similarity as ssim
 
-from face_lib.utils.imageprocessing import preprocess, preprocess_tta, preprocess_gan, preprocess_magface
+from face_lib.utils.imageprocessing import (
+    preprocess,
+    preprocess_tta,
+    preprocess_gan,
+    preprocess_magface,
+    preprocess_blurred)
 from face_lib.evaluation.utils import get_precalculated_embeddings
 
 
@@ -462,6 +467,7 @@ def extract_features_uncertainties_from_list(
     discriminator=None,
     scale_predictor=None,
     uncertainty_model=None,
+    blur_intensity=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -545,6 +551,21 @@ def extract_features_uncertainties_from_list(
     elif uncertainty_strategy == "scale":
         assert scale_predictor is not None
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+
+        features, uncertainties = extract_features_scale(
+            backbone,
+            scale_predictor,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+    elif uncertainty_strategy == "blurred_scale":
+        assert scale_predictor is not None
+        assert blur_intensity is not None
+        proc_func = lambda images: preprocess_blurred(
+            images, [112, 112], is_training=False, blur_intensity=blur_intensity)
 
         features, uncertainties = extract_features_scale(
             backbone,

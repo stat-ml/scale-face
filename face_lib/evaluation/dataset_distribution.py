@@ -24,6 +24,7 @@ def get_uncertainties_image_list(
     head=None,
     discriminator=None,
     scale_predictor=None,
+    blur_intensity=None,
     device=torch.device("cpu"),
     verbose=False):
 
@@ -40,6 +41,7 @@ def get_uncertainties_image_list(
         discriminator=discriminator,
         scale_predictor=scale_predictor,
         uncertainty_model=uncertainty_model,
+        blur_intensity=blur_intensity,
         device=device,
         verbose=verbose,
     )
@@ -78,6 +80,7 @@ def draw_figures(
     head=None,
     discriminator=None,
     scale_predictor=None,
+    blur_intensity=None,
     save_fig_path=None,
     device=torch.device("cpu"),
     verbose=False,
@@ -92,9 +95,13 @@ def draw_figures(
             head=head,
             discriminator=discriminator,
             scale_predictor=scale_predictor,
+            blur_intensity=blur_intensity,
             device=device,
             verbose=verbose,)
     elif dataset_name == "MS1MV2":
+        if blur_intensity is not None:
+            raise NotImplementedError("Gaussian blur for MS1MV2 is not implemented yet")
+
         uncertainties = get_uncertainties_MS1MV2(
             backbone=backbone,
             dataset_path=dataset_path,
@@ -141,6 +148,7 @@ if __name__ == "__main__":
         head=head,
         discriminator=discriminator,
         scale_predictor=scale_predictor,
+        blur_intensity=args.blur_intensity,
         save_fig_path=args.save_fig_path,
         device=device,
         verbose=args.verbose,

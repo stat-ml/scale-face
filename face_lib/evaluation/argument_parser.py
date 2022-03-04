@@ -1,7 +1,7 @@
 import argparse
 
 uncertainty_methods = [
-    "head", "GAN", "classifier", "scale", "emb_norm",
+    "head", "GAN", "classifier", "scale", "blurred_scale", "emb_norm",
     "magface", "backbone+uncertainty_model", "magface_precalculated", ]
 uncertainty_modes = ["uncertainty", "confidence"]
 known_datasets = ["ijba", "ijbc"]
@@ -354,6 +354,12 @@ def parse_args_dataset_distribution():
         "--discriminator_path",
         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
         type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--blur_intensity",
+        help="The intensity of gaussian blur",
+        type=int,
         default=None,
     )
     # parser.add_argument(
