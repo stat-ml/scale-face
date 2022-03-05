@@ -16,6 +16,7 @@ import face_lib.evaluation.plots as plots
 
 parser = ArgumentParser()
 parser.add_argument('--test_folder', default='/gpfs/gpfs0/k.fedyanin/space/figures/test')
+parser.add_argument('--last_timestamp', action="store_true")
 args = parser.parse_args()
 
 FARs = [0.0001, 0.001, 0.05]
@@ -32,7 +33,13 @@ folder = Path(args.test_folder)
 all_results = OrderedDict()
 
 for name, methods in config.items():
-    local_results = torch.load(folder / f'table_{name}.pt')
+    if args.last_timestamp:
+        files = os.listdir(folder)
+        files = [f for f in files if f.startswith(f'table_{name}')]
+        file = sorted(files)[-1]
+    else:
+        file = f'table_{name}.pt'
+    local_results = torch.load(folder / file)
     all_results[name] = local_results[methods]
 
 res_AUCs = OrderedDict()

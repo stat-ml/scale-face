@@ -78,3 +78,4 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
 #  --verbose \
 #  --cached_embeddings
+python3 explore/visualize_templates.py
