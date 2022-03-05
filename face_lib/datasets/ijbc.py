@@ -50,7 +50,7 @@ def build_templates(csv_path, feature_dict, uncertainty_dict):
         template_id = group.iloc[0]['TEMPLATE_ID']
         subject_id = group.iloc[0]['SUBJECT_ID']
         image_paths = [to_short_name(subject_id, n) for n in list(group.FILENAME)]
-        present = list(key_set.intersection(set(image_paths)))
+        present = sorted(list(key_set.intersection(set(image_paths))))
         if len(present) > 0:
             features = np.array([feature_dict[img] for img in present])
             sigmas = np.array([uncertainty_dict[img] for img in present])
@@ -90,9 +90,9 @@ class IJBCTemplates:
         self.proto_folder = Path(proto_folder)
         enroll_path = self.proto_folder / 'enroll_templates.csv'
         verif_path = self.proto_folder / 'verif_templates.csv'
-        # self.pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
+        # self._pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
         self._pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
-        # self.pairs = pd.read_csv(self.proto_folder / 'match.csv').to_numpy()
+        # self._pairs = pd.read_csv(self.proto_folder / 'match.csv').to_numpy()
 
         enroll_dict = build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
         self.templates_dict.update(enroll_dict)

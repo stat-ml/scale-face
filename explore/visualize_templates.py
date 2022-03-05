@@ -8,8 +8,6 @@ import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from sklearn.metrics import auc
-
-
 sys.path.append('.')
 import face_lib.evaluation.plots as plots
 
@@ -24,7 +22,7 @@ rejected_portions = np.arange(0, 0.51, 0.02)
 
 config = {
     'scale': ('mean', 'cosine', 'mean'),
-    'pfe': ('PFE', 'cosine', 'mean'),
+    'head': ('mean', 'cosine', 'mean'),
     'magface': ('mean', 'cosine', 'mean')
 }
 
@@ -33,9 +31,10 @@ folder = Path(args.test_folder)
 all_results = OrderedDict()
 
 for name, methods in config.items():
+    print(name)
     if args.last_timestamp:
         files = os.listdir(folder)
-        files = [f for f in files if f.startswith(f'table_{name}')]
+        files = [f for f in files if f.startswith(f'table_{name}_')]
         file = sorted(files)[-1]
     else:
         file = f'table_{name}.pt'

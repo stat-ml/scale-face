@@ -228,7 +228,7 @@ def eval_template_reject_verification(
         distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
-        torch.save(all_results, os.path.join(save_fig_path, f"table_{timestamp}.pt"))
+        torch.save(all_results, os.path.join(save_fig_path, f"table_{uncertainty_strategy}_{timestamp}.pt"))
 
 
 def main():

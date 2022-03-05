@@ -8,8 +8,8 @@ DIRECTORY = Path("/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1")
 
 # 1000 false
 # 100 true
-POS_NUM = 19000
-NEG_NUM = 1000000
+POS_NUM = 500
+NEG_NUM = 1000
 
 def main():
     cleaned = "cleaned_templates.csv"
@@ -42,7 +42,7 @@ def main():
             break
 
     print(matches.loc[idx])
-    matches.loc[idx].to_csv(DIRECTORY / 'cropped_matches.csv', index=False, header=False)
+    matches.loc[idx].to_csv(DIRECTORY / 'short_matches.csv', index=False, header=False)
     import ipdb; ipdb.set_trace()
 
 

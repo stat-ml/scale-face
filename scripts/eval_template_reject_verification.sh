@@ -27,12 +27,13 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --uncertainty_mode=confidence \
   --FARs 0.0001 0.001 0.05\
   --rejected_portions $(seq 0 0.02 0.5) \
-  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
+  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
   --verbose \
   --cached_embeddings
 
+#  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 #  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive \
@@ -54,13 +55,14 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 --uncertainty_mode=uncertainty \
 --FARs 0.0001 0.001 0.05 \
 --rejected_portions $(seq 0 0.02 0.5) \
---fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean PFE_cosine_mean PFE_MLS_harmonic-harmonic \
+--fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean \
 --device_id=0 \
 --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
 --verbose \
 --cached_embeddings
 
-### MagFace
+# --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean PFE_cosine_mean PFE_MLS_harmonic-harmonic \
+#### MagFace
 python3 ./face_lib/evaluation/template_reject_verification.py \
   --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
   --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
@@ -73,7 +75,7 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --uncertainty_mode=confidence \
   --FARs 0.0001 0.001 0.05\
   --rejected_portions $(seq 0 0.02 0.5) \
-  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
+  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
   --verbose \
