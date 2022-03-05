@@ -229,7 +229,6 @@ def eval_template_reject_verification(
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
         torch.save(all_results, os.path.join(save_fig_path, f"table_{timestamp}.pt"))
-    import ipdb; ipdb.set_trace()
 
 
 def main():
