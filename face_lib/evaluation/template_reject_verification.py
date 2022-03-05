@@ -12,6 +12,7 @@ scale - mean aggregation, cosine distance, image ue value
 """
 
 
+# rewrite the list
 # check that pfe ue bigger for verify single images
 # correct mls sigma aggregation?
 
