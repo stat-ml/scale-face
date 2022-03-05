@@ -11,9 +11,6 @@ PFE - pfe aggregation, mls distance, image ue value
 scale - mean aggregation, cosine distance, image ue value
 """
 
-# What is template-image verification?
-# We aggregate the enroll templates (make the list)
-# then we took first image from verify templates and constant for
 
 # check that pfe ue bigger for verify single images
 # correct mls sigma aggregation?

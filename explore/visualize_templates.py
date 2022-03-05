@@ -1,3 +1,4 @@
+from argparse import ArgumentParser
 import sys
 import os
 from collections import OrderedDict
@@ -12,17 +13,21 @@ from sklearn.metrics import auc
 sys.path.append('.')
 import face_lib.evaluation.plots as plots
 
+
+parser = ArgumentParser()
+parser.add_argument('--test_folder', default='/gpfs/gpfs0/k.fedyanin/space/figures/test')
+args = parser.parse_args()
+
 FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
 config = {
     'scale': ('mean', 'cosine', 'mean'),
-    'pfe': ('mean', 'cosine', 'mean'),
+    'pfe': ('PFE', 'cosine', 'mean'),
     'magface': ('mean', 'cosine', 'mean')
 }
 
-folder = Path('/gpfs/gpfs0/k.fedyanin/space/figures/test')
-save_fig_path = "/gpfs/gpfs0/k.fedyanin/space/figures/test"
+folder = Path(args.test_folder)
 
 all_results = OrderedDict()
 
@@ -42,6 +47,6 @@ plots.plot_TAR_FAR_different_methods(
     rejected_portions,
     res_AUCs,
     title="Template reject verification",
-    save_figs_path=os.path.join(save_fig_path, f"all_methods_together_{timestamp}.jpg")
+    save_figs_path=os.path.join(folder, f"all_methods_together_{timestamp}.jpg")
 )
 plt.show()
