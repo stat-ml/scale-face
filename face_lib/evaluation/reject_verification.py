@@ -95,9 +95,9 @@ def eval_reject_verification(
             rejected_portions=rejected_portions
         )
 
-        if save_fig_path is not None:
-            distance_ax.set_title(f"{distance_name} {uncertainty_name}")
-            uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
+        # if save_fig_path is not None:
+        #     distance_ax.set_title(f"{distance_name} {uncertainty_name}")
+        #     uncertainty_ax.set_title(f"{distance_name} {uncertainty_name}")
 
         all_results[(distance_name, uncertainty_name)] = result_table
 
@@ -113,19 +113,19 @@ def eval_reject_verification(
             print(f"\tFAR={round(FAR, 5)} TAR_AUC : {round(AUC, 5)}")
 
     if save_fig_path:
-        for (distance_name, uncertainty_name), result_table in all_results.items():
-            title = (
-                    pairs_table_path.split("/")[-1][-4]
-                    + " "
-                    + distance_name
-                    + " "
-                    + uncertainty_name
-            )
-            save_to_path = (
-                os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
-            )
-            if save_fig_path:
-                plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
+        # for (distance_name, uncertainty_name), result_table in all_results.items():
+        #     title = (
+        #             pairs_table_path.split("/")[-1][-4]
+        #             + " "
+        #             + distance_name
+        #             + " "
+        #             + uncertainty_name
+        #     )
+        #     save_to_path = (
+        #         os.path.join(save_fig_path, distance_name + "_" + uncertainty_name + ".jpg")
+        #     )
+        #     if save_fig_path:
+        #         plots.plot_rejected_TAR_FAR(result_table, rejected_portions, title, save_to_path)
 
         plots.plot_TAR_FAR_different_methods(
             all_results,
@@ -134,11 +134,12 @@ def eval_reject_verification(
             title=pairs_table_path.split("/")[-1][:-4],
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
+        plt.show()
 
-        distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
-        uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
-
-        torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
+        # distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
+        # uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
+        #
+        # torch.save(all_results, os.path.join(save_fig_path, "table.pt"))
 
 
 def get_rejected_tar_far(
