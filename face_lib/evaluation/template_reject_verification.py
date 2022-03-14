@@ -144,7 +144,7 @@ def eval_template_reject_verification(
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
     tester.init_proto(protocol_path)
 
-    verify_only_ue = True
+    equal_uncertainty_enroll = True
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
@@ -158,14 +158,17 @@ def eval_template_reject_verification(
             distaces_batch_size=distaces_batch_size,
         )
         if fusion_name != prev_fusion_name:
-            if verify_only_ue:
+            if equal_uncertainty_enroll:
                 aggregate_templates(tester.enroll_templates(), fusion_name)
                 aggregate_templates(tester.verification_templates(), 'first')
             else:
                 aggregate_templates(tester.all_templates(), fusion_name)
 
         feat_1, feat_2, unc_1, unc_2, label_vec = \
-            tester.get_features_uncertainties_labels(verify_only_ue=verify_only_ue)
+            tester.get_features_uncertainties_labels()
+
+        print('shapes')
+        print(feat_1.shape, feat_2.shape, unc_1.shape, unc_2.shape, label_vec.shape)
 
         result_table = get_rejected_tar_far(
             feat_1,
@@ -179,7 +182,8 @@ def eval_template_reject_verification(
             FARs=FARs,
             distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
-            rejected_portions=rejected_portions
+            rejected_portions=rejected_portions,
+            equal_uncertainty_enroll=equal_uncertainty_enroll
         )
 
         # delete arrays to prevent memory leak

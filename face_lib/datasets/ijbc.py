@@ -90,9 +90,13 @@ class IJBCTemplates:
         self.proto_folder = Path(proto_folder)
         enroll_path = self.proto_folder / 'enroll_templates.csv'
         verif_path = self.proto_folder / 'verif_templates.csv'
-        self._pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
-        # self._pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
+        # self._pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
+        self._pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
         # self._pairs = pd.read_csv(self.proto_folder / 'match.csv').to_numpy()
+
+        # enroll_path = self.proto_folder / 'enroll_templates2.csv'
+        # verif_path = self.proto_folder / 'verif_templates2.csv'
+        # self._pairs = pd.read_csv(self.proto_folder / 'pair_matches.csv', header=None).to_numpy()
 
         enroll_dict = build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
         self.templates_dict.update(enroll_dict)
@@ -110,7 +114,7 @@ class IJBCTemplates:
         print('len after', len(pairs))
         return pairs
 
-    def get_features_uncertainties_labels(self, verify_only_ue=True):
+    def get_features_uncertainties_labels(self, equal_uncertainty_enroll=False):
         """
         returns features, uncertainties and labels for pairs
         if verify_only_ue flag set, ignores the uncertainty from enroll templates
@@ -121,7 +125,7 @@ class IJBCTemplates:
         features2 = np.array([
             self.templates_dict[t].mu for t in tqdm(self._pairs[:, 1])
         ])
-        if verify_only_ue:
+        if equal_uncertainty_enroll:
             sigmas_sq1 = np.ones((len(self._pairs), 1))
         else:
             sigmas_sq1 = np.array([

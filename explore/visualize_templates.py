@@ -23,6 +23,7 @@ rejected_portions = np.arange(0, 0.51, 0.02)
 config = {
     'scale': ('mean', 'cosine', 'mean'),
     'head': ('mean', 'cosine', 'mean'),
+    # 'head': ('mean', 'cosine', 'MLS'),
     'magface': ('mean', 'cosine', 'mean')
 }
 

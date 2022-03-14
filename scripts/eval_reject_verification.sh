@@ -32,7 +32,7 @@ python3 ./face_lib/evaluation/reject_verification.py \
   --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
   --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_10000_prob_0.1.csv \
   --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \
-  --batch_size=64 \
+  --batch_size=16 \
   --uncertainty_strategy=head \
   --FARs 0.0001 0.001 0.05 \
   --rejected_portions $(seq 0 0.002 0.5) \

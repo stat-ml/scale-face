@@ -55,13 +55,14 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 --uncertainty_mode=uncertainty \
 --FARs 0.0001 0.001 0.05 \
 --rejected_portions $(seq 0 0.02 0.5) \
---fusion_distance_uncertainty_metrics first_cosine_mean first_MLS_harmonic-sum first_MLS_harmonic-harmonic \
+--fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean PFE_cosine_mean PFE_MLS_harmonic-sum PFE_MLS_harmonic-harmonic PFE_MLS_mean \
 --device_id=0 \
 --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
 --verbose \
 --cached_embeddings
 
 
+#--fusion_distance_uncertainty_metrics first_cosine_mean first_MLS_harmonic-sum first_MLS_harmonic-harmonic \
 #--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
 # --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_MLS_harmonic-sum mean_MLS_harmonic-harmonic PFE_MLS_harmonic-sum PFE_MLS_harmonic-harmonic \
 # --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean PFE_cosine_mean PFE_MLS_harmonic-harmonic \

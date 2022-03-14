@@ -6,6 +6,7 @@ from tqdm import tqdm
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
 import matplotlib.pyplot as plt
+import numpy as np
 
 path = str(Path(__file__).parent.parent.parent.abspath())
 sys.path.insert(0, path)
@@ -154,12 +155,17 @@ def get_rejected_tar_far(
     uncertainty_mode="uncertainty",
     distance_ax=None,
     uncertainty_ax=None,
-    rejected_portions=None
+    rejected_portions=None,
+    equal_uncertainty_enroll=False
 ):
     # If something's broken, uncomment the line below
 
     # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+
+    if equal_uncertainty_enroll:
+        sigma_sq_1 = np.ones_like(sigma_sq_1)
+
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 
     sorted_indices = uncertainty_vec.argsort()
