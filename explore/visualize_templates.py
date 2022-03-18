@@ -4,12 +4,14 @@ import os
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
+
+import matplotlib
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
 from sklearn.metrics import auc
 sys.path.append('.')
-import face_lib.evaluation.plots as plots
+# import face_lib.evaluation.plots as plots
 
 
 parser = ArgumentParser()
@@ -20,18 +22,30 @@ args = parser.parse_args()
 FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
-config = {
-    'scale': ('mean', 'cosine', 'mean'),
-    'head': ('mean', 'cosine', 'mean'),
-    # 'head': ('mean', 'cosine', 'MLS'),
-    'magface': ('mean', 'cosine', 'mean')
+methods = {
+    'scale': {
+        'functions': ('mean', 'cosine', 'mean'),
+        'label': 'ScaleFace'
+    },
+    'head': {
+        'functions': ('mean', 'cosine', 'mean'),
+        'label': 'PFE'
+    },
+    # 'head': {
+    #     'functions': ('PFE', 'MLS', 'harmonic-sum'),
+    #     'label': 'PFE (MLS)'
+    # },
+    'magface': {
+        'functions': ('mean', 'cosine', 'mean'),
+        'label': 'MagFace'
+    },
 }
 
 folder = Path(args.test_folder)
 
 all_results = OrderedDict()
 
-for name, methods in config.items():
+for name, method in methods.items():
     print(name)
     if args.last_timestamp:
         files = os.listdir(folder)
@@ -40,7 +54,7 @@ for name, methods in config.items():
     else:
         file = f'table_{name}.pt'
     local_results = torch.load(folder / file)
-    all_results[name] = local_results[methods]
+    all_results[method['label']] = local_results[method['functions']]
 
 res_AUCs = OrderedDict()
 for method, table in all_results.items():
@@ -48,12 +62,59 @@ for method, table in all_results.items():
         far: auc(rejected_portions, TARs) for far, TARs in table.items()
     }
 
+
+def plot_TAR_FAR_different_methods(
+    results, rejected_portions, AUCs, title=None, save_figs_path=None
+):
+    def pretty_matplotlib_config(fontsize=15):
+        matplotlib.rcParams['pdf.fonttype'] = 42
+        matplotlib.rcParams['ps.fonttype'] = 42
+        matplotlib.rcParams['text.usetex'] = True
+        matplotlib.rcParams.update({'font.size': fontsize})
+
+    pretty_matplotlib_config(28)
+
+    plots_indices = {
+        FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
+    }
+    fig, axes = plt.subplots(
+        ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 10)
+    )
+    for key, table in results.items():
+        for FAR, TARs in table.items():
+            auc = AUCs[key][FAR]
+
+            if type(key) != str:
+                label = '\_'.join(key)
+            else:
+                label = key
+            label = label + ", AUC=" + str(round(auc, 5))
+            print(label)
+
+            axes[plots_indices[FAR]].plot(
+                rejected_portions, TARs,
+                label=label, marker=" ", linewidth=3
+            )
+
+            axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
+            axes[plots_indices[FAR]].set_xlabel("Rejected portion")
+            axes[plots_indices[FAR]].set_ylabel("TAR")
+            axes[plots_indices[FAR]].legend()
+    fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    if title:
+        fig.suptitle(title)
+    if save_figs_path:
+        fig.savefig(save_figs_path, dpi=150, format='pdf')
+    return fig
+
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-plots.plot_TAR_FAR_different_methods(
+plot_TAR_FAR_different_methods(
     all_results,
     rejected_portions,
     res_AUCs,
     title="Template reject verification",
-    save_figs_path=os.path.join(folder, f"all_methods_together_{timestamp}.jpg")
+    save_figs_path=os.path.join(folder, f"all_methods_together_last.pdf")
 )
-plt.show()
+
+# plt.show()
+#save_figs_path = os.path.join(folder, f"all_methods_together_{timestamp}.jpg")

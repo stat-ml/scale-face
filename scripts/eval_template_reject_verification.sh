@@ -44,7 +44,7 @@
 
 ###  PFE normalized
 python3 ./face_lib/evaluation/template_reject_verification.py \
---checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
+--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
 --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
 --protocol=ijbc \
 --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1 \
@@ -62,6 +62,7 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 --cached_embeddings
 
 
+#--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
 #--fusion_distance_uncertainty_metrics first_cosine_mean first_MLS_harmonic-sum first_MLS_harmonic-harmonic \
 #--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
 # --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_MLS_harmonic-sum mean_MLS_harmonic-harmonic PFE_MLS_harmonic-sum PFE_MLS_harmonic-harmonic \

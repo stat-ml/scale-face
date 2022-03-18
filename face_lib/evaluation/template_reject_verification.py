@@ -228,7 +228,7 @@ def eval_template_reject_verification(
             title="Template reject verification",
             save_figs_path=os.path.join(save_fig_path, f"all_methods_{uncertainty_strategy}_{timestamp}.jpg")
         )
-        plt.show()
+        # plt.show()
 
         distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
