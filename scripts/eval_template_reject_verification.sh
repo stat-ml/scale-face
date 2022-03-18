@@ -14,7 +14,7 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-## Scale
+## ScaleFace
 #python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
@@ -33,6 +33,7 @@
 #  --verbose \
 #  --cached_embeddings
 
+### alternative options for scale
 #  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
@@ -61,12 +62,6 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 --verbose \
 --cached_embeddings
 
-
-#--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
-#--fusion_distance_uncertainty_metrics first_cosine_mean first_MLS_harmonic-sum first_MLS_harmonic-harmonic \
-#--checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
-# --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_MLS_harmonic-sum mean_MLS_harmonic-harmonic PFE_MLS_harmonic-sum PFE_MLS_harmonic-harmonic \
-# --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean PFE_cosine_mean PFE_MLS_harmonic-harmonic \
 #### MagFace
 #python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
