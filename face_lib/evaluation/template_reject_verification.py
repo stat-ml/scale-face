@@ -120,13 +120,20 @@ def eval_template_reject_verification(
         with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'rb') as f:
             uncertainty_dict = pickle.load(f)
     else:
+        print('Calculating')
         if uncertainty_strategy == 'magface':
             raise ValueError("Can't compute magface here")
+
+        if uncertainty_strategy == 'scale_finetuned':
+            strategy = 'scale'
+        else:
+            strategy = uncertainty_strategy
+
         features, uncertainties = extract_features_uncertainties_from_list(
             backbone,
             head,
             image_paths=image_paths,
-            uncertainty_strategy=uncertainty_strategy,
+            uncertainty_strategy=strategy,
             batch_size=batch_size,
             discriminator=discriminator,
             scale_predictor=scale_predictor,

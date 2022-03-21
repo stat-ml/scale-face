@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import sys
+import re
 import os
 from collections import OrderedDict
 from datetime import datetime
@@ -17,42 +18,56 @@ sys.path.append('.')
 parser = ArgumentParser()
 parser.add_argument('--test_folder', default='/gpfs/gpfs0/k.fedyanin/space/figures/test')
 parser.add_argument('--last_timestamp', action="store_true")
+parser.add_argument('--fusion', action='store_true')
 args = parser.parse_args()
 
 FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
-methods = {
-    'scale': {
-        'functions': ('mean', 'cosine', 'mean'),
-        'label': 'ScaleFace'
-    },
-    'head': {
-        'functions': ('mean', 'cosine', 'mean'),
-        'label': 'PFE'
-    },
-    # 'head': {
-    #     'functions': ('PFE', 'MLS', 'harmonic-sum'),
-    #     'label': 'PFE (MLS)'
-    # },
-    'magface': {
-        'functions': ('mean', 'cosine', 'mean'),
-        'label': 'MagFace'
-    },
-}
+if args.fusion:
+    methods = {
+        'scale': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
+        },
+        'scale_finetuned': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (fine-tuned)'
+        },
+        'head': {
+            'functions': ('PFE', 'MLS', 'harmonic-sum'), 'label': 'PFE (MLS)'
+        },
+        'magface': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
+        },
+    }
+else:
+    methods = {
+        'scale': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
+        },
+        'scale_finetuned': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (fine-tuned)'
+        },
+        'head': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
+        },
+        'magface': {
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
+        },
+    }
 
 folder = Path(args.test_folder)
-
 all_results = OrderedDict()
 
 for name, method in methods.items():
     print(name)
     if args.last_timestamp:
         files = os.listdir(folder)
-        files = [f for f in files if f.startswith(f'table_{name}_')]
+        pattern = r'table_' + name +r'[\d_-]*\.pt'
+        files = [f for f in files if re.match(pattern, f)]
         file = sorted(files)[-1]
     else:
         file = f'table_{name}.pt'
+    print(file)
     local_results = torch.load(folder / file)
     all_results[method['label']] = local_results[method['functions']]
 
@@ -69,7 +84,7 @@ def plot_TAR_FAR_different_methods(
     def pretty_matplotlib_config(fontsize=15):
         matplotlib.rcParams['pdf.fonttype'] = 42
         matplotlib.rcParams['ps.fonttype'] = 42
-        matplotlib.rcParams['text.usetex'] = True
+        # matplotlib.rcParams['text.usetex'] = True
         matplotlib.rcParams.update({'font.size': fontsize})
 
     pretty_matplotlib_config(28)
