@@ -45,7 +45,7 @@ else:
             'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
         },
         'scale_finetuned': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (fine-tuned)'
+            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace FT'
         },
         'head': {
             'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
@@ -84,7 +84,7 @@ def plot_TAR_FAR_different_methods(
     def pretty_matplotlib_config(fontsize=15):
         matplotlib.rcParams['pdf.fonttype'] = 42
         matplotlib.rcParams['ps.fonttype'] = 42
-        # matplotlib.rcParams['text.usetex'] = True
+        matplotlib.rcParams['text.usetex'] = True
         matplotlib.rcParams.update({'font.size': fontsize})
 
     pretty_matplotlib_config(28)

@@ -29,6 +29,7 @@ from sklearn.metrics import auc
 from pathlib import Path
 import pickle
 from tqdm import tqdm
+from scipy.special import softmax
 
 path = str(Path(__file__).parent.parent.parent.absolute())
 sys.path.insert(0, path)
@@ -51,15 +52,25 @@ def aggregate_templates(templates, method):
             t.mu = l2_normalize(t.features[0])
             t.sigma_sq = t.sigmas[0]
         elif method == 'PFE':
-            t.mu, t.sigma_sq = aggregate_PFE(
-                t.features,
-                sigma_sq=t.sigmas,
-                normalize=True,
-                concatenate=False,
-            )
+            t.mu, t.sigma_sq = aggregate_PFE(t.features, sigma_sq=t.sigmas)
         elif method == 'mean':
-            t.mu = np.mean(t.features, axis=0)
+            t.mu = l2_normalize(np.mean(t.features, axis=0))
             t.sigma_sq = np.mean(t.sigmas, axis=0)
+        elif method == 'stat-mean':
+            t.mu = l2_normalize(np.mean(t.features, axis=0))
+            t.sigma_sq = np.mean(t.sigmas, axis=0) * (len(t.sigmas))**0.5
+        elif method == 'argmax':
+            idx = np.argmax(t.sigmas)
+            t.mu = t.features[idx]
+            t.sigma_sq = t.sigmas[idx]
+        elif method == 'softmax':
+            weights = softmax(t.sigmas[:, 0])
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method == 'stat-softmax':
+            weights = softmax(t.sigmas[:, 0])
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            t.sigma_sq = np.dot(weights, t.sigmas) * len(t.sigmas)**0.5
         else:
             raise ValueError(f"Wrong aggregate method {method}")
 
