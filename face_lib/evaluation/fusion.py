@@ -11,19 +11,12 @@ sys.path.insert(0, path)
 from face_lib.datasets import IJBDataset, IJBATest, IJBCTest
 from face_lib import models as mlib, utils
 from face_lib.utils import cfg
-from face_lib.utils.imageprocessing import preprocess
-from face_lib.utils.imageprocessing import preprocess_tta
-from face_lib.evaluation.feature_extractors import (
-    extract_features_head,
-    extract_features_tta,
-    extract_features_fourier,
-    extract_features_grad,
-    extract_features_ssim,
-)
+from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list
 
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_fusion
+
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -103,19 +96,6 @@ def eval_fusion_ijb(
     device=torch.device("cpu"),
     verbose=False,
 ):
-    if uncertainty_strategy == "TTA":
-        proc_func = lambda images: preprocess_tta(images, [112, 112], is_training=False)
-    elif uncertainty_strategy == "head":
-        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
-    elif uncertainty_strategy == "ssim":
-        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
-    elif uncertainty_strategy == "fourier":
-        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
-    elif uncertainty_strategy == "grad":
-        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
-    else:
-        raise AssertionError("Unknown type of uncertainty calculating strategy")
-
     testset = IJBDataset(dataset_path)
     if protocol == "ijba":
         tester = IJBATest(testset["abspath"].values)
@@ -128,62 +108,22 @@ def eval_fusion_ijb(
 
     backbone = backbone.eval().to(device)
 
-    if uncertainty_strategy == "head":
-        head = head.eval().to(device)
-        mu, sigma_sq = extract_features_head(
-            backbone,
-            head,
-            tester.image_paths,
-            batch_size,
-            proc_func=proc_func,
-            verbose=True,
-            device=device,
-        )
-    elif uncertainty_strategy == "TTA":
-        mu, sigma_sq = extract_features_tta(
-            backbone,
-            tester.image_paths,
-            batch_size,
-            proc_func=proc_func,
-            verbose=True,
-            device=device,
-        )
-    elif uncertainty_strategy == "fourier":
-        mu, sigma_sq = extract_features_fourier(
-            backbone,
-            tester.image_paths,
-            batch_size,
-            proc_func=proc_func,
-            verbose=True,
-            device=device,
-        )
-    elif uncertainty_strategy == "grad":
-        mu, sigma_sq = extract_features_grad(
-            backbone,
-            tester.image_paths,
-            batch_size,
-            proc_func=proc_func,
-            verbose=True,
-            device=device,
-        )
-    elif uncertainty_strategy == "ssim":
-        mu, sigma_sq = extract_features_ssim(
-            backbone,
-            tester.image_paths,
-            batch_size,
-            proc_func=proc_func,
-            verbose=True,
-            device=device,
-        )
-    else:
-        raise AssertionError("Don't know this uncertainty calculation strategy")
+    features, uncertainties = extract_features_uncertainties_from_list(
+        backbone,
+        head,
+        image_paths=tester.image_paths,
+        uncertainty_strategy=uncertainty_strategy,
+        batch_size=batch_size,
+        device=device,
+        verbose=verbose,
+    )
 
-    print(f"mu : {mu.shape} sigma : {sigma_sq.shape}")
+    print(f"mu : {features.shape} sigma : {uncertainties.shape}")
 
     result = defaultdict(dict)
     for (fusion_name, distance_name) in fusion_distance_methods:
         print(f"==== fuse : {fusion_name} distance : {distance_name} ====")
-        aggregate_templates(tester.verification_templates, mu, sigma_sq, fusion_name)
+        aggregate_templates(tester.verification_templates, features, uncertainties, fusion_name)
         TARs, stds, res_FARs = tester.test_verification(
             force_compare(name_to_distance_func[distance_name]), FARs=FARs
         )

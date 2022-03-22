@@ -127,6 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Custom
 pfe/
 log/
 data/
@@ -134,3 +137,4 @@ dataset/
 checkpoints/
 exman/
 .idea/
+tmp

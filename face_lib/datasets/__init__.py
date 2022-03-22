@@ -5,4 +5,4 @@ from .pairs_datasets import MS1MDatasetRandomPairs
 from .dataloader import DataLoaderX
 from .ijb import IJBDataset
 from .ijba import IJBATest
-from .ijbc import IJBCTest
+from .ijbc_templates import IJBCTemplates

@@ -139,10 +139,48 @@ class IJBCTest:
     def init_proto(self, protofolder):
         self.init_verification_proto(protofolder)
 
-    def test_verification(self, compare_func, FARs=None):
+    def test_verification(self, compare_func, FARs=None, verbose=True):
 
         FARs = [1e-5, 1e-4, 1e-3, 1e-2] if FARs is None else FARs
 
+        # templates1 = self.verification_G1_templates
+        # templates2 = self.verification_G2_templates
+        #
+        # not_nan_1 = np.array([template.feature is not None for template in templates1])
+        # not_nan_2 = np.array([template.feature is not None for template in templates2])
+        # not_nan = not_nan_1 & not_nan_2
+        #
+        # print(
+        #     f"Ignored {not_nan.shape[0] - not_nan.sum()} / {not_nan.shape[0]} # bad templates"
+        # )
+        # templates1 = templates1[not_nan]
+        # templates2 = templates2[not_nan]
+        #
+        # features1 = [t.feature for t in templates1]
+        # features2 = [t.feature for t in templates2]
+        # sigmas_sq1 = [t.sigma_sq for t in templates1]
+        # sigmas_sq2 = [t.sigma_sq for t in templates2]
+        # labels1 = np.array([t.label for t in templates1])
+        # labels2 = np.array([t.label for t in templates2])
+        #
+        # label_vec = labels1 == labels2
+
+        features1, features2, sigmas_sq1, sigmas_sq2, label_vec = \
+            self.get_features_uncertainties_labels(verbose=verbose)
+
+        score_vec = compare_func(features1, features2, sigmas_sq1, sigmas_sq2)
+
+        if verbose:
+            print(f"Positive labels : {sum(label_vec)} / {len(label_vec)}")
+
+        tars, fars, thresholds = metrics.ROC(score_vec, label_vec, FARs=FARs)
+
+        # There is no std for IJB-C
+        std = [0.0 for t in tars]
+
+        return tars, std, fars
+
+    def get_features_uncertainties_labels(self, verbose=False):
         templates1 = self.verification_G1_templates
         templates2 = self.verification_G2_templates
 
@@ -150,9 +188,9 @@ class IJBCTest:
         not_nan_2 = np.array([template.feature is not None for template in templates2])
         not_nan = not_nan_1 & not_nan_2
 
-        print(
-            f"Ignored {not_nan.shape[0] - not_nan.sum()} / {not_nan.shape[0]} # bad templates"
-        )
+        if verbose:
+            print(f"Ignored {not_nan.shape[0] - not_nan.sum()} / {not_nan.shape[0]} # bad templates")
+
         templates1 = templates1[not_nan]
         templates2 = templates2[not_nan]
 
@@ -163,14 +201,6 @@ class IJBCTest:
         labels1 = np.array([t.label for t in templates1])
         labels2 = np.array([t.label for t in templates2])
 
-        score_vec = compare_func(features1, features2, sigmas_sq1, sigmas_sq2)
         label_vec = labels1 == labels2
 
-        print(f"Positive labels : {sum(label_vec)} / {len(label_vec)}")
-
-        tars, fars, thresholds = metrics.ROC(score_vec, label_vec, FARs=FARs)
-
-        # There is no std for IJB-C
-        std = [0.0 for t in tars]
-
-        return tars, std, fars
+        return features1, features2, sigmas_sq1, sigmas_sq2, label_vec
