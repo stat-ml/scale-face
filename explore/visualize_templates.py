@@ -24,62 +24,46 @@ args = parser.parse_args()
 FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
-if args.fusion:
-    methods = {
-        'scale': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
-        },
-        'scale_finetuned': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (fine-tuned)'
-        },
-        'head': {
-            'functions': ('PFE', 'MLS', 'harmonic-sum'), 'label': 'PFE (MLS)'
-        },
-        'magface': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
-        },
-    }
-else:
-    methods = {
-        'scale': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
-        },
-        'scale_finetuned': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace FT'
-        },
-        'head': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
-        },
-        'magface': {
-            'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
-        },
-    }
-
-folder = Path(args.test_folder)
-all_results = OrderedDict()
-
-for name, method in methods.items():
-    print(name)
-    if args.last_timestamp:
-        files = os.listdir(folder)
-        pattern = r'table_' + name +r'[\d_-]*\.pt'
-        files = [f for f in files if re.match(pattern, f)]
-        file = sorted(files)[-1]
-    else:
-        file = f'table_{name}.pt'
-    print(file)
-    local_results = torch.load(folder / file)
-    all_results[method['label']] = local_results[method['functions']]
-
-res_AUCs = OrderedDict()
-for method, table in all_results.items():
-    res_AUCs[method] = {
-        far: auc(rejected_portions, TARs) for far, TARs in table.items()
-    }
-
-
+methods = [
+    {
+        'name': 'head', 'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
+    },
+    {
+        'name': 'magface', 'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
+    },
+    {
+        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
+    },
+    {
+        'name': 'scale_finetuned', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace FT'
+    },
+    {
+        'name': 'scale', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace-f'
+    },
+    {
+        'name': 'scale_finetuned', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace FT-f'
+    },
+    # {
+    #     'name': 'scale_finetuned_0003', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first03'
+    # },
+    # {
+    #     'name': 'scale_finetuned_0003', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean03'
+    # },
+    # {
+    #     'name': 'scale_finetuned_001', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first1'
+    # },
+    # {
+    #     'name': 'scale_finetuned_001', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean1'
+    # },
+    # {
+    #     'name': 'scale_finetuned_003', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first3'
+    # },
+    # {
+    #     'name': 'scale_finetuned_003', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean3'
+    # },
+]
 def plot_TAR_FAR_different_methods(
-    results, rejected_portions, AUCs, title=None, save_figs_path=None
+        results, rejected_portions, AUCs, title=None, save_figs_path=None
 ):
     def pretty_matplotlib_config(fontsize=15):
         matplotlib.rcParams['pdf.fonttype'] = 42
@@ -122,14 +106,36 @@ def plot_TAR_FAR_different_methods(
         fig.savefig(save_figs_path, dpi=150, format='pdf')
     return fig
 
-timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-plot_TAR_FAR_different_methods(
-    all_results,
-    rejected_portions,
-    res_AUCs,
-    title="Template reject verification",
-    save_figs_path=os.path.join(folder, f"all_methods_together_last.pdf")
-)
 
-# plt.show()
-#save_figs_path = os.path.join(folder, f"all_methods_together_{timestamp}.jpg")
+if __name__ == '__main__':
+    folder = Path(args.test_folder)
+    all_results = OrderedDict()
+
+    for method in methods:
+        name = method['name']
+
+        if args.last_timestamp:
+            files = os.listdir(folder)
+            pattern = r'table_' + name +r'[\d_-]*\.pt'
+            files = [f for f in files if re.match(pattern, f)]
+            file = sorted(files)[-1]
+        else:
+            file = f'table_{name}.pt'
+        print(file)
+        local_results = torch.load(folder / file)
+        all_results[method['label']] = local_results[method['functions']]
+
+    res_AUCs = OrderedDict()
+    for method, table in all_results.items():
+        res_AUCs[method] = {
+            far: auc(rejected_portions, TARs) for far, TARs in table.items()
+        }
+
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    plot_TAR_FAR_different_methods(
+        all_results,
+        rejected_portions,
+        res_AUCs,
+        title="Template reject verification",
+        save_figs_path=os.path.join(folder, f"all_methods_together_last.pdf")
+    )
