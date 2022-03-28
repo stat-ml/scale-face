@@ -48,7 +48,9 @@ def get_required_models(
         classifier = classifier.eval().to(device)
 
     scale_predictor = None
-    if args.uncertainty_strategy == "scale" or args.uncertainty_strategy == "blurred_scale":
+
+    if args.uncertainty_strategy in ["scale", "scale_finetuned", "blurred_scale"]:
+
         scale_predictor_name = model_args.scale_predictor.pop("name")
         scale_predictor = mlib.scale_predictors[scale_predictor_name](
             **model_args.scale_predictor,

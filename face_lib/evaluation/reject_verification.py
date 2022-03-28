@@ -6,6 +6,7 @@ from tqdm import tqdm
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
 import matplotlib.pyplot as plt
+import numpy as np
 
 path = str(Path(__file__).parent.parent.parent.abspath())
 sys.path.insert(0, path)
@@ -94,6 +95,7 @@ def eval_reject_verification(
             FARs=FARs,
             distance_ax=distance_ax,
             uncertainty_ax=uncertainty_ax,
+            rejected_portions=rejected_portions
         )
 
         if save_fig_path is not None:
@@ -135,6 +137,7 @@ def eval_reject_verification(
             title=pairs_table_path.split("/")[-1][:-4],
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
+        plt.show()
 
         distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
@@ -154,11 +157,17 @@ def get_rejected_tar_far(
     uncertainty_mode="uncertainty",
     distance_ax=None,
     uncertainty_ax=None,
+    rejected_portions=None,
+    equal_uncertainty_enroll=False
 ):
     # If something's broken, uncomment the line below
 
     # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+
+    if equal_uncertainty_enroll:
+        sigma_sq_1 = np.ones_like(sigma_sq_1)
+
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 
     sorted_indices = uncertainty_vec.argsort()

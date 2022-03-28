@@ -26,7 +26,7 @@ python3 ./face_lib/evaluation/fusion.py \
   --device_id=0 \
   --batch_size=64 \
   --save_table_path=/beegfs/home/r.kail/faces/figures/test/table.pkl \
-#  --verbose
+  --verbose
 
 ## Fusion with Probface
 #python3 ./face_lib/evaluation/fusion.py \

@@ -3,6 +3,7 @@ import argparse
 uncertainty_methods = [
     "head", "GAN", "classifier", "scale", "blurred_scale", "emb_norm",
     "magface", "backbone+uncertainty_model", "magface_precalculated", ]
+
 uncertainty_modes = ["uncertainty", "confidence"]
 known_datasets = ["ijba", "ijbc"]
 distribution_datasets = ["IJBC", "LFW", "MS1MV2"]
@@ -281,6 +282,11 @@ def parse_args_template_reject_verification():
         help="Path to save figure to",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--cached_embeddings",
+        help="Use precalculated embeddings from backbone",
+        action="store_true",
     )
     parser.add_argument(
         "--verbose",
