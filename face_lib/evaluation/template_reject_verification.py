@@ -71,6 +71,12 @@ def aggregate_templates(templates, method):
             weights = softmax(t.sigmas[:, 0])
             t.mu = l2_normalize(np.dot(weights, t.features))
             t.sigma_sq = np.dot(weights, t.sigmas) * len(t.sigmas)**0.5
+        elif method == 'weighted':
+            mu = l2_normalize(t.features)
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, mu))
+            t.sigma_sq = np.dot(weights, t.sigmas)
         else:
             raise ValueError(f"Wrong aggregate method {method}")
 
