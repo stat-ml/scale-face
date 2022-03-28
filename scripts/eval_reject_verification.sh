@@ -130,14 +130,14 @@ python3 ./face_lib/evaluation/reject_verification.py \
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-## Evaluate MagFace
+## Arcface backbone + MagFace uncertainty
 #python3 ./face_lib/evaluation/reject_verification.py \
-#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/ms1mv2_ir50_ddp/adapted.pth \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/ms1mv2_ir50_ddp/arcface+magface.pth\
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
 #  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
-#  --config_path=./configs/magface/ir50.yaml \
-#  --batch_size=32 \
-#  --uncertainty_strategy=magface \
+#  --config_path=./configs/magface/arcface+ir50.yaml \
+#  --batch_size=16 \
+#  --uncertainty_strategy=backbone+uncertainty_model \
 #  --uncertainty_mode=confidence \
 #  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
 #  --rejected_portions $(seq 0 0.002 0.5) \
@@ -160,6 +160,7 @@ python3 ./face_lib/evaluation/reject_verification.py \
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
+
 ## Cheaty version of distance function, which aims to proof concept, that uncertainty can improve distance
 #python3 ./face_lib/evaluation/reject_verification.py \
 #    --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth \
@@ -174,3 +175,20 @@ python3 ./face_lib/evaluation/reject_verification.py \
 #    --distance_uncertainty_metrics centered-cosine_harmonic-harmonic scale-mul-centered-cosine_harmonic-harmonic scale-harmonic-centered-cosine_harmonic-harmonic scale-sqrt-mul-centered-cosine_harmonic-harmonic scale-sqrt-harmonic-centered-cosine_harmonic-harmonic \
 #    --device_id=0 \
 #    --save_fig_path=/beegfs/home/r.kail/faces/figures/17_different_dist_funcs/cheat_scale_64sigm
+
+## Evaluate MagFace
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/ms1mv2_ir50_ddp/adapted.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/magface/ir50.yaml \
+#  --batch_size=32 \
+#  --uncertainty_strategy=magface_precalculated \
+#  --uncertainty_mode=confidence \
+#  --precalculated_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/IJB-C/magface_evaluation/features/1M_pairs/ir100 \
+#  --distaces_batch_size=128 \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
+#  --device_id=0 \
+#  --save_fig_path=/trinity/home/r.kail/faces/figures/test

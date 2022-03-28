@@ -1,4 +1,6 @@
 import torch
+import numpy as np
+from tqdm import tqdm
 
 from face_lib import models as mlib, utils
 from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
@@ -46,7 +48,9 @@ def get_required_models(
         classifier = classifier.eval().to(device)
 
     scale_predictor = None
-    if args.uncertainty_strategy in ["scale", "scale_finetuned"]:
+
+    if args.uncertainty_strategy in ["scale", "scale_finetuned", "blurred_scale"]:
+
         scale_predictor_name = model_args.scale_predictor.pop("name")
         scale_predictor = mlib.scale_predictors[scale_predictor_name](
             **model_args.scale_predictor,
@@ -89,3 +93,22 @@ def get_distance_uncertainty_funcs(
         uncertainty_func = split_wrapper(uncertainty_func, batch_size=distaces_batch_size)
 
     return distance_func, uncertainty_func
+
+
+def get_precalculated_embeddings(precalculated_path, verbose=False):
+    img_to_idx = {}
+    emb_matrix = []
+
+    with open(precalculated_path, "r") as f:
+        lines_iterator = enumerate(f)
+        if verbose:
+            lines_iterator = tqdm(lines_iterator)
+
+        for idx, line in lines_iterator:
+            split = line.split(" ")
+            path = "/".join(split[0].split("/")[-2:])
+
+            img_to_idx[path] = idx
+            emb_matrix.append(np.array(list(map(float, split[1:-1]))))
+
+    return np.stack(emb_matrix, axis=0), img_to_idx

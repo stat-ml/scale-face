@@ -35,6 +35,7 @@ def eval_reject_verification(
     classifier=None,
     scale_predictor=None,
     uncertainty_model=None,
+    precalculated_path=None,
     save_fig_path=None,
     device=torch.device("cpu"),
     verbose=False,
@@ -48,7 +49,8 @@ def eval_reject_verification(
     mu_1, mu_2, sigma_sq_1, sigma_sq_2, label_vec = get_features_uncertainties_labels(
         backbone, head, dataset_path, pairs_table_path,
         uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
-        discriminator=discriminator, scale_predictor=scale_predictor, uncertainty_model=uncertainty_model,
+        discriminator=discriminator, scale_predictor=scale_predictor,
+        uncertainty_model=uncertainty_model, precalculated_path=precalculated_path,
     )
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
@@ -240,6 +242,7 @@ if __name__ == "__main__":
         discriminator=discriminator,
         classifier=classifier,
         scale_predictor=scale_predictor,
+        precalculated_path=args.precalculated_path,
         uncertainty_model=uncertainty_model,
         save_fig_path=args.save_fig_path,
         device=device,
