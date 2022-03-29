@@ -119,12 +119,10 @@ class IJBCTemplates:
         features2 = np.array([
             self.templates_dict[t].mu for t in tqdm(self._pairs[:, 1])
         ])
-        if equal_uncertainty_enroll:
-            sigmas_sq1 = np.ones((len(self._pairs), 1))
-        else:
-            sigmas_sq1 = np.array([
-                self.templates_dict[t].sigma_sq for t in tqdm(self._pairs[:, 0], desc='Sigmas')
-            ])
+
+        sigmas_sq1 = np.array([
+            self.templates_dict[t].sigma_sq for t in tqdm(self._pairs[:, 0], desc='Sigmas')
+        ])
         sigmas_sq2 = np.array([
             self.templates_dict[t].sigma_sq for t in self._pairs[:, 1]
         ])

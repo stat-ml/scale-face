@@ -54,6 +54,7 @@ def plot_TAR_FAR_different_methods(
                 + "_AUC="
                 + str(round(auc, 5)),
                 marker=" ",
+                alpha=0.8
             )
             axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
             axes[plots_indices[FAR]].set_xlabel("Rejected portion")

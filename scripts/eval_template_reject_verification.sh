@@ -27,12 +27,16 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --uncertainty_mode=confidence \
   --FARs 0.0001 0.001 0.05\
   --rejected_portions $(seq 0 0.02 0.5) \
-  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean softmax_cosine_mean argmax_cosine_mean stat-mean_cosine_mean stat-softmax_cosine_mean weighted_cosine_mean \
+  --fusion_distance_uncertainty_metrics mean_cosine_mean weighted_cosine_mean \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
   --verbose \
-  --cached_embeddings
+  --cached_embeddings #\
+  #--equal_uncertainty_enroll
 
+
+#  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean softmax_cosine_mean argmax_cosine_mean stat-mean_cosine_mean stat-softmax_cosine_mean weighted_cosine_mean \
+#  --fusion_distance_uncertainty_metrics mean_cosine_mean softmax_cosine_mean weighted_cosine_mean \
 ### alternative options for scale
 #  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \

@@ -101,7 +101,8 @@ def eval_template_reject_verification(
     device=torch.device("cpu"),
     verbose=False,
     uncertainty_model=None,
-    cached_embeddings=False
+    cached_embeddings=False,
+    equal_uncertainty_enroll=False
 ):
 
     # Setup the plots
@@ -165,10 +166,11 @@ def eval_template_reject_verification(
         with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'wb') as f:
             pickle.dump(uncertainty_dict, f)
 
+    import ipdb; ipdb.set_trace()
+
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
     tester.init_proto(protocol_path)
 
-    equal_uncertainty_enroll = True
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
@@ -306,7 +308,8 @@ def main():
         device=device,
         verbose=args.verbose,
         uncertainty_model=uncertainty_model,
-        cached_embeddings=args.cached_embeddings
+        cached_embeddings=args.cached_embeddings,
+        equal_uncertainty_enroll=args.equal_uncertainty_enroll
     )
 
 

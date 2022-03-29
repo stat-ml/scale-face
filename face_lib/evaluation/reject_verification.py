@@ -164,6 +164,7 @@ def get_rejected_tar_far(
 
     if equal_uncertainty_enroll:
         sigma_sq_1 = np.ones_like(sigma_sq_1)
+    print(sigma_sq_1)
 
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 
