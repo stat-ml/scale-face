@@ -14,7 +14,7 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-## ScaleFace
+## ScaleFace template with single-image enroll
 python3 ./face_lib/evaluation/template_reject_verification.py \
   --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
   --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
@@ -25,16 +25,39 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --distaces_batch_size=8 \
   --uncertainty_strategy=scale \
   --uncertainty_mode=confidence \
-  --FARs 0.0001 0.001 0.05\
+  --FARs 0.0001 0.001 0.05 \
+  --fusion_distance_uncertainty_metrics mean_cosine_mean weighted_cosine_mean softmax-0.01_cosine_mean softmax-0.1_cosine_mean softmax_cosine_mean softmax-0.5_cosine_mean softmax-2_cosine_mean softmax-5_cosine_mean \
   --rejected_portions $(seq 0 0.02 0.5) \
-  --fusion_distance_uncertainty_metrics mean_cosine_mean weighted_cosine_mean \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
   --verbose \
-  --cached_embeddings #\
-  #--equal_uncertainty_enroll
+  --cached_embeddings \
+  --equal_uncertainty_enroll
+
+## ScaleFace full templates
+python3 ./face_lib/evaluation/template_reject_verification.py \
+  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
+  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+  --protocol=ijbc \
+  --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1 \
+  --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \
+  --batch_size=64 \
+  --distaces_batch_size=8 \
+  --uncertainty_strategy=scale \
+  --uncertainty_mode=confidence \
+  --FARs 0.0001 0.001 0.05 \
+  --fusion_distance_uncertainty_metrics mean_cosine_mean weighted_cosine_mean softmax-0.01_cosine_mean softmax-0.1_cosine_mean softmax_cosine_mean softmax-0.5_cosine_mean softmax-2_cosine_mean softmax-5_cosine_mean \
+  --rejected_portions $(seq 0 0.02 0.5) \
+  --device_id=0 \
+  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
+  --verbose \
+  --cached_embeddings
 
 
+# --fusion_distance_uncertainty_metrics weighted_cosine_mean weighted_centered-cosine_harmonic-harmonic weighted_scale-mul-centered-cosine_harmonic-harmonic weighted_scale-harmonic-centered-cosine_harmonic-harmonic weighted_scale-sqrt-mul-centered-cosine_harmonic-harmonic weighted_scale-sqrt-harmonic-centered-cosine_harmonic-harmonic \
+#--fusion_distance_uncertainty_metrics mean_cosine_mean
+#  --fusion_distance_uncertainty_metrics mean_cosine_mean  weighted_cosine_mean mean_scale-mul-cosine_mean weighted_scale-mul-cosine_mean mean_scale-harmonic-cosine_mean weighted_scale-harmonic-cosine_mean \
+# --fusion_distance_uncertainty_metrics mean_cosine_mean mean_scale-mul-cosine_mean weighted_cosine_mean weighted_scale-mul-cosine_mean mean_scale-harmonic-cosine_mean weighted_scale-harmonic-cosine_mean \
 #  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean softmax_cosine_mean argmax_cosine_mean stat-mean_cosine_mean stat-softmax_cosine_mean weighted_cosine_mean \
 #  --fusion_distance_uncertainty_metrics mean_cosine_mean softmax_cosine_mean weighted_cosine_mean \
 ### alternative options for scale

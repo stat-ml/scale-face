@@ -161,6 +161,7 @@ def get_rejected_tar_far(
 
     # score_vec = force_compare(distance_func)(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
     score_vec = distance_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
+    import ipdb; ipdb.set_trace()
 
     if equal_uncertainty_enroll:
         sigma_sq_1 = np.ones_like(sigma_sq_1)

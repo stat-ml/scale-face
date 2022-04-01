@@ -108,7 +108,7 @@ class IJBCTemplates:
         print('len after', len(pairs))
         return pairs
 
-    def get_features_uncertainties_labels(self, equal_uncertainty_enroll=False):
+    def get_features_uncertainties_labels(self):
         """
         returns features, uncertainties and labels for pairs
         if verify_only_ue flag set, ignores the uncertainty from enroll templates
@@ -119,7 +119,6 @@ class IJBCTemplates:
         features2 = np.array([
             self.templates_dict[t].mu for t in tqdm(self._pairs[:, 1])
         ])
-
         sigmas_sq1 = np.array([
             self.templates_dict[t].sigma_sq for t in tqdm(self._pairs[:, 0], desc='Sigmas')
         ])

@@ -63,14 +63,19 @@ def aggregate_templates(templates, method):
             idx = np.argmax(t.sigmas)
             t.mu = t.features[idx]
             t.sigma_sq = t.sigmas[idx]
-        elif method == 'softmax':
-            weights = softmax(t.sigmas[:, 0])
-            t.mu = l2_normalize(np.dot(weights, t.features))
-            t.sigma_sq = np.dot(weights, t.sigmas)
         elif method == 'stat-softmax':
             weights = softmax(t.sigmas[:, 0])
             t.mu = l2_normalize(np.dot(weights, t.features))
             t.sigma_sq = np.dot(weights, t.sigmas) * len(t.sigmas)**0.5
+        elif method.startswith('softmax'):
+            parts = method.split('-')
+            if len(parts) == 1:
+                temperature = 1.0
+            else:
+                temperature = float(parts[1])
+            weights = softmax(t.sigmas[:, 0] / temperature)
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            t.sigma_sq = np.dot(weights, t.sigmas)
         elif method == 'weighted':
             mu = l2_normalize(t.features)
             weights = t.sigmas[:, 0]
@@ -165,8 +170,6 @@ def eval_template_reject_verification(
         uncertainty_dict = {p: scale for p, scale in zip(short_paths, uncertainties)}
         with open(Path(save_fig_path) / f'{uncertainty_strategy}_uncertainty.pickle', 'wb') as f:
             pickle.dump(uncertainty_dict, f)
-
-    import ipdb; ipdb.set_trace()
 
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
     tester.init_proto(protocol_path)
