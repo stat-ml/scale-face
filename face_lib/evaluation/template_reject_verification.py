@@ -82,6 +82,19 @@ def aggregate_templates(templates, method):
             weights = weights / np.sum(weights)
             t.mu = l2_normalize(np.dot(weights, mu))
             t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method == 'weighted-softmax':
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            weights = softmax(t.sigmas[:, 0] / 0.1)
+            t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method == 'weighted':
+            mu = l2_normalize(t.features)
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, mu))
+            t.sigma_sq = np.dot(weights, t.sigmas)
+            pass
         else:
             raise ValueError(f"Wrong aggregate method {method}")
 
@@ -262,7 +275,11 @@ def eval_template_reject_verification(
         distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
-        torch.save(all_results, os.path.join(save_fig_path, f"table_{uncertainty_strategy}_{timestamp}.pt"))
+        setup_name = {
+            True: 'single', False: 'full'
+        }[equal_uncertainty_enroll]
+
+        torch.save(all_results, os.path.join(save_fig_path, f"table_{uncertainty_strategy}_{timestamp}_{setup_name}.pt"))
 
 
 def main():
