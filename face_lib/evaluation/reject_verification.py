@@ -16,7 +16,10 @@ import face_lib.utils.metrics as metrics
 import face_lib.evaluation.plots as plots
 from face_lib.evaluation.argument_parser import parse_args_reject_verification
 from face_lib.evaluation.feature_extractors import get_features_uncertainties_labels
-from face_lib.evaluation.utils import get_required_models, get_distance_uncertainty_funcs
+from face_lib.evaluation.utils import (
+    get_required_models,
+    get_distance_uncertainty_funcs,
+    extract_statistics)
 
 
 def eval_reject_verification(
@@ -39,6 +42,7 @@ def eval_reject_verification(
     save_fig_path=None,
     device=torch.device("cpu"),
     verbose=False,
+    val_pairs_table_path=None,
 ):
 
     if rejected_portions is None:
@@ -52,6 +56,16 @@ def eval_reject_verification(
         discriminator=discriminator, scale_predictor=scale_predictor,
         uncertainty_model=uncertainty_model, precalculated_path=precalculated_path,
     )
+
+    val_statistics = None
+    if val_pairs_table_path is not None:
+        val_data = get_features_uncertainties_labels(
+            backbone, head, dataset_path, val_pairs_table_path,
+            uncertainty_strategy=uncertainty_strategy, batch_size=batch_size, verbose=verbose,
+            discriminator=discriminator, scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model, precalculated_path=precalculated_path,
+        )
+        val_statistics = extract_statistics(val_data)
 
     print("Mu_1 :", mu_1.shape, mu_1.dtype)
     print("Mu_2 :", mu_2.shape, mu_2.dtype)
@@ -68,6 +82,9 @@ def eval_reject_verification(
         uncertainty_fig, uncertainty_axes = plt.subplots(
             nrows=1, ncols=len(distances_uncertainties),
             figsize=(9 * len(distances_uncertainties), 8))
+    if not hasattr(distance_axes, '__iter__'):
+        distance_axes = (distance_axes, )
+        uncertainty_axes = (uncertainty_axes, )
 
     all_results = OrderedDict()
 
@@ -81,6 +98,7 @@ def eval_reject_verification(
             classifier=classifier,
             device=device,
             distaces_batch_size=distaces_batch_size,
+            val_statistics=val_statistics,
         )
 
         result_table = get_rejected_tar_far(
@@ -247,4 +265,5 @@ if __name__ == "__main__":
         save_fig_path=args.save_fig_path,
         device=device,
         verbose=args.verbose,
+        val_pairs_table_path=args.val_pairs_table_path,
     )

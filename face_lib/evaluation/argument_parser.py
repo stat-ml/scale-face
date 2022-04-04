@@ -111,7 +111,13 @@ def parse_args_reject_verification():
         help="Dump verbose information",
         action="store_true",
     )
-
+    parser.add_argument(
+        "--val_pairs_table_path",
+        help="Path to csv file with pairs names. This data will be used to calculate statistics",
+        type=str,
+        default=None,
+        required=False,
+    )
     return parser.parse_args()
 
 

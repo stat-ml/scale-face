@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from face_lib import models as mlib, utils
 from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
+from face_lib.evaluation.distance_uncertainty_funcs import pair_cosine_score
 from face_lib.evaluation.wrappers import (
     classifier_to_distance_wrapper,
     classifier_to_uncertainty_wrapper,
@@ -72,7 +73,8 @@ def get_required_models(
 
 def get_distance_uncertainty_funcs(
         distance_name, uncertainty_name,
-        classifier=None, device=torch.device("cpu"), distaces_batch_size=None):
+        classifier=None, device=torch.device("cpu"),
+        distaces_batch_size=None, val_statistics=None):
 
     assert uncertainty_name != "classifier" or classifier is not None
 
@@ -88,11 +90,30 @@ def get_distance_uncertainty_funcs(
     else:
         uncertainty_func = name_to_uncertainty_func[uncertainty_name]
 
-    if distaces_batch_size:
-        distance_func = split_wrapper(distance_func, batch_size=distaces_batch_size)
-        uncertainty_func = split_wrapper(uncertainty_func, batch_size=distaces_batch_size)
 
-    return distance_func, uncertainty_func
+    if distance_name in [
+        "biased-cosine", "scale-mul-biased-cosine", "scale-harmonic-biased-cosine",
+        "scale-sqrt-mul-biased-cosine", "scale-sqrt-harmonic-biased-cosine",
+        "pfe-mul-biased-cosine", "pfe-harmonic-biased-cosine",
+        "pfe-sqrt-mul-biased-cosine", "pfe-sqrt-harmonic-biased-cosine"]:
+
+        assert val_statistics is not None
+
+        print(f"Updating [{distance_name}]")
+        # print(f"{distance_func(np.ones((3, 4)), np.ones((3, 4)), np.ones((3, 1)), np.ones((3, 1)))=}")
+
+        new_distance_func = lambda x1, x2, unc1, unc2: \
+            distance_func(x1, x2, unc1, unc2, bias=val_statistics["mean_cos"])
+        new_uncertainty_func = uncertainty_func
+    else:
+        new_distance_func = distance_func
+        new_uncertainty_func = uncertainty_func
+
+    if distaces_batch_size:
+        new_distance_func = split_wrapper(new_distance_func, batch_size=distaces_batch_size)
+        new_uncertainty_func = split_wrapper(new_uncertainty_func, batch_size=distaces_batch_size)
+
+    return new_distance_func, new_uncertainty_func
 
 
 def get_precalculated_embeddings(precalculated_path, verbose=False):
@@ -112,3 +133,15 @@ def get_precalculated_embeddings(precalculated_path, verbose=False):
             emb_matrix.append(np.array(list(map(float, split[1:-1]))))
 
     return np.stack(emb_matrix, axis=0), img_to_idx
+
+
+def extract_statistics(data):
+    x1, x2, unc1, unc2, label_vec = data
+
+    cosines = pair_cosine_score(x1, x2, unc1=None, unc2=None)
+    mean_cosine = cosines.mean(axis=0)
+    print(f"Mean cosine {mean_cosine} {mean_cosine.shape}")
+
+    return {
+        "mean_cos": mean_cosine
+    }
