@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from tqdm import tqdm
+from sklearn.metrics import precision_recall_curve
 
 from face_lib import models as mlib, utils
 from face_lib.evaluation import name_to_distance_func, name_to_uncertainty_func
@@ -103,7 +104,7 @@ def get_distance_uncertainty_funcs(
         # print(f"{distance_func(np.ones((3, 4)), np.ones((3, 4)), np.ones((3, 1)), np.ones((3, 1)))=}")
 
         new_distance_func = lambda x1, x2, unc1, unc2: \
-            distance_func(x1, x2, unc1, unc2, bias=val_statistics["mean_cos"])
+            distance_func(x1, x2, unc1, unc2, bias=val_statistics["best_f1_thres"])  # TODO: Fix it
         new_uncertainty_func = uncertainty_func
     else:
         new_distance_func = distance_func
@@ -135,13 +136,26 @@ def get_precalculated_embeddings(precalculated_path, verbose=False):
     return np.stack(emb_matrix, axis=0), img_to_idx
 
 
+def find_best_f1_threshold(similarities, labels):
+    precision, recall, thresholds = precision_recall_curve(labels, similarities)
+    numerator = 2 * recall * precision
+    denom = recall + precision
+    f1_scores = np.divide(numerator, denom, out=np.zeros_like(denom), where=(denom != 0))
+    max_f1_thresh = thresholds[np.argmax(f1_scores)]
+    return max_f1_thresh
+
+
 def extract_statistics(data):
     x1, x2, unc1, unc2, label_vec = data
 
     cosines = pair_cosine_score(x1, x2, unc1=None, unc2=None)
     mean_cosine = cosines.mean(axis=0)
+
+    best_f1_thres = find_best_f1_threshold(cosines, label_vec)
     print(f"Mean cosine {mean_cosine} {mean_cosine.shape}")
+    print(f"F1 thres {best_f1_thres} ")
 
     return {
-        "mean_cos": mean_cosine
+        "mean_cos": mean_cosine,
+        "best_f1_thres": best_f1_thres,
     }

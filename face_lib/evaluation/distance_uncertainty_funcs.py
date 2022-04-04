@@ -169,6 +169,7 @@ def pair_pfe_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias
 
 def pair_sqrt_pfe_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
     scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    scale1, scale2 = np.sqrt(scale1), np.sqrt(scale2)
     dist = biased_cosine_similarity(x1, x2, bias=bias)
     dist = dist * scale1 * scale2
     return dist
@@ -176,6 +177,7 @@ def pair_sqrt_pfe_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias
 
 def pair_sqrt_pfe_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
     scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    scale1, scale2 = np.sqrt(scale1), np.sqrt(scale2)
     dist = biased_cosine_similarity(x1, x2, bias=bias)
     dist = dist * scale1 * scale2 / (scale1 + scale2)
     return dist
