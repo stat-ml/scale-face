@@ -20,6 +20,7 @@ from .distance_uncertainty_funcs import (
     pair_scale_harmonic_centered_cosine_score,
     pair_sqrt_scale_mul_centered_cosine_score,
     pair_sqrt_scale_harmonic_centered_cosine_score,
+    pair_uncertainty_min
 )
 
 name_to_distance_func = {
@@ -46,4 +47,5 @@ name_to_uncertainty_func = {
     "harmonic-harmonic": pair_uncertainty_concatenated_harmonic,
     "squared-harmonic": pair_uncertainty_squared_harmonic,
     "cosine-analytic": pair_uncertainty_cosine_analytic,
+    "min": pair_uncertainty_min
 }

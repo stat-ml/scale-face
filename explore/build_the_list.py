@@ -6,10 +6,9 @@ from tqdm import tqdm
 DIRECTORY = Path("/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1")
 
 
-# 1000 false
-# 100 true
-POS_NUM = 500
-NEG_NUM = 1000
+POS_NUM = 5000
+NEG_NUM = 100000
+
 
 def main():
     cleaned = "cleaned_templates.csv"

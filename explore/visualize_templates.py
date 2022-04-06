@@ -19,6 +19,7 @@ parser = ArgumentParser()
 parser.add_argument('--test_folder', default='/gpfs/gpfs0/k.fedyanin/space/figures/test')
 parser.add_argument('--last_timestamp', action="store_true")
 parser.add_argument('--fusion', action='store_true')
+parser.add_argument('--full', action='store_true')
 args = parser.parse_args()
 
 FARs = [0.0001, 0.001, 0.05]
@@ -29,39 +30,28 @@ methods = [
         'name': 'head', 'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
     },
     {
+        'name': 'head', 'functions': ('PFE', 'MLS', 'mean'), 'label': 'PFE (MLS)'
+    },
+    {
         'name': 'magface', 'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
     },
     {
         'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
     },
     {
-        'name': 'scale_finetuned', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace FT'
+        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
     },
     {
-        'name': 'scale', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace-f'
+        'name': 'scale', 'functions': ('softmax-0.1', 'cosine', 'mean'), 'label': 'ScaleFace (softmax)'
     },
     {
-        'name': 'scale_finetuned', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace FT-f'
+        'name': 'scale', 'functions': ('weighted', 'cosine', 'mean'), 'label': 'ScaleFace (weighted)'
     },
-    # {
-    #     'name': 'scale_finetuned_0003', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first03'
-    # },
-    # {
-    #     'name': 'scale_finetuned_0003', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean03'
-    # },
-    # {
-    #     'name': 'scale_finetuned_001', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first1'
-    # },
-    # {
-    #     'name': 'scale_finetuned_001', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean1'
-    # },
-    # {
-    #     'name': 'scale_finetuned_003', 'functions': ('first', 'cosine', 'mean'), 'label': 'ScaleFace first3'
-    # },
-    # {
-    #     'name': 'scale_finetuned_003', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace mean3'
-    # },
+    {
+        'name': 'scale', 'functions': ('weighted-softmax', 'cosine', 'mean'), 'label': 'ScaleFace (softmax-weighted)'
+    },
 ]
+
 def plot_TAR_FAR_different_methods(
         results, rejected_portions, AUCs, title=None, save_figs_path=None
 ):
@@ -71,7 +61,7 @@ def plot_TAR_FAR_different_methods(
         matplotlib.rcParams['text.usetex'] = True
         matplotlib.rcParams.update({'font.size': fontsize})
 
-    pretty_matplotlib_config(28)
+    pretty_matplotlib_config(20)
 
     plots_indices = {
         FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
@@ -116,7 +106,11 @@ if __name__ == '__main__':
 
         if args.last_timestamp:
             files = os.listdir(folder)
-            pattern = r'table_' + name +r'[\d_-]*\.pt'
+            pattern = r'table_' + name +r'[\d_-]*'
+            if args.full:
+                pattern += r'_full\.pt'
+            else:
+                pattern += r'\.pt'
             files = [f for f in files if re.match(pattern, f)]
             file = sorted(files)[-1]
         else:

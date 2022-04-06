@@ -91,6 +91,7 @@ class IJBCTemplates:
         enroll_path = self.proto_folder / 'enroll_templates.csv'
         verif_path = self.proto_folder / 'verif_templates.csv'
         self._pairs = pd.read_csv(self.proto_folder / 'cropped_matches.csv', header=None).to_numpy()
+        # self._pairs = pd.read_csv(self.proto_folder / 'short_matches.csv', header=None).to_numpy()
 
         enroll_dict = build_templates(enroll_path, self.feature_dict, self.uncertainty_dict)
         self.templates_dict.update(enroll_dict)

@@ -42,25 +42,24 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1 \
   --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \
   --batch_size=64 \
-  --distaces_batch_size=8 \
   --uncertainty_strategy=scale \
+  --fusion_distance_uncertainty_metrics weighted_cosine_mean weighted_centered-cosine_harmonic-harmonic weighted_scale-mul-centered-cosine_harmonic-harmonic weighted_scale-harmonic-centered-cosine_harmonic-harmonic weighted_scale-sqrt-mul-centered-cosine_harmonic-harmonic weighted_scale-sqrt-harmonic-centered-cosine_harmonic-harmonic \
   --uncertainty_mode=confidence \
   --FARs 0.0001 0.001 0.05 \
-  --fusion_distance_uncertainty_metrics weighted-softmax_cosine_mean mean_cosine_mean weighted_cosine_mean softmax-0.1_cosine_mean \
   --rejected_portions $(seq 0 0.02 0.5) \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
   --verbose \
   --cached_embeddings
 
-
+### alternative options for scale
 # --fusion_distance_uncertainty_metrics weighted_cosine_mean weighted_centered-cosine_harmonic-harmonic weighted_scale-mul-centered-cosine_harmonic-harmonic weighted_scale-harmonic-centered-cosine_harmonic-harmonic weighted_scale-sqrt-mul-centered-cosine_harmonic-harmonic weighted_scale-sqrt-harmonic-centered-cosine_harmonic-harmonic \
+#  --fusion_distance_uncertainty_metrics weighted_cosine_min weighted_cosine_mean weighted_cosine_squared-sum weighted_cosine_mul weighted_cosine_harmonic-sum weighted_cosine_harmonic-mul  weighted_cosine_harmonic-harmonic weighted_cosine_squared-harmonic weighted_cosine_cosine-analytic  \
 #--fusion_distance_uncertainty_metrics mean_cosine_mean
 #  --fusion_distance_uncertainty_metrics mean_cosine_mean  weighted_cosine_mean mean_scale-mul-cosine_mean weighted_scale-mul-cosine_mean mean_scale-harmonic-cosine_mean weighted_scale-harmonic-cosine_mean \
 # --fusion_distance_uncertainty_metrics mean_cosine_mean mean_scale-mul-cosine_mean weighted_cosine_mean weighted_scale-mul-cosine_mean mean_scale-harmonic-cosine_mean weighted_scale-harmonic-cosine_mean \
 #  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean softmax_cosine_mean argmax_cosine_mean stat-mean_cosine_mean stat-softmax_cosine_mean weighted_cosine_mean \
 #  --fusion_distance_uncertainty_metrics mean_cosine_mean softmax_cosine_mean weighted_cosine_mean \
-### alternative options for scale
 #  --fusion_distance_uncertainty_metrics first_cosine_mean mean_cosine_mean mean_cosine_harmonic-harmonic mean_cosine_mul\
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
@@ -90,7 +89,7 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
 #--cached_embeddings
 #
 #
-##### MagFace
+###### MagFace
 #python3 ./face_lib/evaluation/template_reject_verification.py \
 #  --checkpoint_path=/gpfs/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_sigm_mul/checkpoint.pth \
 #  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \

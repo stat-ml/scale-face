@@ -158,3 +158,7 @@ def pair_uncertainty_squared_harmonic(mu_1, mu_2, uncertainty_1, uncertainty_2):
 
 def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return (sigma_sq_1 * sigma_sq_2 + (mu_1 ** 2) * sigma_sq_2 + (mu_2 ** 2) * sigma_sq_1).sum(axis=1)
+
+
+def pair_uncertainty_min(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return np.min(np.stack([sigma_sq_1.sum(axis=1), sigma_sq_2.sum(axis=1)]), axis=0)
