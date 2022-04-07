@@ -226,3 +226,25 @@ def pair_uncertainty_squared_harmonic(mu_1, mu_2, uncertainty_1, uncertainty_2):
 
 def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return (sigma_sq_1 * sigma_sq_2 + (mu_1 ** 2) * sigma_sq_2 + (mu_2 ** 2) * sigma_sq_1).sum(axis=1)
+
+# ======================================================================================================================
+
+# def get_scale_confidences(feat_1, feat_2, unc_1, unc_2):
+#     unc_1, unc_2 = unc_1.squeeze(axis=1), unc_2.squeeze(axis=1)
+#     return feat_1, feat_2, unc_1, unc_2
+#
+# get_norm_confidences = get_scale_confidences
+#
+# def get_PFE_confidences(feat_1, feat_2, unc_1, unc_2):
+#     unc_1, unc_2 = 1 / harmonic_mean(unc_1), 1 / harmonic_mean(unc_2)
+#     return feat_1, feat_2, unc_1, unc_2
+#
+#
+#
+# name_to_uncertainty = {
+#     "scale": get_scale_confidences,
+#     "norm": get_norm_confidences,
+#     "PFE": get_PFE_confidences,
+# }
+#
+# def create_distance_function(sqrt=False, confidences="norm", )

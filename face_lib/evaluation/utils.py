@@ -104,7 +104,7 @@ def get_distance_uncertainty_funcs(
         # print(f"{distance_func(np.ones((3, 4)), np.ones((3, 4)), np.ones((3, 1)), np.ones((3, 1)))=}")
 
         new_distance_func = lambda x1, x2, unc1, unc2: \
-            distance_func(x1, x2, unc1, unc2, bias=val_statistics["best_f1_thres"])  # TODO: Fix it
+            distance_func(x1, x2, unc1, unc2, bias=val_statistics["optimal_gauss"])  # TODO: Fix it
         new_uncertainty_func = uncertainty_func
     else:
         new_distance_func = distance_func
@@ -145,6 +145,29 @@ def find_best_f1_threshold(similarities, labels):
     return max_f1_thresh
 
 
+def find_gaussian_optimal_threshold(similarities, labels):
+    positives = similarities[labels]
+    negatives = similarities[~labels]
+
+    pos_mean, pos_var = positives.mean(), positives.var()
+    neg_mean, neg_var = negatives.mean(), negatives.var()
+
+    p_0 = 1 / (2 * pos_var) - 1 / (2 * neg_var)
+    p_1 = - (pos_mean / pos_var - neg_mean / neg_var)
+    p_2 = (pos_mean ** 2) / (2 * pos_var) - (neg_mean ** 2) / (2 * neg_var) + 0.5 * np.log(neg_var / pos_var)
+
+    roots = np.roots(np.array((p_0, p_1, p_2), dtype=float))
+    assert len(roots) == 2
+    print(roots)
+
+    if roots[0] > 0. and roots[0] < 1.:
+        return roots[0]
+    elif roots[1] > 0 and roots[1] < 1:
+        return roots[1]
+    else:
+        raise AssertionError("Had not found acceptable root")
+
+
 def extract_statistics(data):
     x1, x2, unc1, unc2, label_vec = data
 
@@ -152,10 +175,12 @@ def extract_statistics(data):
     mean_cosine = cosines.mean(axis=0)
 
     best_f1_thres = find_best_f1_threshold(cosines, label_vec)
-    print(f"Mean cosine {mean_cosine} {mean_cosine.shape}")
-    print(f"F1 thres {best_f1_thres} ")
+    best_gauss_thres = find_gaussian_optimal_threshold(cosines, label_vec)
+
+    print(f"Mean thres : {mean_cosine} best_f1 : {best_f1_thres} optimal_gauss : {best_gauss_thres}")
 
     return {
         "mean_cos": mean_cosine,
         "best_f1_thres": best_f1_thres,
+        "optimal_gauss": best_gauss_thres,
     }
