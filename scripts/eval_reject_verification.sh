@@ -26,20 +26,20 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-## PFE normalized
-python3 ./face_lib/evaluation/reject_verification.py \
-  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
-  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_10000_prob_0.1.csv \
-  --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \
-  --batch_size=16 \
-  --uncertainty_strategy=head \
-  --FARs 0.0001 0.001 0.05 \
-  --rejected_portions $(seq 0 0.002 0.5) \
-  --distance_uncertainty_metrics cosine_mean cosine_harmonic-sum cosine_harmonic-harmonic MLS_harmonic-sum MLS_harmonic-harmonic \
-  --device_id=0 \
-  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
-#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
+### PFE normalized
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/normalized_pfe/sota.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_10000_prob_0.1.csv \
+#  --config_path=./configs/models/iresnet_ms1m_pfe_normalized.yaml \
+#  --batch_size=16 \
+#  --uncertainty_strategy=head \
+#  --FARs 0.0001 0.001 0.05 \
+#  --rejected_portions $(seq 0 0.002 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-sum cosine_harmonic-harmonic MLS_harmonic-sum MLS_harmonic-harmonic \
+#  --device_id=0 \
+#  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
+##  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/pfe/classic_normalized_pfe/sota.pth \
 
 ## GAN
 #python3 ./face_lib/evaluation/reject_verification.py \
@@ -192,3 +192,20 @@ python3 ./face_lib/evaluation/reject_verification.py \
 #  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
 #  --device_id=0 \
 #  --save_fig_path=/trinity/home/r.kail/faces/figures/test
+
+# Evaluate Arcface+MagFace_precalculated
+python3 ./face_lib/evaluation/reject_verification.py \
+  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/magface/ms1mv2_ir50_ddp/arcface+magface.pth \
+  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+  --config_path=./configs/magface/ir50.yaml \
+  --batch_size=32 \
+  --uncertainty_strategy=backbone+magface \
+  --uncertainty_mode=confidence \
+  --precalculated_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/magface_evaluation/features_old_mtcnn/ir50_features \
+  --distaces_batch_size=128 \
+  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+  --rejected_portions $(seq 0 0.002 0.5) \
+  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul cosine_squared-sum cosine_squared-harmonic \
+  --device_id=0 \
+  --save_fig_path=/beegfs/home/r.kail/faces/figures/26_new_arcface+magface/arc=ir50_mag=ir50
