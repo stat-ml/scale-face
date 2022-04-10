@@ -82,11 +82,16 @@ def aggregate_templates(templates, method):
             weights = weights / np.sum(weights)
             t.mu = l2_normalize(np.dot(weights, mu))
             t.sigma_sq = np.dot(weights, t.sigmas)
-        elif method == 'weighted-softmax':
+        elif method.startswith('weighted-softmax'):
+            parts = method.split('-')
+            if len(parts) == 2:
+                temperature = 1.0
+            else:
+                temperature = float(parts[2])
             weights = t.sigmas[:, 0]
             weights = weights / np.sum(weights)
             t.mu = l2_normalize(np.dot(weights, t.features))
-            weights = softmax(t.sigmas[:, 0] / 0.1)
+            weights = softmax(t.sigmas[:, 0] / temperature)
             t.sigma_sq = np.dot(weights, t.sigmas)
         elif method == 'weighted':
             mu = l2_normalize(t.features)

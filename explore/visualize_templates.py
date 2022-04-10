@@ -25,32 +25,28 @@ args = parser.parse_args()
 FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
+
 methods = [
+    {
+        'name': 'emb_norm', 'functions': ('mean', 'cosine', 'mean'), 'label': 'Norm'
+    },
     {
         'name': 'head', 'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
     },
-    {
-        'name': 'head', 'functions': ('PFE', 'MLS', 'mean'), 'label': 'PFE (MLS)'
-    },
+    # {
+    #     'name': 'head', 'functions': ('PFE', 'MLS', 'mean'), 'label': 'PFE (MLS)'
+    # },
     {
         'name': 'magface', 'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
     },
     {
-        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
+        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (ours)'
     },
-    {
-        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace'
-    },
-    {
-        'name': 'scale', 'functions': ('softmax-0.1', 'cosine', 'mean'), 'label': 'ScaleFace (softmax)'
-    },
-    {
-        'name': 'scale', 'functions': ('weighted', 'cosine', 'mean'), 'label': 'ScaleFace (weighted)'
-    },
-    {
-        'name': 'scale', 'functions': ('weighted-softmax', 'cosine', 'mean'), 'label': 'ScaleFace (softmax-weighted)'
-    },
+    # {
+    #     'name': 'scale', 'functions': ('weighted', 'cosine', 'mean'), 'label': 'ScaleFace-w (ours)'
+    # },
 ]
+
 
 def plot_TAR_FAR_different_methods(
         results, rejected_portions, AUCs, title=None, save_figs_path=None
@@ -61,7 +57,7 @@ def plot_TAR_FAR_different_methods(
         matplotlib.rcParams['text.usetex'] = True
         matplotlib.rcParams.update({'font.size': fontsize})
 
-    pretty_matplotlib_config(20)
+    pretty_matplotlib_config(24)
 
     plots_indices = {
         FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
@@ -77,7 +73,7 @@ def plot_TAR_FAR_different_methods(
                 label = '\_'.join(key)
             else:
                 label = key
-            label = label + ", AUC=" + str(round(auc, 5))
+            # label = label + ", AUC=" + str(round(auc, 5))
             print(label)
 
             axes[plots_indices[FAR]].plot(
@@ -110,7 +106,7 @@ if __name__ == '__main__':
             if args.full:
                 pattern += r'_full\.pt'
             else:
-                pattern += r'\.pt'
+                pattern += r'\_single.pt'
             files = [f for f in files if re.match(pattern, f)]
             file = sorted(files)[-1]
         else:
@@ -130,6 +126,5 @@ if __name__ == '__main__':
         all_results,
         rejected_portions,
         res_AUCs,
-        title="Template reject verification",
         save_figs_path=os.path.join(folder, f"all_methods_together_last.pdf")
     )
