@@ -104,7 +104,7 @@ def get_distance_uncertainty_funcs(
         # print(f"{distance_func(np.ones((3, 4)), np.ones((3, 4)), np.ones((3, 1)), np.ones((3, 1)))=}")
 
         new_distance_func = lambda x1, x2, unc1, unc2: \
-            distance_func(x1, x2, unc1, unc2, bias=val_statistics["optimal_gauss"])  # TODO: Fix it
+            distance_func(x1, x2, unc1, unc2, bias=val_statistics["mean_cos"])  # TODO: Fix it
         new_uncertainty_func = uncertainty_func
     else:
         new_distance_func = distance_func
@@ -168,12 +168,15 @@ def find_gaussian_optimal_threshold(similarities, labels):
         raise AssertionError("Had not found acceptable root")
 
 
+def get_mean_classes_centres(similarities, label_vec):
+    return 0.5 * (similarities[label_vec].mean(axis=0) + similarities[~label_vec].mean(axis=0))
+
+
 def extract_statistics(data):
     x1, x2, unc1, unc2, label_vec = data
-
     cosines = pair_cosine_score(x1, x2, unc1=None, unc2=None)
-    mean_cosine = cosines.mean(axis=0)
 
+    mean_cosine = get_mean_classes_centres(cosines, label_vec)
     best_f1_thres = find_best_f1_threshold(cosines, label_vec)
     best_gauss_thres = find_gaussian_optimal_threshold(cosines, label_vec)
 
