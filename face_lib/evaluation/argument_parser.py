@@ -295,6 +295,11 @@ def parse_args_template_reject_verification():
         action="store_true",
     )
     parser.add_argument(
+        "--equal_uncertainty_enroll",
+        help="Take into consideration only the verification image uncertainty",
+        action="store_true",
+    )
+    parser.add_argument(
         "--verbose",
         help="Dump verbose information",
         action="store_true",

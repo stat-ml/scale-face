@@ -63,14 +63,43 @@ def aggregate_templates(templates, method):
             idx = np.argmax(t.sigmas)
             t.mu = t.features[idx]
             t.sigma_sq = t.sigmas[idx]
-        elif method == 'softmax':
-            weights = softmax(t.sigmas[:, 0])
-            t.mu = l2_normalize(np.dot(weights, t.features))
-            t.sigma_sq = np.dot(weights, t.sigmas)
         elif method == 'stat-softmax':
             weights = softmax(t.sigmas[:, 0])
             t.mu = l2_normalize(np.dot(weights, t.features))
             t.sigma_sq = np.dot(weights, t.sigmas) * len(t.sigmas)**0.5
+        elif method.startswith('softmax'):
+            parts = method.split('-')
+            if len(parts) == 1:
+                temperature = 1.0
+            else:
+                temperature = float(parts[1])
+            weights = softmax(t.sigmas[:, 0] / temperature)
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method == 'weighted':
+            mu = l2_normalize(t.features)
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, mu))
+            t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method.startswith('weighted-softmax'):
+            parts = method.split('-')
+            if len(parts) == 2:
+                temperature = 1.0
+            else:
+                temperature = float(parts[2])
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, t.features))
+            weights = softmax(t.sigmas[:, 0] / temperature)
+            t.sigma_sq = np.dot(weights, t.sigmas)
+        elif method == 'weighted':
+            mu = l2_normalize(t.features)
+            weights = t.sigmas[:, 0]
+            weights = weights / np.sum(weights)
+            t.mu = l2_normalize(np.dot(weights, mu))
+            t.sigma_sq = np.dot(weights, t.sigmas)
+            pass
         else:
             raise ValueError(f"Wrong aggregate method {method}")
 
@@ -95,7 +124,8 @@ def eval_template_reject_verification(
     device=torch.device("cpu"),
     verbose=False,
     uncertainty_model=None,
-    cached_embeddings=False
+    cached_embeddings=False,
+    equal_uncertainty_enroll=False
 ):
 
     # Setup the plots
@@ -162,7 +192,6 @@ def eval_template_reject_verification(
     tester = IJBCTemplates(image_paths, feature_dict, uncertainty_dict)
     tester.init_proto(protocol_path)
 
-    equal_uncertainty_enroll = True
     prev_fusion_name = None
     for (fusion_name, distance_name, uncertainty_name), distance_ax, uncertainty_ax in \
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
@@ -173,8 +202,9 @@ def eval_template_reject_verification(
             uncertainty_name=uncertainty_name,
             classifier=classifier,
             device=device,
-            distaces_batch_size=distaces_batch_size,
+            distaces_batch_size=distaces_batch_size
         )
+
         if fusion_name != prev_fusion_name:
             if equal_uncertainty_enroll:
                 aggregate_templates(tester.enroll_templates(), fusion_name)
@@ -251,7 +281,11 @@ def eval_template_reject_verification(
         distance_fig.savefig(os.path.join(save_fig_path, f"distance_dist_{timestamp}.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, f"uncertainry_dist_{timestamp}.jpg"), dpi=400)
 
-        torch.save(all_results, os.path.join(save_fig_path, f"table_{uncertainty_strategy}_{timestamp}.pt"))
+        setup_name = {
+            True: 'single', False: 'full'
+        }[equal_uncertainty_enroll]
+
+        torch.save(all_results, os.path.join(save_fig_path, f"table_{uncertainty_strategy}_{timestamp}_{setup_name}.pt"))
 
 
 def main():
@@ -300,7 +334,8 @@ def main():
         device=device,
         verbose=args.verbose,
         uncertainty_model=uncertainty_model,
-        cached_embeddings=args.cached_embeddings
+        cached_embeddings=args.cached_embeddings,
+        equal_uncertainty_enroll=args.equal_uncertainty_enroll
     )
 
 

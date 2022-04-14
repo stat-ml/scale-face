@@ -155,7 +155,6 @@ def eval_reject_verification(
             title=pairs_table_path.split("/")[-1][:-4],
             save_figs_path=os.path.join(save_fig_path, "all_methods.jpg")
         )
-        plt.show()
 
         distance_fig.savefig(os.path.join(save_fig_path, "distance_dist.jpg"), dpi=400)
         uncertainty_fig.savefig(os.path.join(save_fig_path, "uncertainry_dist.jpg"), dpi=400)
@@ -185,6 +184,7 @@ def get_rejected_tar_far(
 
     if equal_uncertainty_enroll:
         sigma_sq_1 = np.ones_like(sigma_sq_1)
+    print(sigma_sq_1)
 
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 

@@ -91,7 +91,6 @@ def get_distance_uncertainty_funcs(
     else:
         uncertainty_func = name_to_uncertainty_func[uncertainty_name]
 
-
     if distance_name in [
         "biased-cosine", "scale-mul-biased-cosine", "scale-harmonic-biased-cosine",
         "scale-sqrt-mul-biased-cosine", "scale-sqrt-harmonic-biased-cosine",

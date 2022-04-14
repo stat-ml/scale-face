@@ -227,7 +227,12 @@ def pair_uncertainty_squared_harmonic(mu_1, mu_2, uncertainty_1, uncertainty_2):
 def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return (sigma_sq_1 * sigma_sq_2 + (mu_1 ** 2) * sigma_sq_2 + (mu_2 ** 2) * sigma_sq_1).sum(axis=1)
 
-# ======================================================================================================================
+def pair_uncertainty_min(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return np.min(np.stack([sigma_sq_1.sum(axis=1), sigma_sq_2.sum(axis=1)]), axis=0)
+
+
+def pair_uncertainty_similarity(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return cosine_similarity(mu_1, mu_2)
 
 # def get_scale_confidences(feat_1, feat_2, unc_1, unc_2):
 #     unc_1, unc_2 = unc_1.squeeze(axis=1), unc_2.squeeze(axis=1)
@@ -248,3 +253,4 @@ def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
 # }
 #
 # def create_distance_function(sqrt=False, confidences="norm", )
+
