@@ -7,7 +7,13 @@ from tqdm import tqdm
 from scipy import ndimage
 from skimage.metrics import structural_similarity as ssim
 
-from face_lib.utils.imageprocessing import preprocess, preprocess_tta, preprocess_gan, preprocess_magface
+from face_lib.utils.imageprocessing import (
+    preprocess,
+    preprocess_tta,
+    preprocess_gan,
+    preprocess_magface,
+    preprocess_blurred)
+from face_lib.evaluation.utils import get_precalculated_embeddings
 
 
 def extract_features_head(
@@ -461,6 +467,7 @@ def extract_features_uncertainties_from_list(
     discriminator=None,
     scale_predictor=None,
     uncertainty_model=None,
+    blur_intensity=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
@@ -554,6 +561,21 @@ def extract_features_uncertainties_from_list(
             verbose=verbose,
             device=device,
         )
+    elif uncertainty_strategy == "blurred_scale":
+        assert scale_predictor is not None
+        assert blur_intensity is not None
+        proc_func = lambda images: preprocess_blurred(
+            images, [112, 112], is_training=False, blur_intensity=blur_intensity)
+
+        features, uncertainties = extract_features_scale(
+            backbone,
+            scale_predictor,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
     elif uncertainty_strategy == "emb_norm":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
 
@@ -596,6 +618,51 @@ def extract_features_uncertainties_from_list(
     return features, uncertainties
 
 
+def extract_uncertainties_from_dataset(
+    backbone,
+    scale_predictor,
+    dataset,
+    batch_size,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+
+    dataloader = torch.utils.data.DataLoader(
+        dataset=dataset, batch_size=batch_size, shuffle=False, num_workers=4,
+    )
+
+    uncertainties = []
+
+    with torch.no_grad():
+        for batch, labels in tqdm(dataloader):
+            batch = batch.to(device)
+            output = backbone(batch)
+            output.update(scale_predictor(**output))
+            # mu.append(np.array(output["feature"].detach().cpu()))
+            uncertainties.append(np.array(output["scale"].detach().cpu()))
+
+    # mu = np.concatenate(mu, axis=0)
+    uncertainties = np.concatenate(uncertainties, axis=0)
+
+    if verbose:
+        print("")
+    # return mu, uncertainties
+    return uncertainties
+
+
+def extract_pairs_info(pairs_table_path):
+    pairs, labels = [], []
+    unique_imgs = set()
+    with open(pairs_table_path, "r") as f:
+        for line in f.readlines():
+            left_path, right_path, label = line.split(",")
+            pairs.append((left_path, right_path))
+            labels.append(int(label))
+            unique_imgs.add(left_path)
+            unique_imgs.add(right_path)
+    return pairs, labels, unique_imgs
+
+
 def get_features_uncertainties_labels(
     backbone,
     head,
@@ -606,35 +673,33 @@ def get_features_uncertainties_labels(
     discriminator=None,
     scale_predictor=None,
     uncertainty_model=None,
+    precalculated_path=None,
     device=torch.device("cuda:0"),
     verbose=False,
 ):
 
-    pairs, label_vec = [], []
-    unique_imgs = set()
-    with open(pairs_table_path, "r") as f:
-        for line in f.readlines():
-            left_path, right_path, label = line.split(",")
-            pairs.append((left_path, right_path))
-            label_vec.append(int(label))
-            unique_imgs.add(left_path)
-            unique_imgs.add(right_path)
+    pairs, label_vec, unique_imgs = extract_pairs_info(pairs_table_path)
 
-    image_paths = list(unique_imgs)
-    img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
+    if uncertainty_strategy == "magface_precalculated":
+        features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
+        # TODO: Fair calculation of uncertainty
+        uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
+    else:
+        image_paths = list(unique_imgs)
+        img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
 
-    features, uncertainties = extract_features_uncertainties_from_list(
-        backbone,
-        head,
-        image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
-        uncertainty_strategy=uncertainty_strategy,
-        batch_size=batch_size,
-        discriminator=discriminator,
-        scale_predictor=scale_predictor,
-        uncertainty_model=uncertainty_model,
-        device=device,
-        verbose=verbose,
-    )
+        features, uncertainties = extract_features_uncertainties_from_list(
+            backbone,
+            head,
+            image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            discriminator=discriminator,
+            scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model,
+            device=device,
+            verbose=verbose,
+        )
 
     mu_1 = np.array([features[img_to_idx[pair[0]]] for pair in pairs])
     mu_2 = np.array([features[img_to_idx[pair[1]]] for pair in pairs])
@@ -643,4 +708,3 @@ def get_features_uncertainties_labels(
     label_vec = np.array(label_vec, dtype=bool)
 
     return mu_1, mu_2, unc_1, unc_2, label_vec
-

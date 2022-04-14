@@ -3,6 +3,7 @@ from .distance_uncertainty_funcs import (
     pair_euc_score,
     pair_cosine_score,
     pair_centered_cosine_score,
+    pair_biased_cosine_score,
     pair_MLS_score,
     pair_uncertainty_sum,
     pair_uncertainty_squared_sum,
@@ -12,6 +13,8 @@ from .distance_uncertainty_funcs import (
     pair_uncertainty_concatenated_harmonic,
     pair_uncertainty_squared_harmonic,
     pair_uncertainty_cosine_analytic,
+    pair_uncertainty_min,
+    pair_uncertainty_similarity,
     pair_scale_mul_cosine_score,
     pair_scale_harmonic_cosine_score,
     pair_sqrt_scale_mul_cosine_score,
@@ -20,14 +23,21 @@ from .distance_uncertainty_funcs import (
     pair_scale_harmonic_centered_cosine_score,
     pair_sqrt_scale_mul_centered_cosine_score,
     pair_sqrt_scale_harmonic_centered_cosine_score,
-    pair_uncertainty_min,
-    pair_uncertainty_similarity,
+    pair_scale_mul_biased_cosine_score,
+    pair_scale_harmonic_biased_cosine_score,
+    pair_sqrt_scale_mul_biased_cosine_score,
+    pair_sqrt_scale_harmonic_biased_cosine_score,
+    pair_pfe_mul_biased_cosine_score,
+    pair_pfe_harmonic_biased_cosine_score,
+    pair_sqrt_pfe_mul_biased_cosine_score,
+    pair_sqrt_pfe_harmonic_biased_cosine_score,
 )
 
 name_to_distance_func = {
     "euc": pair_euc_score,
     "cosine": pair_cosine_score,
     "centered-cosine": pair_centered_cosine_score,
+    "biased-cosine": pair_biased_cosine_score,
     "MLS": pair_MLS_score,
     "scale-mul-cosine": pair_scale_mul_cosine_score,
     "scale-harmonic-cosine": pair_scale_harmonic_cosine_score,
@@ -37,6 +47,14 @@ name_to_distance_func = {
     "scale-harmonic-centered-cosine": pair_scale_harmonic_centered_cosine_score,
     "scale-sqrt-mul-centered-cosine": pair_sqrt_scale_mul_centered_cosine_score,
     "scale-sqrt-harmonic-centered-cosine": pair_sqrt_scale_harmonic_centered_cosine_score,
+    "scale-mul-biased-cosine": pair_scale_mul_biased_cosine_score,
+    "scale-harmonic-biased-cosine": pair_scale_harmonic_biased_cosine_score,
+    "scale-sqrt-mul-biased-cosine": pair_sqrt_scale_mul_biased_cosine_score,
+    "scale-sqrt-harmonic-biased-cosine": pair_sqrt_scale_harmonic_biased_cosine_score,
+    "pfe-mul-biased-cosine": pair_pfe_mul_biased_cosine_score,
+    "pfe-harmonic-biased-cosine": pair_pfe_harmonic_biased_cosine_score,
+    "pfe-sqrt-mul-biased-cosine": pair_sqrt_pfe_mul_biased_cosine_score,
+    "pfe-sqrt-harmonic-biased-cosine": pair_sqrt_pfe_harmonic_biased_cosine_score,
 }
 
 name_to_uncertainty_func = {
@@ -51,3 +69,4 @@ name_to_uncertainty_func = {
     "min": pair_uncertainty_min,
     "similarity": pair_uncertainty_similarity
 }
+
