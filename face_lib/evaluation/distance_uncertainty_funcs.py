@@ -24,6 +24,12 @@ def centered_cosine_similarity(x1, x2):
     return cos_sim
 
 
+def biased_cosine_similarity(x1, x2, bias):
+    cos_sim = cosine_similarity(x1, x2)
+    cos_sim -= bias
+    return cos_sim
+
+
 def pair_euc_score(x1, x2, unc1=None, unc2=None):
     x1, x2 = np.array(x1), np.array(x2)
     dist = np.sum(np.square(x1 - x2), axis=1)
@@ -36,6 +42,10 @@ def pair_cosine_score(x1, x2, unc1=None, unc2=None):
 
 def pair_centered_cosine_score(x1, x2, unc1=None, unc2=None):
     return centered_cosine_similarity(x1, x2)
+
+
+def pair_biased_cosine_score(x1, x2, unc1=None, unc2=None, bias=None):
+    return biased_cosine_similarity(x1, x2, bias=bias)
 
 
 def pair_MLS_score(x1, x2, sigma_sq1=None, sigma_sq2=None):
@@ -115,6 +125,64 @@ def pair_sqrt_scale_harmonic_centered_cosine_score(x1, x2, scale1=None, scale2=N
     return dist
 
 
+def pair_scale_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_scale_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = scale1.squeeze(axis=1), scale2.squeeze(axis=1)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
+def pair_sqrt_scale_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_sqrt_scale_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = np.sqrt(scale1.squeeze(axis=1)), np.sqrt(scale2.squeeze(axis=1))
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
+def pair_pfe_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_pfe_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
+def pair_sqrt_pfe_mul_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    scale1, scale2 = np.sqrt(scale1), np.sqrt(scale2)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2
+    return dist
+
+
+def pair_sqrt_pfe_harmonic_biased_cosine_score(x1, x2, scale1=None, scale2=None, bias=None):
+    scale1, scale2 = 1 / harmonic_mean(scale1), 1 / harmonic_mean(scale2)
+    scale1, scale2 = np.sqrt(scale1), np.sqrt(scale2)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2 / (scale1 + scale2)
+    return dist
+
+
 def pair_uncertainty_sum(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return sigma_sq_1.sum(axis=1) + sigma_sq_2.sum(axis=1)
 
@@ -158,3 +226,25 @@ def pair_uncertainty_squared_harmonic(mu_1, mu_2, uncertainty_1, uncertainty_2):
 
 def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return (sigma_sq_1 * sigma_sq_2 + (mu_1 ** 2) * sigma_sq_2 + (mu_2 ** 2) * sigma_sq_1).sum(axis=1)
+
+# ======================================================================================================================
+
+# def get_scale_confidences(feat_1, feat_2, unc_1, unc_2):
+#     unc_1, unc_2 = unc_1.squeeze(axis=1), unc_2.squeeze(axis=1)
+#     return feat_1, feat_2, unc_1, unc_2
+#
+# get_norm_confidences = get_scale_confidences
+#
+# def get_PFE_confidences(feat_1, feat_2, unc_1, unc_2):
+#     unc_1, unc_2 = 1 / harmonic_mean(unc_1), 1 / harmonic_mean(unc_2)
+#     return feat_1, feat_2, unc_1, unc_2
+#
+#
+#
+# name_to_uncertainty = {
+#     "scale": get_scale_confidences,
+#     "norm": get_norm_confidences,
+#     "PFE": get_PFE_confidences,
+# }
+#
+# def create_distance_function(sqrt=False, confidences="norm", )

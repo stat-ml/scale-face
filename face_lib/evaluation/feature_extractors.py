@@ -650,6 +650,19 @@ def extract_uncertainties_from_dataset(
     return uncertainties
 
 
+def extract_pairs_info(pairs_table_path):
+    pairs, labels = [], []
+    unique_imgs = set()
+    with open(pairs_table_path, "r") as f:
+        for line in f.readlines():
+            left_path, right_path, label = line.split(",")
+            pairs.append((left_path, right_path))
+            labels.append(int(label))
+            unique_imgs.add(left_path)
+            unique_imgs.add(right_path)
+    return pairs, labels, unique_imgs
+
+
 def get_features_uncertainties_labels(
     backbone,
     head,
@@ -665,15 +678,7 @@ def get_features_uncertainties_labels(
     verbose=False,
 ):
 
-    pairs, label_vec = [], []
-    unique_imgs = set()
-    with open(pairs_table_path, "r") as f:
-        for line in f.readlines():
-            left_path, right_path, label = line.split(",")
-            pairs.append((left_path, right_path))
-            label_vec.append(int(label))
-            unique_imgs.add(left_path)
-            unique_imgs.add(right_path)
+    pairs, label_vec, unique_imgs = extract_pairs_info(pairs_table_path)
 
     if uncertainty_strategy == "magface_precalculated":
         features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
@@ -703,4 +708,3 @@ def get_features_uncertainties_labels(
     label_vec = np.array(label_vec, dtype=bool)
 
     return mu_1, mu_2, unc_1, unc_2, label_vec
-
