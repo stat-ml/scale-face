@@ -68,7 +68,9 @@ def get_required_models(
 
 def get_distance_uncertainty_funcs(
         distance_name, uncertainty_name,
-        classifier=None, device=torch.device("cpu"), distaces_batch_size=None):
+        classifier=None, device=torch.device("cpu"), distaces_batch_size=None
+):
+    print(distance_name)
 
     assert uncertainty_name != "classifier" or classifier is not None
 
@@ -83,6 +85,7 @@ def get_distance_uncertainty_funcs(
             classifier, device=device)
     else:
         uncertainty_func = name_to_uncertainty_func[uncertainty_name]
+
 
     if distaces_batch_size:
         distance_func = split_wrapper(distance_func, batch_size=distaces_batch_size)

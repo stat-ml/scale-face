@@ -20,7 +20,7 @@ def cosine_similarity(x1, x2):
 def centered_cosine_similarity(x1, x2):
     cos_sim = cosine_similarity(x1, x2)
     cos_sim -= cos_sim.mean()
-    cos_sim /= cos_sim.std()
+    # cos_sim /= cos_sim.std()
     return cos_sim
 
 
@@ -162,3 +162,33 @@ def pair_uncertainty_cosine_analytic(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
 
 def pair_uncertainty_min(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
     return np.min(np.stack([sigma_sq_1.sum(axis=1), sigma_sq_2.sum(axis=1)]), axis=0)
+
+
+def pair_uncertainty_similarity(mu_1, mu_2, sigma_sq_1, sigma_sq_2):
+    return cosine_similarity(mu_1, mu_2)
+
+
+def get_mean_classes_centres(similarities, label_vec):
+    return 0.5 * (similarities[label_vec].mean(axis=0) + similarities[~label_vec].mean(axis=0))
+
+
+def extract_statistics(data):
+    x1, x2, unc1, unc2, label_vec = data
+    cosines = pair_cosine_score(x1, x2, unc1=None, unc2=None)
+
+    mean_cosine = get_mean_classes_centres(cosines, label_vec)
+    return mean_cosine
+
+
+def biased_cosine_similarity(x1, x2, bias):
+    cos_sim = cosine_similarity(x1, x2)
+    bias = 0.261
+    cos_sim -= bias
+    return cos_sim
+
+def pair_biased_cosine_score(x1, x2, unc1=None, unc2=None, bias=None):
+    scale1, scale2 = unc1.squeeze(axis=1), unc2.squeeze(axis=1)
+    dist = biased_cosine_similarity(x1, x2, bias=bias)
+    dist = dist * scale1 * scale2
+    return dist
+    # return biased_cosine_similarity(x1, x2, bias=bias)

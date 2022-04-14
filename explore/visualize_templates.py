@@ -26,27 +26,54 @@ FARs = [0.0001, 0.001, 0.05]
 rejected_portions = np.arange(0, 0.51, 0.02)
 
 
+
 methods = [
+    # {
+    #     'name': 'scale', 'functions': ('mean', 'cosine', 'similarity'), 'label': 'Cosine similarity'
+    # },
     {
         'name': 'emb_norm', 'functions': ('mean', 'cosine', 'mean'), 'label': 'Norm'
     },
-    {
-        'name': 'head', 'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
-    },
     # {
-    #     'name': 'head', 'functions': ('PFE', 'MLS', 'mean'), 'label': 'PFE (MLS)'
+    #     'name': 'head', 'functions': ('mean', 'cosine', 'mean'), 'label': 'PFE'
     # },
+    {
+        'name': 'head', 'functions': ('PFE', 'MLS', 'mean'), 'label': 'PFE (MLS)'
+    },
     {
         'name': 'magface', 'functions': ('mean', 'cosine', 'mean'), 'label': 'MagFace'
     },
     {
         'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (ours)'
     },
+    {
+        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (ours)'
+    },
+    {
+        'name': 'scale', 'functions': ('mean', 'biased-cosine', 'mean'), 'label': r'$\mu$-ScaleFace (ours)'
+    },
     # {
     #     'name': 'scale', 'functions': ('weighted', 'cosine', 'mean'), 'label': 'ScaleFace-w (ours)'
     # },
 ]
 
+defaults = [
+    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
+    '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
+]
+
+colors = {
+    'Norm': defaults[0],
+    'PFE': defaults[1],
+    'PFE (MLS)': defaults[1],
+    'MagFace': defaults[2],
+    'ScaleFace (ours)': defaults[3],
+    'ScaleFace-w (ours)': defaults[4]
+}
+
+# prop_cycle = plt.rcParams['axes.prop_cycle']
+# colors = prop_cycle.by_key()['color']
+# import ipdb; ipdb.set_trace()
 
 def plot_TAR_FAR_different_methods(
         results, rejected_portions, AUCs, title=None, save_figs_path=None
@@ -73,12 +100,11 @@ def plot_TAR_FAR_different_methods(
                 label = '\_'.join(key)
             else:
                 label = key
-            # label = label + ", AUC=" + str(round(auc, 5))
-            print(label)
+            print(label + ", AUC=" + str(round(auc, 5)))
 
             axes[plots_indices[FAR]].plot(
                 rejected_portions, TARs,
-                label=label, marker=" ", linewidth=3
+                label=label, marker=" ", linewidth=3,  alpha=0.8
             )
 
             axes[plots_indices[FAR]].set_title(f"TAR@FAR={FAR}")
