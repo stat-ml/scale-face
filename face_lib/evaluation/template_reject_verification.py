@@ -44,7 +44,6 @@ from face_lib.evaluation.reject_verification import get_rejected_tar_far
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
 from face_lib.evaluation.argument_parser import parse_args_template_reject_verification
-from face_lib.evaluation.distance_uncertainty_funcs import extract_statistics
 
 
 def aggregate_templates(templates, method):
@@ -218,15 +217,6 @@ def eval_template_reject_verification(
 
         print('shapes')
         print(feat_1.shape, feat_2.shape, unc_1.shape, unc_2.shape, label_vec.shape)
-        # import ipdb; ipdb.set_trace()
-        # if distance_name == 'biased-cosine':
-        #     idx = np.random.choice(np.arange(len(feat_1)), size=300_000)
-        #     val_statistics = {
-        #         'mean': extract_statistics((feat_1[idx], feat_2[idx], unc_1[idx], unc_2[idx], label_vec[idx]))
-        #     }
-        # else:
-        #     val_statistics = None
-
 
         result_table = get_rejected_tar_far(
             feat_1,

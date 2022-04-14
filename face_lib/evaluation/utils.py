@@ -70,8 +70,6 @@ def get_distance_uncertainty_funcs(
         distance_name, uncertainty_name,
         classifier=None, device=torch.device("cpu"), distaces_batch_size=None
 ):
-    print(distance_name)
-
     assert uncertainty_name != "classifier" or classifier is not None
 
     if distance_name == "classifier":
