@@ -40,9 +40,9 @@
 
 ### ScaleFace template with single-image enroll
 python3 ./face_lib/evaluation/template_reject_verification.py \
-  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth \
+  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
   --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-  --config_path=./configs/scale/02_sigm_mul_coef_selection/64.yaml \
+  --config_path=./configs/scale/02_sigm_mul_coef_selection/32.yaml \
   --protocol=ijbc \
   --protocol_path=/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/test1 \
   --batch_size=64 \
@@ -50,13 +50,14 @@ python3 ./face_lib/evaluation/template_reject_verification.py \
   --distaces_batch_size=500 \
   --uncertainty_mode=confidence \
   --FARs 0.0001 0.001 0.01 0.05 \
-  --fusion_distance_uncertainty_metrics first_biased-cosine_mean first_cosine_mean weighted_cosine_mean \
+  --fusion_distance_uncertainty_metrics mean_cosine_mean weighted_cosine_mean mean_scale-sqrt-harmonic-biased-cosine_harmonic-harmonic \
   --rejected_portions $(seq 0 0.02 0.5) \
   --device_id=0 \
   --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test \
-  --cached_embeddings \
-  --verbose \
-  --equal_uncertainty_enroll
+  --equal_uncertainty_enroll \
+  --verbose
+
+#  --cached_embeddings \
 
 ### alternative options for scale
 #  --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \

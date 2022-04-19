@@ -104,34 +104,34 @@
 #  --device_id=0 \
 #  --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-## Scale
-python3 ./face_lib/evaluation/reject_verification.py \
-  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
-  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
-  --config_path=./configs/scale/02_sigm_mul_coef_selection/32.yaml \
-  --batch_size=64 \
-  --uncertainty_strategy=scale \
-  --uncertainty_mode=confidence \
-  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
-  --rejected_portions $(seq 0 0.02 0.5) \
-  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
-  --device_id=0 \
-  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
-
-python3 ./face_lib/evaluation/reject_verification.py \
-  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/06_fine_tuning/sigm_32_lr_0.00003/checkpoint.pth \
-  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
-  --config_path=./configs/scale/02_sigm_mul_coef_selection/32.yaml \
-  --batch_size=64 \
-  --uncertainty_strategy=scale \
-  --uncertainty_mode=confidence \
-  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
-  --rejected_portions $(seq 0 0.02 0.5) \
-  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
-  --device_id=0 \
-  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
+### Scale
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/scale/02_sigm_mul_coef_selection/32.yaml \
+#  --batch_size=64 \
+#  --uncertainty_strategy=scale \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.02 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
+#  --device_id=0 \
+#  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
+#
+#python3 ./face_lib/evaluation/reject_verification.py \
+#  --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/06_fine_tuning/sigm_32_lr_0.00003/checkpoint.pth \
+#  --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
+#  --pairs_table_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv \
+#  --config_path=./configs/scale/02_sigm_mul_coef_selection/32.yaml \
+#  --batch_size=64 \
+#  --uncertainty_strategy=scale \
+#  --uncertainty_mode=confidence \
+#  --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
+#  --rejected_portions $(seq 0 0.02 0.5) \
+#  --distance_uncertainty_metrics cosine_mean cosine_harmonic-harmonic cosine_mul \
+#  --device_id=0 \
+#  --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
 
 #  --config_path=./configs/scale/01_activation_selection/sigm_mul.yaml \
 
@@ -278,13 +278,12 @@ python3 ./face_lib/evaluation/reject_verification.py \
 #    --device_id=0 \
 #    --save_fig_path=/beegfs/home/r.kail/faces/figures/25_val_test/PFE
 
-
 # Estimate statistics on validation, use them on test
 python3 ./face_lib/evaluation/reject_verification.py \
     --checkpoint_path=/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth \
     --dataset_path=/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big \
-    --pairs_table_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/val_test/test_pairs_1000_prob_0.5.csv \
-    --val_pairs_table_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/val_test/test_pairs_1000_prob_0.5.csv \
+    --pairs_table_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/val_test/test_pairs_1000000_prob_0.5.csv \
+    --val_pairs_table_path=/gpfs/data/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/val_test/val_pairs_1000000_prob_0.5.csv \
     --config_path=./configs/scale/02_sigm_mul_coef_selection/64.yaml \
     --batch_size=64 \
     --uncertainty_strategy=scale \
@@ -292,9 +291,10 @@ python3 ./face_lib/evaluation/reject_verification.py \
     --FARs 0.0001 0.0005 0.001 0.005 0.01 0.05 \
     --rejected_portions $(seq 0 0.002 0.5) \
     --distance_uncertainty_metrics \
+        cosine_harmonic-harmonic \
         biased-cosine_harmonic-harmonic \
         scale-mul-biased-cosine_harmonic-harmonic \
         scale-harmonic-biased-cosine_harmonic-harmonic \
         scale-sqrt-mul-biased-cosine_harmonic-harmonic \
         scale-sqrt-harmonic-biased-cosine_harmonic-harmonic \
-    --save_fig_path=/beegfs/home/r.kail/faces/figures/test
+    --save_fig_path=/gpfs/gpfs0/k.fedyanin/space/figures/test
