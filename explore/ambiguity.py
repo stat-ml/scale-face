@@ -1,8 +1,11 @@
 """
 What should I've done?
+validation value
 draw a line
-
+1 million
+what is the true value?
 """
+
 from argparse import ArgumentParser
 import pickle
 from pathlib import Path
@@ -15,10 +18,10 @@ import matplotlib.pyplot as plt
 import sys
 sys.path.append('.')
 
-from face_lib.evaluation.utils import get_required_models
+from face_lib.evaluation.utils import get_required_models, extract_statistics
 from face_lib.utils import cfg
 from face_lib.utils.imageprocessing import register
-from face_lib.evaluation.feature_extractors import extract_features_head, extract_features_scale
+from face_lib.evaluation.feature_extractors import extract_features_head, extract_features_scale, get_features_uncertainties_labels
 from face_lib.evaluation.distance_uncertainty_funcs import cosine_similarity, pair_MLS_score, pair_sqrt_scale_harmonic_biased_cosine_score
 import imageio
 from PIL import Image, ImageFilter
@@ -62,14 +65,30 @@ def preprocess(
 
 
 def main(args):
-    df = pd.read_csv(args.pairs_table_path, names=['source', 'target', 'label'])
-    df = crop_pairs(df, 500)
-    df.loc[df['label'] == 1, 'target'] = df[df['label'] == 1]['source']
-    image_paths = get_image_paths(df)
-    dataset_path = Path(args.dataset_path)
-    full_paths = [str(dataset_path / p) for p in image_paths]
+    print(args)
+
+    #
+    # df = pd.read_csv(args.pairs_table_path, names=['source', 'target', 'label'])
+    # df = crop_pairs(df, 500)
+    # df.loc[df['label'] == 1, 'target'] = df[df['label'] == 1]['source']
+    # image_paths = get_image_paths(df)
+    # dataset_path = Path(args.dataset_path)
+    # full_paths = [str(dataset_path / p) for p in image_paths]
 
     backbone, head = get_model(args)
+    # mus, sigmas = extract_features(backbone, head, full_paths, blur=blur,
+    #                                uncertainty_strategy=args.uncertainty_strategy)
+    val_data = get_features_uncertainties_labels(
+        backbone, head, args.dataset_path, args.pairs_table_path,
+        uncertainty_strategy=args.uncertainty_strategy, batch_size=50, verbose=True,
+        scale_predictor=head, precalculated_path=None
+    )
+    stats = extract_statistics(val_data)
+    print(stats)
+    return
+
+
+
     blurs = np.arange(0, 20, 1)
     original = []
     original_std = []
