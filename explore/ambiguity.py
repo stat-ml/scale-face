@@ -1,9 +1,15 @@
 """
 What should I've done?
-validation value
-draw a line
 1 million
-what is the true value?
+other oclusions
+
+Script to reproduce ambiguity dilemma
+Usage examples
+python explore/ambiguity.py
+python explore/ambiguity.py --distance="mls" --corruption='noise'
+python explore/ambiguity.py --uncertainty_strategy="scale" \
+--checkpoint_path="/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/64/checkpoint.pth" \
+ --config_path="./configs/scale/02_sigm_mul_coef_selection/64.yaml" --distance="mu-scale" --corruption="occlusion"
 """
 
 from argparse import ArgumentParser
@@ -30,78 +36,46 @@ from PIL import Image, ImageFilter
 print('Imported')
 
 
-def preprocess(
-    images, center_crop_size, mode="RGB", align: tuple = None, *, is_training=False, blur=None
-):
-    """
-    #TODO: docs, describe mode parameter
-    """
-    # TODO: this is not preprocess actually
-    image_paths = images
-    images = []
-    for image_path in image_paths:
-        # images.append(imageio.imread(image_path, pilmode=mode))
-        image = Image.open(image_path)
-        if blur:
-            image = image.filter(ImageFilter.GaussianBlur(radius=blur))
-        images.append(np.array(image))
-
-    images = np.stack(images, axis=0)
-
-    proc_funcs = [
-        ["center_crop", center_crop_size],
-        ["standardize", "mean_scale"],
-    ]
-
-    for proc in proc_funcs:
-        proc_name, proc_args = proc[0], proc[1:]
-        assert (
-            proc_name in register
-        ), "Not a registered preprocessing function: {}".format(proc_name)
-        images = register[proc_name](images, *proc_args)
-    if len(images.shape) == 3:
-        images = images[:, :, :, None]
-    return images
-
-
 def main(args):
     print(args)
 
-    #
-    # df = pd.read_csv(args.pairs_table_path, names=['source', 'target', 'label'])
-    # df = crop_pairs(df, 500)
-    # df.loc[df['label'] == 1, 'target'] = df[df['label'] == 1]['source']
-    # image_paths = get_image_paths(df)
-    # dataset_path = Path(args.dataset_path)
-    # full_paths = [str(dataset_path / p) for p in image_paths]
+    corruption_range ={
+        'blur': np.arange(0, 10, 1),
+        'noise': np.arange(0, 100, 5),
+        'occlusion': np.arange(0, 55, 5)
+    }[args.corruption]
+
+    df = pd.read_csv(args.pairs_table_path, names=['source', 'target', 'label'])
+    df = crop_pairs(df, 500)
+    df.loc[df['label'] == 1, 'target'] = df[df['label'] == 1]['source']
+    image_paths = get_image_paths(df)
+    dataset_path = Path(args.dataset_path)
+    full_paths = [str(dataset_path / p) for p in image_paths]
 
     backbone, head = get_model(args)
-    # mus, sigmas = extract_features(backbone, head, full_paths, blur=blur,
-    #                                uncertainty_strategy=args.uncertainty_strategy)
-    val_data = get_features_uncertainties_labels(
-        backbone, head, args.dataset_path, args.pairs_table_path,
-        uncertainty_strategy=args.uncertainty_strategy, batch_size=50, verbose=True,
-        scale_predictor=head, precalculated_path=None
-    )
-    stats = extract_statistics(val_data)
-    print(stats)
-    return
 
-
-
-    blurs = np.arange(0, 20, 1)
     original = []
     original_std = []
     impostors = []
     impostors_std = []
 
-    for i, blur in enumerate(blurs):
-        mus, sigmas = extract_features(backbone, head, full_paths, blur=blur, uncertainty_strategy=args.uncertainty_strategy)
+    for i, corruption in enumerate(corruption_range):
+        if args.corruption == 'blur':
+            proc_func = lambda images: preprocess(images, [112, 112], is_training=False, blur=corruption)
+        elif args.corruption == 'noise':
+            proc_func = lambda images: preprocess(images, [112, 112], is_training=False, noise=corruption)
+        elif args.corruption == 'occlusion':
+            proc_func = lambda images: preprocess(images, [112, 112], is_training=False, occlusion=corruption)
+
+
+        mus, sigmas = extract_features(backbone, head, full_paths, proc_func=proc_func, uncertainty_strategy=args.uncertainty_strategy)
         image_mu = {path: mu for path, mu in zip(image_paths, mus)}
         image_sigma = {path: sigma for path, sigma in zip(image_paths, sigmas)}
         if i == 0:
             image_mu_0 = image_mu.copy()
             image_sigma_0 = image_sigma.copy()
+
+        distance_function = distance_func(args.distance_func)
 
         def distance(row):
             if row.label == 1:
@@ -112,9 +86,7 @@ def main(args):
                 sigma_0 = image_sigma[row['source']][None, :]
             mu_1 = image_mu[row['target']][None, :]
             sigma_1 = image_sigma[row['target']][None, :]
-            # return cosine_similarity(mu_0, mu_1)
-            # return pair_MLS_score(mu_0, mu_1, sigma_0, sigma_1)
-            return pair_sqrt_scale_harmonic_biased_cosine_score(mu_0, mu_1, sigma_0, sigma_1, 0.26)
+            return distance_function(mu_0, mu_1, sigma_0, sigma_1)
 
 
         df['distance'] = df.apply(distance, axis=1)
@@ -128,14 +100,22 @@ def main(args):
     impostors = np.array(impostors)[:, 0]
     impostors_std = np.array(impostors_std)
 
-    plt.plot(blurs, original)
-    plt.fill_between(blurs, original-original_std, original+original_std, alpha=0.2)
-    plt.plot(blurs, impostors)
-    plt.fill_between(blurs, impostors-impostors_std, impostors+impostors_std, alpha=0.2)
-    plt.title('ScaleFace improved')
-    plt.show()
+    plt.rc('grid', linestyle="--")
+    plt.plot(corruption_range, original, label='Original vs corrupted')
+    plt.fill_between(corruption_range, original-original_std, original+original_std, alpha=0.2)
+    plt.plot(corruption_range, impostors, label='Corrupted impostors')
+    plt.fill_between(corruption_range, impostors-impostors_std, impostors+impostors_std, alpha=0.2)
+    plt.plot((corruption_range[0], corruption_range[-1]), (impostors[-1], impostors[-1]), color='red', linestyle='--')
+    plt.xlabel(f'Corruption severity ({args.corruption})')
+    plt.ylabel('Confidence')
+    plt.legend()
 
-    import ipdb; ipdb.set_trace()
+    title = {
+        'cosine': 'Cosine', 'mls': 'MLS', 'mu-scale': 'ScaleFace improved'
+    }[args.distance_func]
+    plt.title(title)
+    plt.grid(True)
+    plt.show()
 
 
 def parse_args():
@@ -158,7 +138,13 @@ def parse_args():
         "--discriminator_path", type=str, default=None
     )
     parser.add_argument(
-        '--uncertainty_strategy', default='head'
+        '--uncertainty_strategy', default='head', choices=['head', 'scale']
+    )
+    parser.add_argument(
+        "--distance_func", default='cosine', choices=['cosine', 'mls', 'mu-scale']
+    )
+    parser.add_argument(
+        "--corruption", default='blur', choices=['blur', 'noise', 'occlusion']
     )
     return parser.parse_args()
 
@@ -186,10 +172,7 @@ def get_model(args):
     return backbone, ue
 
 
-
-def extract_features(backbone, head, image_paths, blur=None, uncertainty_strategy='head'):
-    proc_func = lambda images: preprocess(images, [112, 112], is_training=False, blur=blur)
-
+def extract_features(backbone, head, image_paths, proc_func, uncertainty_strategy='head'):
     if uncertainty_strategy == 'head':
         features, uncertainties = extract_features_head(
             backbone,
@@ -218,6 +201,74 @@ def extract_features(backbone, head, image_paths, blur=None, uncertainty_strateg
 def get_image_paths(df):
     paths = np.unique(df.source.to_list() + df.target.to_list())
     return [str(path) for path in paths]
+
+
+def check_the_stats(backbone, head, args):
+    x1, x2, unc1, unc2, label_vec = get_features_uncertainties_labels(
+        backbone, head, args.dataset_path, args.pairs_table_path,
+        uncertainty_strategy=args.uncertainty_strategy, batch_size=50, verbose=True,
+        scale_predictor=head, precalculated_path=None
+    )
+    idx = np.random.choice(np.arange(len(x1)), 1_000)
+    stats = extract_statistics((x1[idx], x2[idx], unc1[idx], unc2[idx], label_vec[idx]))
+    print(stats)
+
+
+def preprocess(
+    images, center_crop_size, mode="RGB", align: tuple = None, *, is_training=False,
+    blur=None, noise=None, occlusion=None
+):
+    image_paths = images
+    images = []
+    for image_path in image_paths:
+        # images.append(imageio.imread(image_path, pilmode=mode))
+        image = Image.open(image_path)
+        if blur:
+            image = image.filter(ImageFilter.GaussianBlur(radius=blur))
+        elif noise:
+            image = np.array(image)
+            noise_img = np.round(noise * (np.random.randn(*image.shape) - 0.5))
+            image = np.clip((image + noise_img).astype(np.int16), 0, 255)
+        elif occlusion:
+            color = 127
+            image = np.array(image)
+            image[:occlusion] = color
+            image[-occlusion:] = color
+            image[:, :occlusion] = color
+            image[:, -occlusion:] = color
+
+        images.append(np.array(image))
+
+    images = np.stack(images, axis=0)
+
+    proc_funcs = [
+        ["center_crop", center_crop_size],
+        ["standardize", "mean_scale"],
+    ]
+
+    for proc in proc_funcs:
+        proc_name, proc_args = proc[0], proc[1:]
+        assert (
+            proc_name in register
+        ), "Not a registered preprocessing function: {}".format(proc_name)
+        images = register[proc_name](images, *proc_args)
+    if len(images.shape) == 3:
+        images = images[:, :, :, None]
+    return images
+
+
+def distance_func(distance_name):
+    if distance_name == 'cosine':
+        return lambda mu_0, mu_1, sigma_0, sigma_1 : cosine_similarity(mu_0, mu_1)
+    elif distance_name == 'mls':
+        return pair_MLS_score
+    elif distance_name == 'mu-scale':
+        return lambda mu_0, mu_1, sigma_0, sigma_1 : pair_sqrt_scale_harmonic_biased_cosine_score(
+            mu_0, mu_1, sigma_0, sigma_1, 0.283
+        )
+    else:
+        raise ValueError('Wrong distance name')
+
 
 
 if __name__ == '__main__':
