@@ -2,7 +2,8 @@ import argparse
 
 uncertainty_methods = [
     "head", "GAN", "classifier", "scale", "blurred_scale", "emb_norm",
-    "magface", "backbone+uncertainty_model", "magface_precalculated", ]
+    "magface", "backbone+uncertainty_model", "magface_precalculated",
+    "backbone+magface"]
 
 uncertainty_modes = ["uncertainty", "confidence"]
 known_datasets = ["ijba", "ijbc"]
