@@ -1,12 +1,13 @@
 import os
 import sys
 import torch
+import argparse
+import numpy as np
+import matplotlib.pyplot as plt
 from path import Path
 from tqdm import tqdm
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
-import matplotlib.pyplot as plt
-import numpy as np
 
 path = str(Path(__file__).parent.parent.parent.abspath())
 sys.path.insert(0, path)
@@ -14,8 +15,9 @@ sys.path.insert(0, path)
 from face_lib.utils import cfg
 import face_lib.utils.metrics as metrics
 import face_lib.evaluation.plots as plots
-from face_lib.evaluation.argument_parser import parse_args_reject_verification
-from face_lib.evaluation.feature_extractors import get_features_uncertainties_labels
+from face_lib.evaluation.argument_parser import verify_arguments_reject_verification
+from face_lib.evaluation.feature_extractors import (
+    get_features_uncertainties_labels)
 from face_lib.evaluation.utils import (
     get_required_models,
     get_distance_uncertainty_funcs,
@@ -184,7 +186,6 @@ def get_rejected_tar_far(
 
     if equal_uncertainty_enroll:
         sigma_sq_1 = np.ones_like(sigma_sq_1)
-    print(sigma_sq_1)
 
     uncertainty_vec = pair_uncertainty_func(mu_1, mu_2, sigma_sq_1, sigma_sq_2)
 
@@ -222,8 +223,64 @@ def get_rejected_tar_far(
     return result_table
 
 
+# if __name__ == "__main__":
+#     args = parse_args_reject_verification()
+#
+#     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
+#         raise RuntimeError("Directory exists")
+#     else:
+#         os.makedirs(args.save_fig_path, exist_ok=True)
+#
+#     device = torch.device("cuda:" + str(args.device_id))
+#     model_args = cfg.load_config(args.config_path)
+#     checkpoint = torch.load(args.checkpoint_path, map_location=device)
+#
+#     backbone, head, discriminator, classifier, scale_predictor, uncertainty_model = \
+#         get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device=device)
+#
+#     rejected_portions = list(
+#         map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
+#     )
+#     FARs = list(map(float, args.FARs))
+#     distances_uncertainties = list(
+#         map(lambda x: x.split("_"), args.distance_uncertainty_metrics)
+#     )
+#
+#     eval_reject_verification(
+#         backbone,
+#         head,
+#         args.dataset_path,
+#         args.pairs_table_path,
+#         uncertainty_strategy=args.uncertainty_strategy,
+#         uncertainty_mode=args.uncertainty_mode,
+#         batch_size=args.batch_size,
+#         distaces_batch_size=args.distaces_batch_size,
+#         rejected_portions=rejected_portions,
+#         FARs=FARs,
+#         distances_uncertainties=distances_uncertainties,
+#         discriminator=discriminator,
+#         classifier=classifier,
+#         scale_predictor=scale_predictor,
+#         precalculated_path=args.precalculated_path,
+#         uncertainty_model=uncertainty_model,
+#         save_fig_path=args.save_fig_path,
+#         device=device,
+#         verbose=args.verbose,
+#         val_pairs_table_path=args.val_pairs_table_path,
+#     )
+
+
 if __name__ == "__main__":
-    args = parse_args_reject_verification()
+    # args = parse_args_reject_verification()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config_path", type=str, required=True,
+        help="Path to .yaml file with the configuration for the test",
+    )
+    args = parser.parse_args()
+    args = cfg.load_config(args.config_path)
+    args = verify_arguments_reject_verification(args)
 
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
         raise RuntimeError("Directory exists")
@@ -237,10 +294,7 @@ if __name__ == "__main__":
     backbone, head, discriminator, classifier, scale_predictor, uncertainty_model = \
         get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device=device)
 
-    rejected_portions = list(
-        map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
-    )
-    FARs = list(map(float, args.FARs))
+    rejected_portions = np.linspace(*args.rejected_portions)
     distances_uncertainties = list(
         map(lambda x: x.split("_"), args.distance_uncertainty_metrics)
     )
@@ -253,9 +307,9 @@ if __name__ == "__main__":
         uncertainty_strategy=args.uncertainty_strategy,
         uncertainty_mode=args.uncertainty_mode,
         batch_size=args.batch_size,
-        distaces_batch_size=args.distaces_batch_size,
+        distaces_batch_size=args.distances_batch_size,
         rejected_portions=rejected_portions,
-        FARs=FARs,
+        FARs=args.FARs,
         distances_uncertainties=distances_uncertainties,
         discriminator=discriminator,
         classifier=classifier,

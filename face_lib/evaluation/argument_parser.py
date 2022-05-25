@@ -10,116 +10,116 @@ known_datasets = ["ijba", "ijbc"]
 distribution_datasets = ["IJBC", "LFW", "MS1MV2"]
 
 
-def parse_args_reject_verification():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--discriminator_path",
-        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-C dataset directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--pairs_table_path",
-        help="Path to csv file with pairs names",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "--distaces_batch_size",
-        help="Number of embeddings in batch",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
-        type=str,
-        default="head",
-        choices=uncertainty_methods,
-    )
-    parser.add_argument(
-        "--uncertainty_mode",
-        help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
-        type=str,
-        default="uncertainty",
-        choices=uncertainty_modes,
-    )
-    parser.add_argument(
-        "--precalculated_path",
-        help="The path to a file with precalculated vectors and their names",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--rejected_portions",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--FARs",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--distance_uncertainty_metrics",
-        help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--figure_path",
-        help="The figure will be saved to this path",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--device_id",
-        help="Gpu id on which the algorithm will be launched",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--save_fig_path",
-        help="Path to save figure to",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--verbose",
-        help="Dump verbose information",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--val_pairs_table_path",
-        help="Path to csv file with pairs names. This data will be used to calculate statistics",
-        type=str,
-        default=None,
-        required=False,
-    )
-    return parser.parse_args()
+# def parse_args_reject_verification():
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument(
+#         "--checkpoint_path",
+#         help="The path to the pre-trained model directory",
+#         type=str,
+#         required=True,
+#     )
+#     parser.add_argument(
+#         "--discriminator_path",
+#         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
+#         type=str,
+#         default=None,
+#     )
+#     parser.add_argument(
+#         "--dataset_path",
+#         help="The path to the IJB-C dataset directory",
+#         type=str,
+#         required=True,
+#     )
+#     parser.add_argument(
+#         "--pairs_table_path",
+#         help="Path to csv file with pairs names",
+#         type=str,
+#         required=True,
+#     )
+#     parser.add_argument(
+#         "--batch_size",
+#         help="Number of images per mini batch",
+#         type=int,
+#         default=64,
+#     )
+#     parser.add_argument(
+#         "--distaces_batch_size",
+#         help="Number of embeddings in batch",
+#         type=int,
+#         default=None,
+#     )
+#     parser.add_argument(
+#         "--config_path",
+#         help="The paths to config .yaml file",
+#         type=str,
+#         required=True,
+#     )
+#     parser.add_argument(
+#         "--uncertainty_strategy",
+#         help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
+#         type=str,
+#         default="head",
+#         choices=uncertainty_methods,
+#     )
+#     parser.add_argument(
+#         "--uncertainty_mode",
+#         help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
+#         type=str,
+#         default="uncertainty",
+#         choices=uncertainty_modes,
+#     )
+#     parser.add_argument(
+#         "--precalculated_path",
+#         help="The path to a file with precalculated vectors and their names",
+#         type=str,
+#         default=None,
+#     )
+#     parser.add_argument(
+#         "--rejected_portions",
+#         help="Portion of rejected pairs of images",
+#         nargs="+",
+#     )
+#     parser.add_argument(
+#         "--FARs",
+#         help="Portion of rejected pairs of images",
+#         nargs="+",
+#     )
+#     parser.add_argument(
+#         "--distance_uncertainty_metrics",
+#         help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
+#         nargs="+",
+#     )
+#     parser.add_argument(
+#         "--figure_path",
+#         help="The figure will be saved to this path",
+#         type=str,
+#         default=None,
+#     )
+#     parser.add_argument(
+#         "--device_id",
+#         help="Gpu id on which the algorithm will be launched",
+#         type=int,
+#         default=0,
+#     )
+#     parser.add_argument(
+#         "--save_fig_path",
+#         help="Path to save figure to",
+#         type=str,
+#         default=None,
+#     )
+#     parser.add_argument(
+#         "--verbose",
+#         help="Dump verbose information",
+#         action="store_true",
+#     )
+#     parser.add_argument(
+#         "--val_pairs_table_path",
+#         help="Path to csv file with pairs names. This data will be used to calculate statistics",
+#         type=str,
+#         default=None,
+#         required=False,
+#     )
+#     return parser.parse_args()
 
 
 def parse_args_fusion():
@@ -412,3 +412,47 @@ def parse_args_dataset_distribution():
     )
 
     return parser.parse_args()
+
+
+default_reject_verification_parameters = {
+    "batch_size": 16,
+    "distances_batch_size": None,
+    "uncertainty_mode": "uncertainty",
+    "rejected_portions": [0.0, 0.5, 250],
+    "FARs": [0.0001, 0.001, 0.01],
+    "precalculated_path": None,
+    "figure_path": None,
+    "save_fig_path": None,
+    "device_id": 0,
+    "verbose": False,
+    "val_pairs_table_path": None,
+    "discriminator_path": None,
+}
+
+required_reject_verification_parameters = [
+    "checkpoint_path",
+    "dataset_path",
+    "pairs_table_path",
+    "config_path",
+    "uncertainty_strategy",
+    "distance_uncertainty_metrics",
+]
+
+
+def verify_arguments(args, required_params, default_params):
+    for param_name in required_params:
+        if not param_name in args:
+            raise ValueError(f"Parameter {param_name} is required")
+
+    for param_name, default_value in default_params.items():
+        if not param_name in args:
+            args[param_name] = default_value
+
+    return args
+
+
+verify_arguments_reject_verification = lambda args: verify_arguments(
+    args,
+    required_params=required_reject_verification_parameters,
+    default_params=default_reject_verification_parameters,)
+
