@@ -310,4 +310,4 @@
 #        scale-sqrt-harmonic-biased-cosine_harmonic-harmonic \
 #    --save_fig_path=/beegfs/home/r.kail/faces/figures/test
 
-python3 ./face_lib/evaluation/reject_verification.py --config_path=./configs/evaluation/reject_verification/pfe.yaml
+#python3 ./face_lib/evaluation/reject_verification.py --config_path=./configs/evaluation/reject_verification/pfe.yaml
