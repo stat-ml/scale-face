@@ -1,7 +1,7 @@
 import os
 import sys
-import numpy as np
 import torch
+import numpy as np
 from pathlib import Path
 
 path = str(Path(__file__).parent.parent.parent.absolute())
@@ -12,7 +12,10 @@ from face_lib.datasets import MXFaceDataset
 import face_lib.evaluation.plots as plots
 from face_lib.evaluation.utils import get_required_models
 from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list, extract_uncertainties_from_dataset
-from face_lib.evaluation.argument_parser import parse_args_dataset_distribution
+from face_lib.evaluation.argument_parser import (
+    parse_cli_arguments,
+    verify_arguments_dataset_distribution
+)
 
 
 def get_uncertainties_image_list(
@@ -124,7 +127,8 @@ def draw_figures(
 
 
 if __name__ == "__main__":
-    args = parse_args_dataset_distribution()
+    args = parse_cli_arguments()
+    args = verify_arguments_dataset_distribution(args)
 
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
         raise RuntimeError("Directory exists")

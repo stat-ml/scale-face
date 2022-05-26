@@ -1,4 +1,6 @@
 import argparse
+from face_lib.utils import cfg
+
 
 uncertainty_methods = [
     "head", "GAN", "classifier", "scale", "blurred_scale", "emb_norm",
@@ -10,409 +12,39 @@ known_datasets = ["ijba", "ijbc"]
 distribution_datasets = ["IJBC", "LFW", "MS1MV2"]
 
 
-# def parse_args_reject_verification():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument(
-#         "--checkpoint_path",
-#         help="The path to the pre-trained model directory",
-#         type=str,
-#         required=True,
-#     )
-#     parser.add_argument(
-#         "--discriminator_path",
-#         help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
-#         type=str,
-#         default=None,
-#     )
-#     parser.add_argument(
-#         "--dataset_path",
-#         help="The path to the IJB-C dataset directory",
-#         type=str,
-#         required=True,
-#     )
-#     parser.add_argument(
-#         "--pairs_table_path",
-#         help="Path to csv file with pairs names",
-#         type=str,
-#         required=True,
-#     )
-#     parser.add_argument(
-#         "--batch_size",
-#         help="Number of images per mini batch",
-#         type=int,
-#         default=64,
-#     )
-#     parser.add_argument(
-#         "--distaces_batch_size",
-#         help="Number of embeddings in batch",
-#         type=int,
-#         default=None,
-#     )
-#     parser.add_argument(
-#         "--config_path",
-#         help="The paths to config .yaml file",
-#         type=str,
-#         required=True,
-#     )
-#     parser.add_argument(
-#         "--uncertainty_strategy",
-#         help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
-#         type=str,
-#         default="head",
-#         choices=uncertainty_methods,
-#     )
-#     parser.add_argument(
-#         "--uncertainty_mode",
-#         help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
-#         type=str,
-#         default="uncertainty",
-#         choices=uncertainty_modes,
-#     )
-#     parser.add_argument(
-#         "--precalculated_path",
-#         help="The path to a file with precalculated vectors and their names",
-#         type=str,
-#         default=None,
-#     )
-#     parser.add_argument(
-#         "--rejected_portions",
-#         help="Portion of rejected pairs of images",
-#         nargs="+",
-#     )
-#     parser.add_argument(
-#         "--FARs",
-#         help="Portion of rejected pairs of images",
-#         nargs="+",
-#     )
-#     parser.add_argument(
-#         "--distance_uncertainty_metrics",
-#         help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
-#         nargs="+",
-#     )
-#     parser.add_argument(
-#         "--figure_path",
-#         help="The figure will be saved to this path",
-#         type=str,
-#         default=None,
-#     )
-#     parser.add_argument(
-#         "--device_id",
-#         help="Gpu id on which the algorithm will be launched",
-#         type=int,
-#         default=0,
-#     )
-#     parser.add_argument(
-#         "--save_fig_path",
-#         help="Path to save figure to",
-#         type=str,
-#         default=None,
-#     )
-#     parser.add_argument(
-#         "--verbose",
-#         help="Dump verbose information",
-#         action="store_true",
-#     )
-#     parser.add_argument(
-#         "--val_pairs_table_path",
-#         help="Path to csv file with pairs names. This data will be used to calculate statistics",
-#         type=str,
-#         default=None,
-#         required=False,
-#     )
-#     return parser.parse_args()
+# Fusion
+required_fusion_parameters = [
+    "checkpoint_path",
+    "dataset_path",
+    "protocol_path",
+    "fusion_distance_methods",
+    "FARs",
+    "save_table_path",
+]
+
+default_fusion_parameters = {
+    "config_path": None,
+    "uncertainty_strategy": "head",
+    "protocol": "ijbc",
+    "device_id": 0,
+    "batch_size": 64,
+    "verbose": False,
+}
+
+choice_fusion_parameters = {
+    "uncertainty_strategy": uncertainty_methods
+}
 
 
-def parse_args_fusion():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-A dataset directory",
-        type=str,
-        default="data/ijba_mtcnncaffe_aligned",
-    )
-    parser.add_argument(
-        "--protocol_path",
-        help="The path to the IJB-A protocol directory",
-        type=str,
-        default="proto/IJB-A",
-    )
-    parser.add_argument(
-        "--protocol",
-        help="The dataset to test",
-        type=str,
-        default="ijbc",
-        choices=known_datasets
-    )
-    parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        default=None
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head or TTA)",
-        type=str,
-        default="head",
-    )
-    parser.add_argument(
-        "--fusion_distance_methods",
-        help="Pairs of distance metric and fusion distance to evaluate with, separated with '_' (ex. mean_cosine)",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--FARs",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--device_id",
-        help="Device on which the algorithm will be ran",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="increase output verbosity",
-    )
-    parser.add_argument(
-        "--save_table_path",
-        help="Path where the resulted table will be dumped",
-        type=str,
-        default="/gpfs/gpfs0/r.kail/tables/result.pkl",
-    )
-    return parser.parse_args()
-
-
-def parse_args_template_reject_verification():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-C dataset directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--protocol",
-        help="The dataset to test",
-        type=str,
-        default="ijbc",
-        choices=known_datasets,
-    )
-    parser.add_argument(
-        "--protocol_path",
-        help="Path to csv file with pairs names",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
-        type=str,
-        default="head",
-        choices=uncertainty_methods,
-    )
-    parser.add_argument(
-        "--uncertainty_mode",
-        help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
-        type=str,
-        default="uncertainty",
-        choices=uncertainty_modes,
-    )
-    parser.add_argument(
-        "--precalculated_path",
-        help="The path to a file with precalculated vectors and their names",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--FARs",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--rejected_portions",
-        help="Portion of rejected pairs of images",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--distaces_batch_size",
-        help="Number of embeddings in batch",
-        type=int,
-        default=None,
-    )
-    parser.add_argument(
-        "--fusion_distance_uncertainty_metrics",
-        help="Pairs of distance and uncertainty metrics to evaluate with, separated with '_' (ex. cosine_harmonic)",
-        nargs="+",
-    )
-    parser.add_argument(
-        "--device_id",
-        help="Gpu id on which the algorithm will be launched",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--save_fig_path",
-        help="Path to save figure to",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--cached_embeddings",
-        help="Use precalculated embeddings from backbone",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--equal_uncertainty_enroll",
-        help="Take into consideration only the verification image uncertainty",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--verbose",
-        help="Dump verbose information",
-        action="store_true",
-    )
-    parser.add_argument(
-        "--discriminator_path",
-        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
-        type=str,
-        default=None,
-    )
-
-    return parser.parse_args()
-
-
-def parse_args_dataset_distribution():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--checkpoint_path",
-        help="The path to the pre-trained model directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--dataset_path",
-        help="The path to the IJB-C dataset directory",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--image_paths_table",
-        help="Path to a file with image's paths",
-        type=str,
-        required=False,
-        default=None,
-    )
-    parser.add_argument(
-        "--dataset_name",
-        help="The dataset to test",
-        type=str,
-        default="ijbc",
-        choices=distribution_datasets,
-    )
-    # parser.add_argument(
-    #     "--protocol_path",
-    #     help="Path to csv file with pairs names",
-    #     type=str,
-    #     required=True,
-    # )
-    parser.add_argument(
-        "--config_path",
-        help="The paths to config .yaml file",
-        type=str,
-        required=True,
-    )
-    parser.add_argument(
-        "--batch_size",
-        help="Number of images per mini batch",
-        type=int,
-        default=64,
-    )
-    parser.add_argument(
-        "--uncertainty_strategy",
-        help="Strategy to get uncertainty (ex. head/GAN/classifier, emb_norm)",
-        type=str,
-        default="head",
-        choices=uncertainty_methods,
-    )
-    parser.add_argument(
-        "--discriminator_path",
-        help="If you use GAN score to sort pairs, pah to weights of discriminator are determined here",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--blur_intensity",
-        help="The intensity of gaussian blur",
-        type=int,
-        default=None,
-    )
-    # parser.add_argument(
-    #     "--uncertainty_mode",
-    #     help="Defines whether pairs with biggest or smallest uncertainty will be rejected",
-    #     type=str,
-    #     default="uncertainty",
-    #     choices=uncertainty_modes,
-    # )
-    # parser.add_argument(
-    #     "--precalculated_path",
-    #     help="The path to a file with precalculated vectors and their names",
-    #     type=str,
-    #     default=None,
-    # )
-    parser.add_argument(
-        "--device_id",
-        help="Gpu id on which the algorithm will be launched",
-        type=int,
-        default=0,
-    )
-    parser.add_argument(
-        "--save_fig_path",
-        help="Path to save figure to",
-        type=str,
-        default=None,
-    )
-    parser.add_argument(
-        "--verbose",
-        help="Dump verbose information",
-        action="store_true",
-    )
-
-    return parser.parse_args()
-
+# Reject_verification
+required_reject_verification_parameters = [
+    "checkpoint_path",
+    "dataset_path",
+    "pairs_table_path",
+    "config_path",
+    "uncertainty_strategy",
+    "distance_uncertainty_metrics",
+]
 
 default_reject_verification_parameters = {
     "batch_size": 16,
@@ -429,17 +61,81 @@ default_reject_verification_parameters = {
     "discriminator_path": None,
 }
 
-required_reject_verification_parameters = [
+choice_reject_verification_parameters = {
+    "uncertainty_strategy": uncertainty_methods,
+    "uncertainty_mode": uncertainty_modes,
+}
+
+
+# Template reject verification
+required_template_reject_verification_parameters = [
     "checkpoint_path",
     "dataset_path",
-    "pairs_table_path",
+    "protocol_path",
     "config_path",
-    "uncertainty_strategy",
-    "distance_uncertainty_metrics",
+    "fusion_distance_uncertainty_metrics",
 ]
 
+default_template_reject_verification_parameters = {
+    "protocol": "ijbc",
+    "batch_size": 64,
+    "uncertainty_strategy": "head",
+    "uncertainty_mode": "uncertainty",
+    "rejected_portions": [0.0, 0.5, 250],
+    "FARs": [0.0001, 0.001, 0.01],
+    "precalculated_path": None,
+    "distaces_batch_size": None,
+    "device_id": 0,
+    "cached_embeddings": False,
+    "equal_uncertainty_enroll": False,
+    "verbose": False,
+    "discriminator_path": None,
+    "save_fig_path": None,
+}
 
-def verify_arguments(args, required_params, default_params):
+choice_template_reject_verification_parameters = {
+    "protocol": known_datasets,
+    "uncertainty_strategy": uncertainty_methods,
+    "uncertainty_mode": uncertainty_modes,
+}
+
+
+# Dataset distribution
+required_dataset_distribution_parameters = [
+    "checkpoint_path",
+    "dataset_path",
+    "config_path",
+]
+
+default_dataset_distribution_parameters = {
+    "image_paths_table": None,
+    "dataset_name": "ijbc",
+    "batch_size": 64,
+    "uncertainty_strategy": "head",
+    "discriminator_path": None,
+    "blur_intensity": None,
+    "device_id": 0,
+    "save_fig_path": None,
+    "verbose": False,
+}
+
+choice_dataset_distribution_parameters = {
+    "dataset_name": distribution_datasets,
+    "uncertainty_strategy": uncertainty_methods
+}
+
+
+def parse_cli_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--config_path", type=str, required=True,
+        help="Path to .yaml file with the configuration for the test",
+    )
+    args = parser.parse_args()
+    return cfg.load_config(args.config_path)
+
+
+def verify_arguments(args, required_params, default_params, choice_parameters=None):
     for param_name in required_params:
         if not param_name in args:
             raise ValueError(f"Parameter {param_name} is required")
@@ -448,11 +144,42 @@ def verify_arguments(args, required_params, default_params):
         if not param_name in args:
             args[param_name] = default_value
 
+    if choice_parameters is not None:
+        for param_name, choices in choice_parameters.items():
+            if args[param_name] not in choices:
+                raise ValueError(f"Parameter {param_name} should be chosen from {choices}, you've chosen {args[param_name]}")
+
     return args
 
 
-verify_arguments_reject_verification = lambda args: verify_arguments(
-    args,
-    required_params=required_reject_verification_parameters,
-    default_params=default_reject_verification_parameters,)
+def verify_arguments_fusion(args):
+    return verify_arguments(
+        args,
+        required_params=required_fusion_parameters,
+        default_params=default_fusion_parameters,
+        choice_parameters=choice_fusion_parameters,)
+
+
+def verify_arguments_reject_verification(args):
+    return verify_arguments(
+        args,
+        required_params=required_reject_verification_parameters,
+        default_params=default_reject_verification_parameters,
+        choice_parameters=choice_reject_verification_parameters,)
+
+
+def verify_arguments_template_reject_verification(args):
+    return verify_arguments(
+        args,
+        required_params=required_template_reject_verification_parameters,
+        default_params=default_template_reject_verification_parameters,
+        choice_parameters=choice_template_reject_verification_parameters,)
+
+
+def verify_arguments_dataset_distribution(args):
+    return verify_arguments(
+        args,
+        required_params=required_dataset_distribution_parameters,
+        default_params=default_dataset_distribution_parameters,
+        choice_parameters=choice_dataset_distribution_parameters,)
 
