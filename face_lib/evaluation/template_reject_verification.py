@@ -21,14 +21,12 @@ import os
 import sys
 import numpy as np
 from datetime import datetime
-import pandas as pd
 import torch
 import matplotlib.pyplot as plt
 from collections import defaultdict, OrderedDict
 from sklearn.metrics import auc
 from pathlib import Path
 import pickle
-from tqdm import tqdm
 from scipy.special import softmax
 
 path = str(Path(__file__).parent.parent.parent.absolute())
@@ -43,7 +41,7 @@ from face_lib.evaluation.reject_verification import get_rejected_tar_far
 
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
-from face_lib.evaluation.argument_parser import parse_args_template_reject_verification
+from face_lib.evaluation.argument_parser import verify_arguments_template_reject_verification, parse_cli_arguments
 
 
 def aggregate_templates(templates, method):
@@ -289,7 +287,8 @@ def eval_template_reject_verification(
 
 
 def main():
-    args = parse_args_template_reject_verification()
+    args = parse_cli_arguments()
+    args = verify_arguments_template_reject_verification(args)
     print(args)
 
     if os.path.isdir(args.save_fig_path) and not args.save_fig_path.endswith("test"):
@@ -306,9 +305,7 @@ def main():
     backbone, head, discriminator, classifier, scale_predictor, uncertainty_model = \
         get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device=device)
 
-    rejected_portions = list(
-        map(lambda x: float(x.replace(",", ".")), args.rejected_portions)
-    )
+    rejected_portions = np.linspace(*args.rejected_portions)
     FARs = list(map(float, args.FARs))
     fusions_distances_uncertainties = list(
         map(lambda x: x.split("_"), args.fusion_distance_uncertainty_metrics)

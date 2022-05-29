@@ -35,7 +35,7 @@ def get_required_models(
         head = head.eval().to(device)
 
     discriminator = None
-    if args.discriminator_path:
+    if "discriminator_path" in args and args.discriminator_path:
         discriminator = mlib.StyleGanDiscriminator()
         discriminator.load_state_dict(torch.load(args.discriminator_path)["d"])
         discriminator.eval().to(device)
