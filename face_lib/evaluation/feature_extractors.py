@@ -517,6 +517,17 @@ def extract_features_uncertainties_from_list(
             device=device,
         )
 
+    elif uncertainty_strategy == "perfect":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_backbone(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+
     elif uncertainty_strategy == "head":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
         features, uncertainties = extract_features_head(
@@ -730,6 +741,7 @@ def get_features_uncertainties_labels(
         features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
         # TODO: Fair calculation of uncertainty
         uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
+
     elif uncertainty_strategy == "backbone+magface":
         features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
         uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
@@ -757,6 +769,33 @@ def get_features_uncertainties_labels(
         label_vec = np.array(label_vec, dtype=bool)
 
         return mu_1, mu_2, unc_1, unc_2, label_vec
+
+    elif uncertainty_strategy == "perfect":
+        image_paths = list(unique_imgs)
+        img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
+
+        features, uncertainties = extract_features_uncertainties_from_list(
+            backbone,
+            head,
+            image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            discriminator=discriminator,
+            scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model,
+            device=device,
+            verbose=verbose,
+        )
+        assert uncertainties is None
+        mu_1 = np.array([features[img_to_idx[pair[0]]] for pair in pairs])
+        mu_2 = np.array([features[img_to_idx[pair[1]]] for pair in pairs])
+
+        label_vec = np.array(label_vec, dtype=bool)
+        unc_1 = label_vec.astype(float)
+        unc_2 = label_vec.astype(float)
+
+        return mu_1, mu_2, unc_1, unc_2, label_vec
+
     else:
         image_paths = list(unique_imgs)
         img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}

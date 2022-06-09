@@ -19,3 +19,5 @@
 #python3 ./face_lib/evaluation/reject_verification.py --config_path=./configs/evaluation/reject_verification/test_val_split.yaml
 
 #python3 ./face_lib/evaluation/reject_verification.py --config_path=./configs/evaluation/reject_verification/scale.yaml
+
+# python3 ./face_lib/evaluation/reject_verification.py --config_path=./configs/evaluation/reject_verification/perfect.yaml
