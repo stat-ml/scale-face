@@ -1,0 +1,12 @@
+checkpoint_path: "/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth"
+dataset_path: "/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big"
+pairs_table_path: "/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/metadata_refuse_verification/pairs_1000000_prob_0.5.csv"
+config_path: "./configs/scale/02_sigm_mul_coef_selection/32.yaml"
+batch_size: 64
+uncertainty_strategy: "scale"
+uncertainty_mode: "confidence"
+FARs: [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, ]
+rejected_portions: [0.0, 0.5, 250]
+distance_uncertainty_metrics: ["cosine_mean", "cosine_harmonic-harmonic", "cosine_mul", ]
+device_id: 0
+save_fig_path: "/gpfs/gpfs0/k.fedyanin/space/figures/test"

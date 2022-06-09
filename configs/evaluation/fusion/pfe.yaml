@@ -1,0 +1,12 @@
+checkpoint_path: "/gpfs/gpfs0/k.fedyanin/space/models/pfe/first_ms1m_pfe/sota.pt"
+dataset_path: "/gpfs/gpfs0/k.fedyanin/space/IJB/aligned_data_for_fusion/big"
+protocol_path: "/gpfs/gpfs0/k.fedyanin/space/IJB/IJB-C/protocols/archive"
+config_path: "./configs/models/iresnet_ms1m_pfe.yaml"
+uncertainty_strategy: "head"
+protocol: "ijbc"
+fusion_distance_methods: ["random_cosine", "mean_cosine", "min_cosine", "softmax-100_cosine", "PFE_cosine", "min_MLS", "PFE_MLS", ]
+FARs: [1e-05, 5e-05, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, ]
+device_id: 0
+batch_size: 64
+save_table_path: "/beegfs/home/r.kail/faces/figures/test/table.pkl"
+verbose: True

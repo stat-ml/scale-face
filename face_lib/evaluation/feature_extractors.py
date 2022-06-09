@@ -56,6 +56,41 @@ def extract_features_head(
     return mu, sigma_sq
 
 
+def extract_features_backbone(
+    backbone,
+    images,
+    batch_size,
+    proc_func=None,
+    verbose=False,
+    device=torch.device("cpu"),
+):
+    num_images = len(images)
+    mu = []
+    start_time = time.time()
+    for start_idx in tqdm(range(0, num_images, batch_size)):
+        if verbose:
+            elapsed_time = time.strftime(
+                "%H:%M:%S", time.gmtime(time.time() - start_time)
+            )
+            sys.stdout.write(
+                "# of images: %d Current image: %d Elapsed time: %s \t\r"
+                % (num_images, start_idx, elapsed_time)
+            )
+        end_idx = min(num_images, start_idx + batch_size)
+        images_batch = images[start_idx:end_idx]
+
+        batch = proc_func(images_batch)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        output = backbone(batch)
+        mu.append(np.array(output["feature"].detach().cpu()))
+
+    mu = np.concatenate(mu, axis=0)
+
+    if verbose:
+        print("")
+    return mu, None
+
+
 def extract_features_tta(
     backbone,
     images,
@@ -471,7 +506,18 @@ def extract_features_uncertainties_from_list(
     device=torch.device("cuda:0"),
     verbose=False,
 ):
-    if uncertainty_strategy == "head":
+    if uncertainty_strategy == "backbone+magface":
+        proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
+        features, uncertainties = extract_features_backbone(
+            backbone,
+            image_paths,
+            batch_size,
+            proc_func=proc_func,
+            verbose=verbose,
+            device=device,
+        )
+
+    elif uncertainty_strategy == "head":
         proc_func = lambda images: preprocess(images, [112, 112], is_training=False)
         features, uncertainties = extract_features_head(
             backbone,
@@ -684,6 +730,33 @@ def get_features_uncertainties_labels(
         features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
         # TODO: Fair calculation of uncertainty
         uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
+    elif uncertainty_strategy == "backbone+magface":
+        features, img_to_idx = get_precalculated_embeddings(precalculated_path, verbose=verbose)
+        uncertainties = np.linalg.norm(features, axis=1, keepdims=True)
+
+        unc_1 = np.array([uncertainties[img_to_idx[pair[0]]] for pair in pairs])
+        unc_2 = np.array([uncertainties[img_to_idx[pair[1]]] for pair in pairs])
+
+        image_paths = list(unique_imgs)
+        img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}
+        features, uncertainties = extract_features_uncertainties_from_list(
+            backbone,
+            head,
+            image_paths=list(map(lambda x: os.path.join(dataset_path, x), image_paths)),
+            uncertainty_strategy=uncertainty_strategy,
+            batch_size=batch_size,
+            discriminator=discriminator,
+            scale_predictor=scale_predictor,
+            uncertainty_model=uncertainty_model,
+            device=device,
+            verbose=verbose,
+        )
+        assert uncertainties is None
+        mu_1 = np.array([features[img_to_idx[pair[0]]] for pair in pairs])
+        mu_2 = np.array([features[img_to_idx[pair[1]]] for pair in pairs])
+        label_vec = np.array(label_vec, dtype=bool)
+
+        return mu_1, mu_2, unc_1, unc_2, label_vec
     else:
         image_paths = list(unique_imgs)
         img_to_idx = {img_path: idx for idx, img_path in enumerate(image_paths)}

@@ -15,8 +15,10 @@ from face_lib.evaluation.feature_extractors import extract_features_uncertaintie
 
 from face_lib.evaluation import name_to_distance_func, l2_normalize
 from face_lib.evaluation.aggregation import aggregate_PFE, aggregate_min, aggregate_softmax
-from face_lib.evaluation.argument_parser import parse_args_fusion
-
+from face_lib.evaluation.argument_parser import (
+    parse_cli_arguments,
+    verify_arguments_fusion
+)
 
 def aggregate_templates(templates, mu, sigma_sq, method):
     sum_fuse_len = 0
@@ -170,9 +172,9 @@ def dump_fusion_ijb(
 
 
 if __name__ == "__main__":
-    args = parse_args_fusion()
 
-    device = torch.device("cuda:" + str(args.device_id))
+    args = parse_cli_arguments()
+    args = verify_arguments_fusion(args)
 
     model_args = cfg.load_config(args.config_path)
     backbone = mlib.model_dict[model_args.backbone["name"]](
@@ -182,6 +184,7 @@ if __name__ == "__main__":
         **utils.pop_element(model_args.head, "name")
     )
 
+    device = torch.device("cuda:" + str(args.device_id))
     checkpoint = torch.load(args.checkpoint_path, map_location=device)
     backbone.load_state_dict(checkpoint["backbone"])
     head.load_state_dict(checkpoint["head"])
@@ -197,8 +200,8 @@ if __name__ == "__main__":
         head,
         args.dataset_path,
         args.protocol_path,
-        batch_size=64,
-        protocol="ijbc",
+        batch_size=args.batch_size,
+        protocol=args.protocol,
         uncertainty_strategy=args.uncertainty_strategy,
         fusion_distance_methods=fusion_distance_methods,
         FARs=FARs,
