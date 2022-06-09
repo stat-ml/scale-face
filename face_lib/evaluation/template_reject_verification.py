@@ -195,8 +195,8 @@ def eval_template_reject_verification(
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
         print(f"==={fusion_name} {distance_name} {uncertainty_name} ===")
 
-        val_statistics = {'mean_cos': 0.26}
-        # val_statistics = None
+        val_statistics = {'mean_cos': 0.26} # totally not magic number selected by val values
+
         distance_func, uncertainty_func = get_distance_uncertainty_funcs(
             distance_name=distance_name,
             uncertainty_name=uncertainty_name,
@@ -218,11 +218,6 @@ def eval_template_reject_verification(
 
         print('shapes')
         print(feat_1.shape, feat_2.shape, unc_1.shape, unc_2.shape, label_vec.shape)
-
-        # idxs = np.random.choice(np.arange(len(feat_1)), 100_000)
-        # stats = extract_statistics((feat_1[idxs], feat_2[idxs], unc_1[idxs], unc_2[idxs], label_vec[idxs]))
-        # print(stats)
-        # import ipdb; ipdb.set_trace()
 
         result_table = get_rejected_tar_far(
             feat_1,
