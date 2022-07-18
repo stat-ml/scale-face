@@ -2,7 +2,7 @@ import numbers
 import os
 import random
 
-import mxnet as mx
+# import mxnet as mx
 import numpy as np
 import torch
 from torch.utils.data import Dataset

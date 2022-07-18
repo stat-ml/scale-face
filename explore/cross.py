@@ -1,15 +1,22 @@
-# level 3
-# got the pos/neg pairs
+# level 1
+# Launch a model with a batch of images
 
 from pathlib import Path
 import os
+import sys
 
+import torch
 import pandas as pd
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 
-data_dir = Path("~/data/faces/cplfw").expanduser()
+sys.path.append(".")
+# from iresnet import iresnet50
+from face_lib.models.iresnet import iresnet50
+
+data_dir = Path("~/data/faces").expanduser()
+cplfw_dir = data_dir / 'cplfw'
 
 
 def parse_pairs():
@@ -33,6 +40,27 @@ def parse_pairs():
     df = pd.DataFrame(as_dict)
     df.to_csv(data_dir / 'pairs.csv', index=False)
 
-parse_pairs()
+
+def load_model():
+    model = iresnet50()
+    checkpoint = torch.load(data_dir / 'models/backbone_resnet50.pth')
+    model.load_state_dict(checkpoint)
+    model.eval()
+
+    return model
+
+
+def main():
+    # model = load_model()
+    # print(model)
+    # pairs = pd.read_csv(data_dir / )
+    # print(os.listdir(data_dir))
+
+    df = pd.read_csv(cplfw_dir / 'pairs.csv')
+    print(df)
+
+
+if __name__ == '__main__':
+    main()
 
 
