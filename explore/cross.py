@@ -1,6 +1,3 @@
-# level 1
-# got the sf model
-
 from pathlib import Path
 import os
 import sys
@@ -61,6 +58,7 @@ def precalculate_images(model, image_paths):
     size = (112, 112)
     full_paths = [full_path(path) for path in image_paths]
     batch = preprocess(full_paths, size)
+    return batch
     device = 'cuda'
     batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
     with torch.no_grad():
@@ -72,28 +70,35 @@ def precalculate_images(model, image_paths):
 def main():
     model = load_model()
     df = pd.read_csv(cplfw_dir / 'pairs.csv')
-    cut = 200
+    cut = 5
     df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
     lst = np.unique(df.photo_1.to_list() + df.photo_2.to_list())
     cached = precalculate_images(model, lst)
-    for path, pred in cached.items():
-        cached[path] = pred / torch.norm(pred)
+    cached = np.floor((cached + 1) * 128).astype(np.uint8)
 
-    def check(row):
-        x_0, x_1 = cached[row['photo_1']], cached[row['photo_2']]
-        return (x_0 * x_1).sum().item()
+    for image in cached:
+        print(image.shape)
+        plt.imshow(image)
+        plt.show()
 
-    scores = df.apply(check, axis=1)
-    labels = list(df.label)
-    from sklearn.metrics import roc_curve, precision_recall_curve
+    # for path, pred in cached.items():
+    #     cached[path] = pred / torch.norm(pred)
 
-    preds = (scores > 0.19).astype(np.uint)
-    print((preds == labels).mean())
-
-    precisions, recalls, threshs = precision_recall_curve(labels, scores)
-    plt.plot(threshs, precisions[1:])
-    plt.plot(threshs, recalls[1:])
-    plt.show()
+    # def check(row):
+    #     x_0, x_1 = cached[row['photo_1']], cached[row['photo_2']]
+    #     return (x_0 * x_1).sum().item()
+    #
+    # scores = df.apply(check, axis=1)
+    # labels = list(df.label)
+    # from sklearn.metrics import roc_curve, precision_recall_curve
+    #
+    # preds = (scores > 0.19).astype(np.uint)
+    # print((preds == labels).mean())
+    #
+    # precisions, recalls, threshs = precision_recall_curve(labels, scores)
+    # plt.plot(threshs, precisions[1:])
+    # plt.plot(threshs, recalls[1:])
+    # plt.show()
 
 
 if __name__ == '__main__':
