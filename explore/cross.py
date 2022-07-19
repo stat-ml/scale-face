@@ -1,5 +1,5 @@
 # level 1
-# Launch a model with a batch of images
+# got the sf model
 
 from pathlib import Path
 import os
@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 sys.path.append(".")
 # from iresnet import iresnet50
 from face_lib.models.iresnet import iresnet50
+from face_lib.utils.imageprocessing import preprocess
 
 data_dir = Path("~/data/faces").expanduser()
 cplfw_dir = data_dir / 'cplfw'
@@ -41,26 +42,59 @@ def parse_pairs():
     df.to_csv(data_dir / 'pairs.csv', index=False)
 
 
-def load_model():
+def load_model(device='cuda'):
     model = iresnet50()
-    checkpoint = torch.load(data_dir / 'models/backbone_resnet50.pth')
+    # checkpoint = torch.load(data_dir / 'models/backbone_resnet50.pth')
+    checkpoint = torch.load(data_dir / 'models/scaleface.pth', map_location='cpu')['backbone']
     model.load_state_dict(checkpoint)
     model.eval()
+    model.to(device)
 
     return model
 
 
-def main():
-    # model = load_model()
-    # print(model)
-    # pairs = pd.read_csv(data_dir / )
-    # print(os.listdir(data_dir))
+def full_path(image_path):
+    return str(cplfw_dir / 'aligned images' / image_path)
 
+
+def precalculate_images(model, image_paths):
+    size = (112, 112)
+    full_paths = [full_path(path) for path in image_paths]
+    batch = preprocess(full_paths, size)
+    device = 'cuda'
+    batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+    with torch.no_grad():
+        predictions = model(batch)['feature'].cpu()
+        cached = {path: embeddings for path, embeddings in zip(image_paths, predictions)}
+    return cached
+
+
+def main():
+    model = load_model()
     df = pd.read_csv(cplfw_dir / 'pairs.csv')
-    print(df)
+    cut = 200
+    df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
+    lst = np.unique(df.photo_1.to_list() + df.photo_2.to_list())
+    cached = precalculate_images(model, lst)
+    for path, pred in cached.items():
+        cached[path] = pred / torch.norm(pred)
+
+    def check(row):
+        x_0, x_1 = cached[row['photo_1']], cached[row['photo_2']]
+        return (x_0 * x_1).sum().item()
+
+    scores = df.apply(check, axis=1)
+    labels = list(df.label)
+    from sklearn.metrics import roc_curve, precision_recall_curve
+
+    preds = (scores > 0.19).astype(np.uint)
+    print((preds == labels).mean())
+
+    precisions, recalls, threshs = precision_recall_curve(labels, scores)
+    plt.plot(threshs, precisions[1:])
+    plt.plot(threshs, recalls[1:])
+    plt.show()
 
 
 if __name__ == '__main__':
     main()
-
-
