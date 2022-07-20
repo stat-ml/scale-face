@@ -1,7 +1,3 @@
-# level 3
-# show ten with a mtcnn?
-
-
 from pathlib import Path
 import os
 import sys
@@ -11,11 +7,13 @@ import pandas as pd
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, precision_recall_curve
 
 sys.path.append(".")
 # from iresnet import iresnet50
 from face_lib.models.iresnet import iresnet50
 from face_lib.utils.imageprocessing import preprocess
+from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list
 
 
 data_dir = Path("~/data/faces").expanduser()
@@ -59,15 +57,18 @@ def full_path(image_path):
     return str(cplfw_dir / 'aligned images' / image_path)
 
 
-def precalculate_images(model, image_paths):
+def precalculate_images(model, image_paths, batch_size=20):
     size = (112, 112)
-    full_paths = [full_path(path) for path in image_paths]
-    batch = preprocess(full_paths, size)
     device = 'cuda'
-    batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
-    with torch.no_grad():
-        predictions = model(batch)['feature'].cpu()
-        cached = {path: embeddings for path, embeddings in zip(image_paths, predictions)}
+    cached = {}
+    for idx in range(0, len(image_paths), batch_size):
+        batch_paths = image_paths[idx: idx+batch_size]
+        full_paths = [full_path(path) for path in batch_paths]
+        batch = preprocess(full_paths, size)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
+        with torch.no_grad():
+            predictions = model(batch)['feature'].cpu()
+            cached.update({path: embeddings for path, embeddings in zip(batch_paths, predictions)})
     return cached
 
 
@@ -75,7 +76,7 @@ def main():
     model = load_model()
     df = pd.read_csv(cplfw_dir / 'pairs.csv')
     cut = 200
-    df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
+    # df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
     lst = np.unique(df.photo_1.to_list() + df.photo_2.to_list())
     cached = precalculate_images(model, lst)
 
@@ -88,10 +89,10 @@ def main():
 
     scores = df.apply(check, axis=1)
     labels = list(df.label)
-    from sklearn.metrics import roc_curve, precision_recall_curve
 
     preds = (scores > 0.19).astype(np.uint)
     print((preds == labels).mean())
+    print(len(preds))
 
     precisions, recalls, threshs = precision_recall_curve(labels, scores)
     plt.plot(threshs, precisions[1:])
