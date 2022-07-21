@@ -1,3 +1,9 @@
+"""
+Level 1
+Count the number of the identities?
+
+Ok, what are we
+"""
 from pathlib import Path
 import os
 import sys
@@ -41,6 +47,31 @@ def parse_pairs():
     df.to_csv(data_dir / 'pairs.csv', index=False)
 
 
+def generate_val_test_split(dataframe):
+    lst = np.unique(dataframe.photo_1.to_list() + dataframe.photo_2.to_list())
+
+    def cut_name(name):
+        return '_'.join(name.split('_')[:-1])
+
+    names = np.sort(np.unique([cut_name(name) for name in lst]))
+    np.random.seed(42)
+    np.random.shuffle(names)
+
+    test_identities = names[:2000]
+    val_identities = names[2000:]
+    print(test_identities)
+
+    def suitable(row, identities):
+        return cut_name(row.photo_1) in identities and cut_name(row.photo_2) in identities
+
+    test_df = dataframe[dataframe.apply(lambda row: suitable(row, test_identities), axis=1)]
+    val_df = dataframe[dataframe.apply(lambda row: suitable(row, val_identities), axis=1)]
+
+    test_df.to_csv(cplfw_dir / 'pairs_test.csv', index=False)
+    val_df.to_csv(cplfw_dir / 'pairs_val.csv', index=False)
+
+
+
 def load_model(device='cuda'):
     model = iresnet50()
     # checkpoint = torch.load(data_dir / 'models/backbone_resnet50.pth')
@@ -73,10 +104,12 @@ def precalculate_images(model, image_paths, batch_size=20):
 
 def main():
     model = load_model()
-    df = pd.read_csv(cplfw_dir / 'pairs.csv')
+    df = pd.read_csv(cplfw_dir / 'pairs_test.csv')
     cut = 300
     # df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
     lst = np.unique(df.photo_1.to_list() + df.photo_2.to_list())
+
+    print(len(lst[0].split('_')))
     cached = precalculate_images(model, lst, batch_size=100)
 
     ue = {}
@@ -90,7 +123,6 @@ def main():
 
     def basic_ue(row):
         x_0, x_1 = ue[row['photo_1']], ue[row['photo_2']]
-        # return x_1
         return np.sqrt(x_0*x_1)
 
     scores = df.apply(check, axis=1)
@@ -113,13 +145,12 @@ def main():
     plt.plot(splits, accuracies)
     plt.show()
 
+    print(len(preds))
 
-    # print(len(preds))
-    #
-    # precisions, recalls, threshs = precision_recall_curve(labels, scores)
-    # plt.plot(threshs, precisions[1:])
-    # plt.plot(threshs, recalls[1:])
-    # plt.show()
+    precisions, recalls, threshs = precision_recall_curve(labels, scores)
+    plt.plot(threshs, precisions[1:])
+    plt.plot(threshs, recalls[1:])
+    plt.show()
 
 
 if __name__ == '__main__':
