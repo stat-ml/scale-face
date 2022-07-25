@@ -45,3 +45,61 @@ class MXFaceDataset(Dataset):
 
     def __len__(self):
         return len(self.imgidx)
+
+
+class MXFaceDatasetDistorted(MXFaceDataset):
+    def __init__(self, *args, **kwargs):
+        super(MXFaceDatasetDistorted, self).__init__(*args, **kwargs)
+        self.transform = transforms.Compose(
+            [transforms.ToPILImage(),
+             transforms.RandomHorizontalFlip(),
+             transforms.RandomAdjustSharpness(sharpness_factor=4, p=0.2),
+             transforms.RandomEqualize(p=0.2),
+             transforms.ToTensor(),
+             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+             transforms.RandomApply(
+                 [transforms.RandomChoice([
+                     transforms.GaussianBlur(kernel_size=7, sigma=3.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=5.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=7.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=9.),
+                 ])], p=0.3),
+             transforms.RandomPerspective(distortion_scale=0.25, p=0.15)
+        ])
+
+
+class MXFaceDatasetGauss(MXFaceDataset):
+    def __init__(self, *args, **kwargs):
+        super(MXFaceDatasetGauss, self).__init__(*args, **kwargs)
+        self.transform = transforms.Compose(
+            [transforms.ToPILImage(),
+             transforms.RandomHorizontalFlip(),
+             transforms.ToTensor(),
+             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+             transforms.RandomApply(
+                 [transforms.RandomChoice([
+                     transforms.GaussianBlur(kernel_size=7, sigma=0.5),
+                     transforms.GaussianBlur(kernel_size=7, sigma=1.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=3.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=5.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=7.),
+                     transforms.GaussianBlur(kernel_size=7, sigma=9.),
+                 ])], p=0.7),
+        ])
+
+
+class SyntheticDataset(Dataset):
+    def __init__(self, local_rank):
+        super(SyntheticDataset, self).__init__()
+        img = np.random.randint(0, 255, size=(112, 112, 3), dtype=np.int32)
+        img = np.transpose(img, (2, 0, 1))
+        img = torch.from_numpy(img).squeeze(0).float()
+        img = ((img / 255) - 0.5) / 0.5
+        self.img = img
+        self.label = 1
+
+    def __getitem__(self, index):
+        return self.img, self.label
+
+    def __len__(self):
+        return 1000000

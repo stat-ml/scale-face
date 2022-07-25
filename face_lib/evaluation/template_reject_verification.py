@@ -2,8 +2,8 @@
 The script to compare template-image verification protocol, based on IJB-C
 It could calculate the PFE, magface, Scale results
 Though it requires preprocessed with face detector images
-  and pretrained with train_scripts checkpoints
-For the options see scripts/eval_template_reject_verification.sh
+  and pretrained with scripts/train checkpoints
+For the options see scripts/eval/template_reject_verification.sh
 
 optimal setups for methods:
 magface - mean aggregation, cosine distance, image ue value
