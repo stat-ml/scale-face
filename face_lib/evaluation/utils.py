@@ -27,6 +27,7 @@ def get_required_models(
     backbone = backbone.eval().to(device)
 
     head = None
+
     if args.uncertainty_strategy == "head" or (args.uncertainty_strategy == "classifier" and "head" in model_args):
         head = mlib.heads[model_args.head.name](
             **utils.pop_element(model_args.head, "name")
