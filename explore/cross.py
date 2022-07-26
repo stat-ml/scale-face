@@ -1,13 +1,3 @@
-"""
-Level 1:
-predict?
-
-Pipeline should be pipeline?
-1. Calculate the mu, sigma for a list of photos
-2. Calc the ue for pairs
-3. Reject verification
-4. Plots
-"""
 from pathlib import Path
 import os
 import sys
@@ -26,133 +16,29 @@ from face_lib.utils.imageprocessing import preprocess
 from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list
 from face_lib.utils.cfg import load_config
 from face_lib.evaluation.utils import get_required_models
+from face_lib.evaluation.argument_parser import parse_cli_arguments
 
 
-data_dir = Path("~/data/faces").expanduser()
-cplfw_dir = data_dir / 'cplfw'
+def get_pairs(data_directory, short=False):
+    pairs = pd.read_csv(data_directory / 'cplfw/pairs_test.csv')
+    if short:
+        cut = 300
+        pairs = pd.concat([pairs.iloc[:cut], pairs.iloc[-cut:]])
+    return pairs
 
 
-def parse_pairs():
-    pairs_files = data_dir / 'pairs_CPLFW.txt'
-
-    with open(pairs_files, 'r') as f:
-        lines = f.readlines()
-    lines = [l.split() for l in lines]
-    print(*(lines[:10] + lines[-10:]), sep='\n')
-
-    pairs = []
-    for i in range(len(lines) // 2):
-        pair = lines[2*i][0], lines[2*i+1][0], int(lines[2*i][1])
-        pairs.append(pair)
-
-    as_dict = {
-        'photo_1': [p[0] for p in pairs],
-        'photo_2': [p[1] for p in pairs],
-        'label': [p[2] for p in pairs]
-    }
-    df = pd.DataFrame(as_dict)
-    df.to_csv(data_dir / 'pairs.csv', index=False)
-
-
-def generate_val_test_split(dataframe):
-    lst = np.unique(dataframe.photo_1.to_list() + dataframe.photo_2.to_list())
-
-    def cut_name(name):
-        return '_'.join(name.split('_')[:-1])
-
-    names = np.sort(np.unique([cut_name(name) for name in lst]))
-    np.random.seed(42)
-    np.random.shuffle(names)
-
-    test_identities = names[:2000]
-    val_identities = names[2000:]
-    print(test_identities)
-
-    def suitable(row, identities):
-        return cut_name(row.photo_1) in identities and cut_name(row.photo_2) in identities
-
-    test_df = dataframe[dataframe.apply(lambda row: suitable(row, test_identities), axis=1)]
-    val_df = dataframe[dataframe.apply(lambda row: suitable(row, val_identities), axis=1)]
-
-    test_df.to_csv(cplfw_dir / 'pairs_test.csv', index=False)
-    val_df.to_csv(cplfw_dir / 'pairs_val.csv', index=False)
-
-
-def load_model(device='cuda'):
-    model = iresnet50()
-    uncertainty_type = ['embeddings_norm', 'scale'][1]
-
-    if uncertainty_type == 'embeddings_norm':
-        checkpoint = torch.load(data_dir / 'models/backbone_resnet50.pth')
-        model.load_state_dict(checkpoint)
-        model.eval().cuda()
-        return model, None
-
-    elif uncertainty_type == 'scale':
-        config_path = "./configs/scale/02_sigm_mul_coef_selection/64.yaml"
-        checkpoint_path = str(data_dir / 'models/scaleface.pth')
-        # checkpoint = torch.load(data_dir / 'models/scaleface.pth', map_location='cpu')
-
-        model_args = load_config(config_path)
-        print(model_args)
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        args = EasyDict({'uncertainty_strategy': 'scale'})
-
-        backbone, head, discriminator, classifier, scale_predictor, uncertainty_model = \
-            get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device=device)
-
-        # backbone.features = torch.nn.Sequential()
-        backbone.eval()
-        print(backbone)
-
-        return backbone, scale_predictor
-
-
-def full_path(image_path):
-    return str(cplfw_dir / 'aligned images' / image_path)
-
-
-def precalculate_images(model, image_paths, batch_size=20, uncertainty_model=None):
-    size = (112, 112)
-    device = 'cuda'
-    mu = {}
-    sigma = {}
-
-    for idx in range(0, len(image_paths), batch_size):
-        batch_paths = image_paths[idx: idx+batch_size]
-        full_paths = [full_path(path) for path in batch_paths]
-        batch = preprocess(full_paths, size)
-        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to(device)
-        with torch.no_grad():
-            output = model(batch)
-            # import ipdb; ipdb.set_trace()
-            predictions, bottleneck = output['feature'].cpu(), output['bottleneck_feature']
-            # uncertainties = torch.norm(predictions, dim=-1)
-            uncertainties = uncertainty_model.mlp(bottleneck).cpu()[:, 0]
-            predictions = torch.nn.functional.normalize(predictions, dim=-1)
-            mu.update({path: embeddings for path, embeddings in zip(batch_paths, predictions)})
-            sigma.update({path: uncertainty.item() for path, uncertainty in zip(batch_paths, uncertainties)})
-    return mu, sigma
-
-
-def naive_ue_calculation(df, model, uncertainty_model):
-    lst = np.unique(df.photo_1.to_list() + df.photo_2.to_list())
-    cached, ue = precalculate_images(model, lst, batch_size=100, uncertainty_model=uncertainty_model)
-
+def plot_rejection(pairs, mus, sigmas):
     def check(row):
-        x_0, x_1 = cached[row['photo_1']], cached[row['photo_2']]
+        x_0, x_1 = mus[row['photo_1']], mus[row['photo_2']]
         return (x_0 * x_1).sum().item()
 
     def basic_ue(row):
-        x_0, x_1 = ue[row['photo_1']], ue[row['photo_2']]
+        x_0, x_1 = sigmas[row['photo_1']], sigmas[row['photo_2']]
         return x_0+x_1
 
-    scores = df.apply(check, axis=1)
-    ues = np.array(df.apply(basic_ue, axis=1))
-    labels = list(df.label)
-
-    print(ues)
-
+    scores = pairs.apply(check, axis=1)
+    ues = np.array(pairs.apply(basic_ue, axis=1))
+    labels = list(pairs.label)
     preds = (scores > 0.19).astype(np.uint)
     print((preds == labels).mean())
 
@@ -168,12 +54,128 @@ def naive_ue_calculation(df, model, uncertainty_model):
     plt.show()
 
 
+class Inferencer:
+    def __init__(self, preprocessing, full_model, batch_size=100):
+        self.preprocessing = preprocessing
+        self.full_model = full_model
+        self.batch_size = batch_size
+
+    def __call__(self, image_paths):
+        mus = {}
+        sigmas = {}
+        for idx in range(0, len(image_paths), self.batch_size):
+            batch_paths = image_paths[idx: idx + self.batch_size]
+            batch = self.preprocessing(batch_paths)
+            batch_mus, batch_sigmas = self.full_model(batch)
+
+            mus.update({
+                path: embeddings for path, embeddings in zip(batch_paths, batch_mus)
+            })
+            sigmas.update({
+                path: uncertainty.item() for path, uncertainty in zip(batch_paths, batch_sigmas)
+            })
+        return mus, sigmas
+
+
+class EmbeddingNorm:
+    """
+    Basic uncertainty model with embedding norm as confidence notion
+    """
+    def __init__(self):
+        self.backbone = None
+
+    def from_checkpoint(self, checkpoint_path):
+        backbone = iresnet50()
+        checkpoint = torch.load(checkpoint_path)
+        backbone.load_state_dict(checkpoint)
+        backbone.eval().cuda()
+        self.backbone = backbone
+        return self
+
+    def __call__(self, batch):
+        with torch.no_grad():
+            output = self.backbone(batch)
+            predictions = output['feature']
+            uncertainties = torch.norm(predictions, dim=-1).cpu()
+            predictions = torch.nn.functional.normalize(predictions, dim=-1).cpu()
+        return predictions, uncertainties
+
+
+class ScaleFace:
+    def __init__(self):
+        self.backbone = None
+        self.scale = None
+
+    def from_checkpoint(self, checkpoint_path):
+        config_path = "./configs/scale/02_sigm_mul_coef_selection/64.yaml"
+        model_args = load_config(config_path)
+        checkpoint = torch.load(checkpoint_path, map_location='cuda')
+        args = EasyDict({'uncertainty_strategy': 'scale'})
+
+        self.backbone, _, _, _, self.scale, _ = \
+            get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device='cuda')
+
+        return self
+
+    def __call__(self, batch):
+        with torch.no_grad():
+            output = self.backbone(batch)
+            predictions, bottleneck = output['feature'].cpu(), output['bottleneck_feature']
+            uncertainties = self.scale.mlp(bottleneck).cpu()[:, 0]
+            predictions = torch.nn.functional.normalize(predictions, dim=-1)
+        return predictions, uncertainties
+
+
+def load_model(uncertainty_type, checkpoint_path):
+    if uncertainty_type == 'embedding_norm':
+        model = EmbeddingNorm().from_checkpoint(checkpoint_path)
+    elif uncertainty_type == 'scale':
+        model = ScaleFace().from_checkpoint(checkpoint_path)
+    else:
+        raise ValueError()
+    return model
+
+
+class Preprocessor:
+    """
+    Converts the list of image paths to ready-to-use tensors
+    """
+    def __init__(self, base_directory, image_size=(112, 112)):
+        self.base_directory = Path(base_directory)
+        self.image_size = image_size
+
+    def _full_paths(self, paths):
+        return [str(self.base_directory/p) for p in paths]
+
+    def __call__(self, image_paths):
+        full_paths = self._full_paths(image_paths)
+        batch = preprocess(full_paths, self.image_size)
+        batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to('cuda')
+        return batch
+
+
 def main():
-    model, ue_predictor = load_model()
-    df = pd.read_csv(cplfw_dir / 'pairs_test.csv')
-    cut = 500
-    # df = pd.concat([df.iloc[:cut], df.iloc[-cut:]])
-    naive_ue_calculation(df, model, ue_predictor)
+    """
+        Should be pipeline, right?
+        1. Calculate the mu, sigma for a list of photos
+        2. Calc the ue for pairs
+        3. Reject verification
+        4. Plots
+    """
+    args = parse_cli_arguments()
+    data_directory = Path(args.data_directory)
+
+    pairs = get_pairs(data_directory, short=args.short)
+    photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
+
+    preprocessor = Preprocessor(data_directory / args.images_path)
+    checkpoint_path = data_directory / args.checkpoint_path
+    model = load_model(args.uncertainty_type, checkpoint_path)
+
+    inferencer = Inferencer(preprocessor, model, 20)
+    mus, sigmas = inferencer(photo_list)
+    print(len(mus))
+    plot_rejection(pairs, mus, sigmas)
 
 
 if __name__ == '__main__':
