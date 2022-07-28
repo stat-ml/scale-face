@@ -126,11 +126,37 @@ class ScaleFace:
         return predictions, uncertainties
 
 
+class PFE:
+    def __init__(self):
+        self.backbone = None
+        self.head = None
+
+    def __call__(self, batch):
+        with torch.no_grad():
+            predictions = self.backbone(batch)
+            uncertainties = -torch.mean(self.head(**predictions)['log_sigma'], dim=-1).cpu()
+            predictions = predictions['feature'].cpu()
+        return predictions, uncertainties
+
+    def from_checkpoint(self, checkpoint_path):
+        config_path = "./configs/models/iresnet_ms1m_pfe_normalized.yaml"
+        model_args = load_config(config_path)
+        checkpoint = torch.load(checkpoint_path, map_location='cuda')
+        args = EasyDict({'uncertainty_strategy': 'head'})
+
+        self.backbone, self.head, _, _, _, _ = \
+            get_required_models(checkpoint=checkpoint, args=args, model_args=model_args, device='cuda')
+
+        return self
+
+
 def load_model(uncertainty_type, checkpoint_path):
     if uncertainty_type == 'embedding_norm':
         model = EmbeddingNorm().from_checkpoint(checkpoint_path)
     elif uncertainty_type == 'scale':
         model = ScaleFace().from_checkpoint(checkpoint_path)
+    elif uncertainty_type == 'pfe':
+        model = PFE().from_checkpoint(checkpoint_path)
     else:
         raise ValueError()
     return model
@@ -156,11 +182,10 @@ class Preprocessor:
 
 def main():
     """
-        Should be pipeline, right?
-        1. Calculate the mu, sigma for a list of photos
-        2. Calc the ue for pairs
-        3. Reject verification
-        4. Plots
+    Main pipeline
+    1. Generate mu and sigmas for each individual photo
+    2. Use mu and sigmas for pairs to generate the similarity and confidence scores
+    3. Calculate the metrics
     """
     args = parse_cli_arguments()
     data_directory = Path(args.data_directory)
