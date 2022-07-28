@@ -1,3 +1,6 @@
+"""
+Level 2: non-normalized resnet
+"""
 from pathlib import Path
 import os
 import sys
@@ -27,7 +30,7 @@ def get_pairs(data_directory, short=False):
     return pairs
 
 
-def plot_rejection(pairs, mus, sigmas):
+def plot_rejection(pairs, mus, sigmas, name):
     def check(row):
         x_0, x_1 = mus[row['photo_1']], mus[row['photo_2']]
         return (x_0 * x_1).sum().item()
@@ -44,14 +47,13 @@ def plot_rejection(pairs, mus, sigmas):
 
     correct = np.array((preds == labels))
     idxs = np.argsort(ues)
-    splits = np.arange(0, 1, 0.1)
+    splits = np.arange(0, 0.9, 0.02)
     accuracies = []
     for split in splits:
         i = int(len(correct) * split)
         accuracies.append(correct[idxs[i:]].mean())
 
-    plt.plot(splits, accuracies)
-    plt.show()
+    plt.plot(splits, accuracies, label=name)
 
 
 class Inferencer:
@@ -86,7 +88,7 @@ class EmbeddingNorm:
 
     def from_checkpoint(self, checkpoint_path):
         backbone = iresnet50()
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location='cuda')['backbone']
         backbone.load_state_dict(checkpoint)
         backbone.eval().cuda()
         self.backbone = backbone
@@ -187,20 +189,31 @@ def main():
     2. Use mu and sigmas for pairs to generate the similarity and confidence scores
     3. Calculate the metrics
     """
-    args = parse_cli_arguments()
-    data_directory = Path(args.data_directory)
+    # args = parse_cli_arguments()
+    configs = {
+        'Embedding norm': './configs/cross/play.yaml',
+        'PFE': './configs/cross/pfe.yaml',
+        'ScaleFace': './configs/cross/scale.yaml',
+    }
+    for name, config in configs.items():
+        args = load_config(config)
+        args.short = False
+        data_directory = Path(args.data_directory)
 
-    pairs = get_pairs(data_directory, short=args.short)
-    photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
+        pairs = get_pairs(data_directory, short=args.short)
+        photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
 
-    preprocessor = Preprocessor(data_directory / args.images_path)
-    checkpoint_path = data_directory / args.checkpoint_path
-    model = load_model(args.uncertainty_type, checkpoint_path)
+        preprocessor = Preprocessor(data_directory / args.images_path)
+        checkpoint_path = data_directory / args.checkpoint_path
+        model = load_model(args.uncertainty_type, checkpoint_path)
 
-    inferencer = Inferencer(preprocessor, model, 20)
-    mus, sigmas = inferencer(photo_list)
-    print(len(mus))
-    plot_rejection(pairs, mus, sigmas)
+        inferencer = Inferencer(preprocessor, model, 20)
+        mus, sigmas = inferencer(photo_list)
+
+        plot_rejection(pairs, mus, sigmas, name)
+
+    plt.legend()
+    plt.show()
 
 
 if __name__ == '__main__':
