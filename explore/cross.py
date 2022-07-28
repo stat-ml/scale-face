@@ -1,5 +1,5 @@
 """
-Level 2: non-normalized resnet
+Level 4: disentangled
 """
 from pathlib import Path
 import os
@@ -28,32 +28,6 @@ def get_pairs(data_directory, short=False):
         cut = 300
         pairs = pd.concat([pairs.iloc[:cut], pairs.iloc[-cut:]])
     return pairs
-
-
-def plot_rejection(pairs, mus, sigmas, name):
-    def check(row):
-        x_0, x_1 = mus[row['photo_1']], mus[row['photo_2']]
-        return (x_0 * x_1).sum().item()
-
-    def basic_ue(row):
-        x_0, x_1 = sigmas[row['photo_1']], sigmas[row['photo_2']]
-        return x_0+x_1
-
-    scores = pairs.apply(check, axis=1)
-    ues = np.array(pairs.apply(basic_ue, axis=1))
-    labels = list(pairs.label)
-    preds = (scores > 0.19).astype(np.uint)
-    print((preds == labels).mean())
-
-    correct = np.array((preds == labels))
-    idxs = np.argsort(ues)
-    splits = np.arange(0, 0.9, 0.02)
-    accuracies = []
-    for split in splits:
-        i = int(len(correct) * split)
-        accuracies.append(correct[idxs[i:]].mean())
-
-    plt.plot(splits, accuracies, label=name)
 
 
 class Inferencer:
@@ -182,6 +156,55 @@ class Preprocessor:
         return batch
 
 
+class Scorer:
+    def __init__(self):
+        pass
+
+    def __call__(self, pairs, mus, sigmas):
+        def check(row):
+            x_0, x_1 = mus[row['photo_1']], mus[row['photo_2']]
+            return (x_0 * x_1).sum().item()
+
+        def basic_ue(row):
+            x_0, x_1 = sigmas[row['photo_1']], sigmas[row['photo_2']]
+            return x_0+x_1
+
+        similarities = pairs.apply(check, axis=1)
+        confidences = np.array(pairs.apply(basic_ue, axis=1))
+        labels = list(pairs.label)
+
+        scores = {
+            'similarities': similarities,
+            'confidences': confidences,
+            'labels': labels
+        }
+
+        return scores
+
+
+def plot_rejection(scores):
+    for name, method_scores in scores.items():
+        similarities = method_scores['similarities']
+        confidences = method_scores['confidences']
+        labels = method_scores['labels']
+
+        preds = (similarities > 0.19).astype(np.uint)
+        print((preds == labels).mean())
+
+        correct = np.array((preds == labels))
+        idxs = np.argsort(confidences)
+        splits = np.arange(0, 0.9, 0.02)
+        accuracies = []
+        for split in splits:
+            i = int(len(correct) * split)
+            accuracies.append(correct[idxs[i:]].mean())
+
+        plt.plot(splits, accuracies, label=name)
+
+    plt.legend()
+    plt.show()
+
+
 def main():
     """
     Main pipeline
@@ -195,6 +218,8 @@ def main():
         'PFE': './configs/cross/pfe.yaml',
         'ScaleFace': './configs/cross/scale.yaml',
     }
+    scores = {}
+
     for name, config in configs.items():
         args = load_config(config)
         args.short = False
@@ -209,11 +234,10 @@ def main():
 
         inferencer = Inferencer(preprocessor, model, 20)
         mus, sigmas = inferencer(photo_list)
+        scorer = Scorer()
+        scores[name] = scorer(pairs, mus, sigmas)
 
-        plot_rejection(pairs, mus, sigmas, name)
-
-    plt.legend()
-    plt.show()
+    plot_rejection(scores)
 
 
 if __name__ == '__main__':
