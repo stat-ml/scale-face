@@ -1,8 +1,9 @@
 """
-Level 4: disentangled
+Level 1: tar/far?
 """
 from pathlib import Path
 import os
+import pickle
 import sys
 
 import torch
@@ -169,9 +170,9 @@ class Scorer:
             x_0, x_1 = sigmas[row['photo_1']], sigmas[row['photo_2']]
             return x_0+x_1
 
-        similarities = pairs.apply(check, axis=1)
+        similarities = np.array(pairs.apply(check, axis=1))
         confidences = np.array(pairs.apply(basic_ue, axis=1))
-        labels = list(pairs.label)
+        labels = np.array(pairs.label)
 
         scores = {
             'similarities': similarities,
@@ -205,6 +206,21 @@ def plot_rejection(scores):
     plt.show()
 
 
+
+from face_lib.utils.metrics import ROC
+
+
+def plot_tar_far(scores, FARs):
+    for name, method_scores in scores.items():
+        similarities = method_scores['similarities']
+        confidences = method_scores['confidences']
+        labels = method_scores['labels']
+
+        import ipdb; ipdb.set_trace()
+
+        break
+
+
 def main():
     """
     Main pipeline
@@ -212,32 +228,38 @@ def main():
     2. Use mu and sigmas for pairs to generate the similarity and confidence scores
     3. Calculate the metrics
     """
-    # args = parse_cli_arguments()
-    configs = {
-        'Embedding norm': './configs/cross/play.yaml',
-        'PFE': './configs/cross/pfe.yaml',
-        'ScaleFace': './configs/cross/scale.yaml',
-    }
-    scores = {}
+    # # args = parse_cli_arguments()
+    # configs = {
+    #     'Embedding norm': './configs/cross/play.yaml',
+    #     'PFE': './configs/cross/pfe.yaml',
+    #     'ScaleFace': './configs/cross/scale.yaml',
+    # }
+    # scores = {}
+    #
+    # for name, config in configs.items():
+    #     args = load_config(config)
+    #     args.short = False
+    #     data_directory = Path(args.data_directory)
+    #     pairs = get_pairs(data_directory, short=args.short)
+    #     photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
+    #
+    #     preprocessor = Preprocessor(data_directory / args.images_path)
+    #     checkpoint_path = data_directory / args.checkpoint_path
+    #     model = load_model(args.uncertainty_type, checkpoint_path)
+    #
+    #     inferencer = Inferencer(preprocessor, model, 20)
+    #     mus, sigmas = inferencer(photo_list)
+    #     scorer = Scorer()
+    #     scores[name] = scorer(pairs, mus, sigmas)
 
-    for name, config in configs.items():
-        args = load_config(config)
-        args.short = False
-        data_directory = Path(args.data_directory)
+    cache_file = '/tmp/scores.data'
+    # with open(cache_file, 'wb') as f:
+    #     pickle.dump(scores, f)
+    with open(cache_file, 'rb') as f:
+        scores = pickle.load(f)
 
-        pairs = get_pairs(data_directory, short=args.short)
-        photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
-
-        preprocessor = Preprocessor(data_directory / args.images_path)
-        checkpoint_path = data_directory / args.checkpoint_path
-        model = load_model(args.uncertainty_type, checkpoint_path)
-
-        inferencer = Inferencer(preprocessor, model, 20)
-        mus, sigmas = inferencer(photo_list)
-        scorer = Scorer()
-        scores[name] = scorer(pairs, mus, sigmas)
-
-    plot_rejection(scores)
+    # plot_rejection(scores)
+    plot_tar_far(scores, FARs=[0.01])
 
 
 if __name__ == '__main__':
