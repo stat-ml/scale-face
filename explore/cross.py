@@ -1,10 +1,12 @@
 """
-Level 1: tar/far?
+Level 6:
+multiple fars
 """
 from pathlib import Path
 import os
 import pickle
 import sys
+from dataclasses import dataclass
 
 import torch
 import pandas as pd
@@ -156,6 +158,12 @@ class Preprocessor:
         batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to('cuda')
         return batch
 
+@dataclass
+class Score:
+    similarities: np.array
+    confidences: np.array
+    labels: np.array
+
 
 class Scorer:
     def __init__(self):
@@ -174,26 +182,17 @@ class Scorer:
         confidences = np.array(pairs.apply(basic_ue, axis=1))
         labels = np.array(pairs.label)
 
-        scores = {
-            'similarities': similarities,
-            'confidences': confidences,
-            'labels': labels
-        }
-
-        return scores
+        score = Score(similarities, confidences, labels)
+        return score
 
 
 def plot_rejection(scores):
-    for name, method_scores in scores.items():
-        similarities = method_scores['similarities']
-        confidences = method_scores['confidences']
-        labels = method_scores['labels']
+    for name, score in scores.items():
+        preds = (score.similarities > 0.19).astype(np.uint)
+        print((preds == score.labels).mean())
 
-        preds = (similarities > 0.19).astype(np.uint)
-        print((preds == labels).mean())
-
-        correct = np.array((preds == labels))
-        idxs = np.argsort(confidences)
+        correct = np.array((preds == score.labels))
+        idxs = np.argsort(score.confidences)
         splits = np.arange(0, 0.9, 0.02)
         accuracies = []
         for split in splits:
@@ -206,19 +205,34 @@ def plot_rejection(scores):
     plt.show()
 
 
+def tar_at_far(similarities, labels, far):
+    false_similarities = similarities[labels == 0]
+    allowed_fail_num = int(len(false_similarities) * far)
+    # Double minus because we want the biggest values, not smallest
+    threshold = -np.sort(-false_similarities)[allowed_fail_num]
 
-from face_lib.utils.metrics import ROC
+    true_similarity = similarities[labels == 1]
+    return np.mean(true_similarity > threshold)
 
 
-def plot_tar_far(scores, FARs):
-    for name, method_scores in scores.items():
-        similarities = method_scores['similarities']
-        confidences = method_scores['confidences']
-        labels = method_scores['labels']
+def plot_tar_far(scores, far=0.01):
+    print(scores)
+    plt.figure(figsize=(4, 3), dpi=300)
+    for name, score in scores.items():
+        score = scores[name]
 
-        import ipdb; ipdb.set_trace()
+        splits = np.arange(0, 1, 0.05)
+        idxs = np.argsort(score.confidences)
+        similarities = score.similarities[idxs]
+        labels = score.labels[idxs]
+        tars = []
+        for split in splits:
+            start_idx = int(split*len(labels))
+            tars.append(tar_at_far(similarities[start_idx:], labels[start_idx:], far))
 
-        break
+        plt.plot(splits, tars, label=name, linewidth=2, alpha=0.8)
+    plt.legend()
+    plt.show()
 
 
 def main():
@@ -228,7 +242,7 @@ def main():
     2. Use mu and sigmas for pairs to generate the similarity and confidence scores
     3. Calculate the metrics
     """
-    # # args = parse_cli_arguments()
+    cache_file = '/tmp/scores.data'
     # configs = {
     #     'Embedding norm': './configs/cross/play.yaml',
     #     'PFE': './configs/cross/pfe.yaml',
@@ -251,15 +265,16 @@ def main():
     #     mus, sigmas = inferencer(photo_list)
     #     scorer = Scorer()
     #     scores[name] = scorer(pairs, mus, sigmas)
-
-    cache_file = '/tmp/scores.data'
+    #
     # with open(cache_file, 'wb') as f:
     #     pickle.dump(scores, f)
-    with open(cache_file, 'rb') as f:
-        scores = pickle.load(f)
 
     # plot_rejection(scores)
-    plot_tar_far(scores, FARs=[0.01])
+
+
+    with open(cache_file, 'rb') as f:
+        scores = pickle.load(f)
+    plot_tar_far(scores, 0.01)
 
 
 if __name__ == '__main__':
