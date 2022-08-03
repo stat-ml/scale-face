@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 
-def parse_pairs(data_dir):
-    pairs_files = data_dir / 'pairs_CPLFW.txt'
+def parse_pairs(data_dir, name='CPLFW'):
+    pairs_files = data_dir / f'pairs_{name}.txt'
 
     with open(pairs_files, 'r') as f:
         lines = f.readlines()
@@ -22,9 +22,10 @@ def parse_pairs(data_dir):
     }
     df = pd.DataFrame(as_dict)
     df.to_csv(data_dir / 'pairs.csv', index=False)
+    return df
 
 
-def generate_val_test_split(dataframe, cplfw_dir):
+def generate_val_test_split(dataframe, dataset_dir):
     lst = np.unique(dataframe.photo_1.to_list() + dataframe.photo_2.to_list())
 
     def cut_name(name):
@@ -44,7 +45,15 @@ def generate_val_test_split(dataframe, cplfw_dir):
     test_df = dataframe[dataframe.apply(lambda row: suitable(row, test_identities), axis=1)]
     val_df = dataframe[dataframe.apply(lambda row: suitable(row, val_identities), axis=1)]
 
-    test_df.to_csv(cplfw_dir / 'pairs_test.csv', index=False)
-    val_df.to_csv(cplfw_dir / 'pairs_val.csv', index=False)
+    test_df.to_csv(dataset_dir / 'pairs_test.csv', index=False)
+    val_df.to_csv(dataset_dir / 'pairs_val.csv', index=False)
+
+from pathlib import Path
+
+if __name__ == '__main__':
+    name = 'calfw'
+    dataset_dir = Path(f'/home/kirill/data/faces/{name}')
+    df = parse_pairs(dataset_dir, name.upper())
+    generate_val_test_split(df, dataset_dir)
 
 

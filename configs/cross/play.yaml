@@ -1,6 +1,4 @@
 data_directory: '/home/kirill/data/faces'
 #checkpoint_path: 'models/backbone_resnet50.pth'
 checkpoint_path: 'models/scaleface.pth'
-images_path: 'cplfw/aligned images'
 uncertainty_type: 'embedding_norm'
-short: False

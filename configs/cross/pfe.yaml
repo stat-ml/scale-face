@@ -1,5 +1,4 @@
 data_directory: '/home/kirill/data/faces'
 checkpoint_path: 'models/pfe.pth'
-images_path: 'cplfw/aligned images'
+images_path: 'calfw/aligned images'
 uncertainty_type: 'pfe'
-short: False
