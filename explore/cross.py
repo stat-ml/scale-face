@@ -215,24 +215,51 @@ def tar_at_far(similarities, labels, far):
     return np.mean(true_similarity > threshold)
 
 
-def plot_tar_far(scores, far=0.01):
-    print(scores)
-    plt.figure(figsize=(4, 3), dpi=300)
-    for name, score in scores.items():
-        score = scores[name]
+def tar_far_rejected(confidences, similarities, labels, far):
+    splits = np.arange(0, 1, 0.05)
+    idxs = np.argsort(confidences)
+    similarities = similarities[idxs]
+    labels = labels[idxs]
+    tars = []
+    for split in splits:
+        start_idx = int(split * len(labels))
+        tars.append(tar_at_far(similarities[start_idx:], labels[start_idx:], far))
 
-        splits = np.arange(0, 1, 0.05)
-        idxs = np.argsort(score.confidences)
-        similarities = score.similarities[idxs]
-        labels = score.labels[idxs]
-        tars = []
-        for split in splits:
-            start_idx = int(split*len(labels))
-            tars.append(tar_at_far(similarities[start_idx:], labels[start_idx:], far))
+    return splits, tars
 
-        plt.plot(splits, tars, label=name, linewidth=2, alpha=0.8)
-    plt.legend()
+def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=None):
+    fig, ax = plt.subplots()
+    for FAR, TARs in table.items():
+        ax.plot(rejected_portions, TARs, label="TAR@FAR=" + str(FAR), marker=" ")
+    fig.legend()
+    ax.set_xlabel("Rejected portion")
+    ax.set_ylabel("TAR")
+    if title:
+        ax.set_title(title)
+    if save_fig_path:
+        fig.savefig(save_fig_path, dpi=400)
+        return fig
+
+
+def plot_tar_far(scores, fars):
+    fig, axes = plt.subplots(1, len(fars), figsize=(12, 4), dpi=200)
+
+    for i, far in enumerate(fars):
+        ax = axes[i]
+        for name, score in scores.items():
+            score = scores[name]
+
+            splits, tars = tar_far_rejected(
+                score.confidences, score.similarities, score.labels, far
+            )
+
+            ax.plot(splits, tars, label=name, linewidth=2, alpha=0.8)
+        ax.set_title(f'TAR@FAR={far}')
+        ax.legend()
+
+    # plt.legend()
     plt.show()
+
 
 
 def main():
@@ -242,6 +269,7 @@ def main():
     2. Use mu and sigmas for pairs to generate the similarity and confidence scores
     3. Calculate the metrics
     """
+
     cache_file = '/tmp/scores.data'
     # configs = {
     #     'Embedding norm': './configs/cross/play.yaml',
@@ -274,7 +302,8 @@ def main():
 
     with open(cache_file, 'rb') as f:
         scores = pickle.load(f)
-    plot_tar_far(scores, 0.01)
+    fars = [1e-1, 1e-2, 5e-3]
+    plot_tar_far(scores, fars)
 
 
 if __name__ == '__main__':
