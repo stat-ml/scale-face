@@ -195,12 +195,15 @@ def eval_template_reject_verification(
             zip(fusions_distances_uncertainties, distance_axes, uncertainty_axes):
         print(f"==={fusion_name} {distance_name} {uncertainty_name} ===")
 
+        val_statistics = {'mean_cos': 0.26} # totally not magic number selected by val values
+
         distance_func, uncertainty_func = get_distance_uncertainty_funcs(
             distance_name=distance_name,
             uncertainty_name=uncertainty_name,
             classifier=classifier,
             device=device,
-            distaces_batch_size=distaces_batch_size
+            distaces_batch_size=distaces_batch_size,
+            val_statistics=val_statistics
         )
 
         if fusion_name != prev_fusion_name:

@@ -47,10 +47,7 @@ methods = [
         'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (ours)'
     },
     {
-        'name': 'scale', 'functions': ('mean', 'cosine', 'mean'), 'label': 'ScaleFace (ours)'
-    },
-    {
-        'name': 'scale', 'functions': ('mean', 'biased-cosine', 'mean'), 'label': r'$\mu$-ScaleFace (ours)'
+        'name': 'scale', 'functions': ('mean', 'scale-sqrt-harmonic-biased-cosine', 'harmonic-harmonic'), 'label': r'$\mu$-ScaleFace (ours)'
     },
     # {
     #     'name': 'scale', 'functions': ('weighted', 'cosine', 'mean'), 'label': 'ScaleFace-w (ours)'
@@ -87,13 +84,15 @@ def plot_TAR_FAR_different_methods(
     pretty_matplotlib_config(24)
 
     plots_indices = {
-        FAR: idx for idx, FAR in enumerate(next(iter(results.values())).keys())
+        FAR: idx for idx, FAR in enumerate(FARs)
     }
     fig, axes = plt.subplots(
         ncols=len(plots_indices), nrows=1, figsize=(9 * len(plots_indices), 10)
     )
     for key, table in results.items():
         for FAR, TARs in table.items():
+            if FAR not in FARs:
+                continue
             auc = AUCs[key][FAR]
 
             if type(key) != str:
