@@ -1,28 +1,29 @@
 """
-Level 7:
-calfw
+level 1:
+merge
 """
 from pathlib import Path
-import os
 import pickle
 import sys
 from dataclasses import dataclass
+import random
+from argparse import ArgumentParser
 
 import torch
 import pandas as pd
 import numpy as np
-from PIL import Image
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, precision_recall_curve
 from easydict import EasyDict
+from sklearn.metrics import auc
 
 sys.path.append(".")
 from face_lib.models.iresnet import iresnet50
 from face_lib.utils.imageprocessing import preprocess
-from face_lib.evaluation.feature_extractors import extract_features_uncertainties_from_list
 from face_lib.utils.cfg import load_config
 from face_lib.evaluation.utils import get_required_models
-from face_lib.evaluation.argument_parser import parse_cli_arguments
+
+
+SEED = 42
 
 
 def get_pairs(data_directory, dataset, short=False):
@@ -113,7 +114,10 @@ class PFE:
     def __call__(self, batch):
         with torch.no_grad():
             predictions = self.backbone(batch)
-            uncertainties = -torch.mean(self.head(**predictions)['log_sigma'], dim=-1).cpu()
+            # uncertainties = -torch.mean(self.head(**predictions)['log_sigma'], dim=-1).cpu()
+            log_sigma = self.head(**predictions)['log_sigma']
+            n = log_sigma.shape[-1]
+            uncertainties = -(n / (log_sigma.exp()**2).reciprocal().sum(dim=-1)).cpu()
             predictions = predictions['feature'].cpu()
         return predictions, uncertainties
 
@@ -216,7 +220,7 @@ def tar_at_far(similarities, labels, far):
 
 
 def tar_far_rejected(confidences, similarities, labels, far):
-    splits = np.arange(0, 1, 0.05)
+    splits = np.arange(0, 0.5, 0.025)
     idxs = np.argsort(confidences)
     similarities = similarities[idxs]
     labels = labels[idxs]
@@ -224,6 +228,7 @@ def tar_far_rejected(confidences, similarities, labels, far):
     for split in splits:
         start_idx = int(split * len(labels))
         tars.append(tar_at_far(similarities[start_idx:], labels[start_idx:], far))
+    print(auc(splits, tars))
 
     return splits, tars
 
@@ -269,7 +274,11 @@ def main():
     2. Use mu and sigmas for pairs to generate the similarity and confidence scores
     3. Calculate the metrics
     """
-    dataset = 'cplfw'  # ['calfw', 'cplfw']
+
+    parser = ArgumentParser()
+    parser.add_argument('--dataset', default='cplfw', choices=['cplfw', 'calfw'])
+    cli_args = parser.parse_args()
+    dataset = cli_args.dataset
 
     cache_file = f'/tmp/scores_{dataset}.data'
     configs = {
@@ -278,6 +287,10 @@ def main():
         'ScaleFace': './configs/cross/scale.yaml',
     }
     scores = {}
+
+    random.seed(SEED)
+    np.random.random(SEED)
+    torch.manual_seed(SEED)
 
     for name, config in configs.items():
         args = load_config(config)
@@ -291,8 +304,10 @@ def main():
         checkpoint_path = data_directory / args.checkpoint_path
         model = load_model(args.uncertainty_type, checkpoint_path)
 
-        inferencer = Inferencer(preprocessor, model, 20)
+        inferencer = Inferencer(preprocessor, model, 100)
         mus, sigmas = inferencer(photo_list)
+
+        print(np.std(list(sigmas.values())))
         scorer = Scorer()
         scores[name] = scorer(pairs, mus, sigmas)
 
