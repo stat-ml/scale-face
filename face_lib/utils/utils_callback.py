@@ -1,7 +1,8 @@
 import logging
 import os
 import time
-from typing import List
+from typing import List, Optional
+from termcolor import colored
 
 import torch
 
@@ -18,7 +19,7 @@ class CallBackVerification(object):
         self.highest_acc_list: List[float] = [0.0] * len(val_targets)
         self.ver_list: List[object] = []
         self.ver_name_list: List[str] = []
-        if self.rank is 0:
+        if self.rank == 0:
             self.init_dataset(
                 val_targets=val_targets, data_dir=rec_prefix, image_size=image_size
             )
@@ -53,7 +54,7 @@ class CallBackVerification(object):
                 self.ver_name_list.append(name)
 
     def __call__(self, num_update, backbone: torch.nn.Module):
-        if self.rank is 0 and num_update > 0 and num_update % self.frequent == 0:
+        if self.rank == 0 and num_update > 0 and num_update % self.frequent == 0:
             backbone.eval()
             self.ver_test(backbone, num_update)
             backbone.train()
@@ -79,8 +80,9 @@ class CallBackLogging(object):
         epoch: int,
         fp16: bool,
         grad_scaler: torch.cuda.amp.GradScaler,
+        learning_rate: Optional[float],
     ):
-        if self.rank is 0 and global_step > 0 and global_step % self.frequent == 0:
+        if self.rank == 0 and global_step > 0 and global_step % self.frequent == 0:
             if self.init:
                 try:
                     speed: float = (
@@ -105,11 +107,16 @@ class CallBackLogging(object):
                         grad_scaler.get_scale(),
                         time_for_end,
                     )
+                    if learning_rate is not None:
+                        msg += f" {learning_rate=}"
                 else:
                     msg = (
                         "Speed %.2f samples/sec   Loss %.4f   Epoch: %d   Global Step: %d   Required: %1.f hours"
                         % (speed_total, loss.avg, epoch, global_step, time_for_end)
                     )
+                    if learning_rate is not None:
+                        msg += f" {learning_rate=}"
+                print(msg)
                 logging.info(msg)
                 loss.reset()
                 self.tic = time.time()
@@ -123,12 +130,30 @@ class CallBackModelCheckpoint(object):
         self.rank: int = rank
         self.output: str = output
 
-    def __call__(
-        self, global_step, backbone: torch.nn.Module, partial_fc: PartialFC = None
-    ):
-        if global_step > 100 and self.rank is 0:
+    def __call__(self, global_step, backbone, partial_fc, scale_predictor=None):
+        if global_step > 100 and self.rank == 0:
+            logging.info(colored("Saving model", "red"))
+            path_module = os.path.join(self.output, "backbone.pth")
             torch.save(
-                backbone.module.state_dict(), os.path.join(self.output, "backbone.pth")
-            )
-        if global_step > 100 and partial_fc is not None:
-            partial_fc.save_params()
+                backbone.module.state_dict() \
+                    if isinstance(backbone, torch.nn.parallel.DistributedDataParallel) \
+                    else backbone.state_dict(),
+                path_module)
+            logging.info("Pytorch Model Saved in '{}'".format(path_module))
+
+            if scale_predictor:
+                ckpt_path = os.path.join(self.output, "checkpoint.pth")
+                logging.info(colored(f"Backbone : {type(backbone)}", "blue"))
+                logging.info(colored(f"Scale_predictor : {type(scale_predictor)}", "blue"))
+                torch.save({
+                    "backbone": backbone.module.state_dict() \
+                        if isinstance(backbone, torch.nn.parallel.DistributedDataParallel) \
+                        else backbone.state_dict(),
+                    "scale_predictor":  scale_predictor.module.state_dict() \
+                        if isinstance(scale_predictor, torch.nn.parallel.DistributedDataParallel) \
+                        else scale_predictor.state_dict(),
+                },
+                ckpt_path)
+
+            if partial_fc is not None:
+                partial_fc.save_params()

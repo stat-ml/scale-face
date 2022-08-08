@@ -10,18 +10,29 @@ scale_predictor:
     activation: "exp"
     fp16: true
 
-loss: "arcface_scale"
+is_distributed: true
+#network: "r50"
 resume: true
-output: "/gpfs/data/gpfs0/k.fedyanin/space/models/scale/01_frozen/01_exp"
+source: "/gpfs/gpfs0/k.fedyanin/space/models/scale/source"
+loss: "arcface_scale"
+
+scale_source: "/gpfs/data/gpfs0/k.fedyanin/space/models/scale/02_sigm_mul_selection/32/checkpoint.pth"
+output: "/beegfs/home/r.kail/faces/test"
 embedding_size: 512
 sample_rate: 1.0
+fp16: true
 momentum: 0.9
-weight_decay: 5e-4
+#weight_decay: 5e-4
+weight_decay: 0.0005
 batch_size: 128
-lr: 0.1  # batch size is 512
-scale_lr: 0.1
+lr: 0.0001  # batch size is 512
+scale_lr: 0.0001
 freeze_backbone: true
+#scale_predictor_sizes: [25088, 512, 1]
+#scale_batch_norm: true
+#scale_exponent: "exp"
 
+dataset: "ms1m"
 rec: "/gpfs/gpfs0/k.fedyanin/space/ms1m"
 num_classes: 93431
 num_image: 5179510

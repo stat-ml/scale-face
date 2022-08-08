@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("./")
+sys.path.append("../")
 import argparse
 from face_lib.utils import align_dataset_from_list
 
