@@ -2,12 +2,16 @@ import numbers
 import os
 import random
 
-import mxnet as mx
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from .ms1m_pfe import MS1MDatasetPFE
+
+try:
+    import mxnet as mx
+except ImportError:
+    pass
 
 
 class MS1MDatasetRandomPairs(MS1MDatasetPFE):

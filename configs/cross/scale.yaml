@@ -1,0 +1,3 @@
+data_directory: '/home/kirill/data/faces'
+checkpoint_path: 'models/scaleface.pth'
+uncertainty_type: 'scale'
