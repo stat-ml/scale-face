@@ -1,7 +1,3 @@
-"""
-level 1:
-merge
-"""
 from pathlib import Path
 import pickle
 import sys
