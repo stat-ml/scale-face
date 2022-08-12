@@ -11,6 +11,12 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
+from torchvision.io import read_image, ImageReadMode
+from torch.utils.tensorboard import SummaryWriter
+
 
 categories = [
     'bicycle', 'cabinet', 'chair', 'coffee_maker', 'fan', 'kettle',
@@ -33,10 +39,6 @@ def make_small(data_dir, small_dir):
         )
         img.save(small_dir / path)
 
-import torch
-from torch import nn
-from torch.utils.data import DataLoader, Dataset
-from torchvision.io import read_image, ImageReadMode
 
 
 class Model(nn.Module):
@@ -82,22 +84,19 @@ def main():
 
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin([1, 2])]
-    idx = np.random.choice(range(len(df)), 2000)
+    idx = np.random.choice(range(len(df)), 5000)
     df = df.iloc[idx]
-    split = 500
+    split = 3000
     train_loader = loader_by_df(df.iloc[:split], small_dir, batch_size=50)
-    val_loader = loader_by_df(df.iloc[split:], small_dir, batch_size=2000)
+    val_loader = loader_by_df(df.iloc[split:], small_dir, batch_size=10000)
 
     model = Model().cuda()
     optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
     criterion = torch.nn.CrossEntropyLoss()
 
-    # steps = sf
-    steps = []
-    losses = []
-    val_steps = []
-    val_losses = []
-    for epoch in tqdm(range(500)):
+    train_iter = 0
+    writer = SummaryWriter()
+    for epoch in tqdm(range(200)):
         for x, y in train_loader:
             optimizer.zero_grad()
             x, y = x.cuda(), y.cuda()
@@ -105,20 +104,17 @@ def main():
             loss = criterion(preds, y)
             loss.backward()
             optimizer.step()
-            losses.append(loss.item())
-            steps.append(len(losses))
+            writer.add_scalar('Loss/train', loss.item(), train_iter)
+            train_iter += 1
 
         with torch.no_grad():
             for x, y in val_loader:
                 x, y = x.cuda(), y.cuda()
                 preds = model(x)
                 loss = criterion(preds, y)
-                val_losses.append(loss.item())
-                val_steps.append(steps[-1])
+                writer.add_scalar('Loss/val', loss.item(), train_iter)
 
-    plt.plot(steps, losses)
-    plt.plot(val_steps, val_losses)
-    plt.show()
+    writer.close()
 
 
 if __name__ == '__main__':
