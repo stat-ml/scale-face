@@ -76,24 +76,25 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
 
     image_pipeline = [SimpleRGBImageDecoder()]
 
-    # if augment:
-    #     image_pipeline.extend([
-    #         RandomHorizontalFlip(),
-    #         RandomTranslate(padding=2),
-    #         Cutout(2, (127, 127, 127)),
-    #     ])
+    if augment:
+        image_pipeline.extend([
+            RandomHorizontalFlip(),
+            RandomTranslate(padding=2),
+            Cutout(2, (127, 127, 127)),
+        ])
     image_pipeline.extend([
         ToTensor(), ToDevice(0), ToTorchImage(), Convert(torch.float32)
     ])
-    # if augment:
-    #     image_pipeline.extend([
-    #         # transforms.RandomRotation(10),
-    #         transforms.ColorJitter(brightness=.1, hue=.1),
-    #         transforms.RandomGrayscale()
-    #     ])
     image_pipeline.extend([
         transforms.Normalize(127., 50.)
     ])
+
+    if augment:
+        image_pipeline.extend([
+            #         # transforms.RandomRotation(10),
+            transforms.ColorJitter(brightness=.1, hue=.1),
+            #         transforms.RandomGrayscale()
+        ])
 
 
     label_pipeline = [IntDecoder(), ToTensor(), ToDevice(0), Squeeze()]
@@ -105,7 +106,7 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     }
 
     if random_order:
-        order = OrderOption.RANDOM
+        order = OrderOption.QUASI_RANDOM
     else:
         order = OrderOption.SEQUENTIAL
 
@@ -114,16 +115,13 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     return loader
 
 
-NUM_CLASSES = 4
+NUM_CLASSES = 2
 
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
         self.convs = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
-            nn.BatchNorm2d(64),
-            nn.ELU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ELU(),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
@@ -184,8 +182,8 @@ def main():
 
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    idx = np.random.choice(range(len(df)), 10000, replace=False)
-    split = 7000
+    idx = np.random.choice(range(len(df)), 5000, replace=False)
+    split = 3000
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
@@ -196,9 +194,6 @@ def main():
     val_loader = ffcv_loader_by_df(
         val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=len(val_df)
     )
-
-    # train_loader = loader_by_df(df.iloc[:split], small_dir, batch_size=50)
-    # val_loader = loader_by_df(df.iloc[split:], small_dir, batch_size=10000)
 
     model = Model().cuda()
     optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
@@ -225,8 +220,8 @@ def main():
                 preds = model(x)
                 loss = criterion(preds, y)
                 writer.add_scalar('Loss/val', loss.item(), train_iter)
-                # accuracy = (torch.argmax(preds, dim=-1) == y).to(torch.float).mean()
-                # writer.add_scalar('Accuracy/val', accuracy.item(), train_iter)
+                accuracy = (torch.argmax(preds, dim=-1) == y).to(torch.float).mean()
+                writer.add_scalar('Accuracy/val', accuracy.item(), train_iter)
 
     writer.close()
 
