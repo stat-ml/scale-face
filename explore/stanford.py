@@ -1,10 +1,11 @@
 """
-level 5:
-resnet 9 number of params?
+level 8:
+multiple
 """
 
 import os
 from pathlib import Path
+import random
 
 import matplotlib.pyplot as plt
 from PIL import Image, ImageOps
@@ -27,6 +28,13 @@ from ffcv.transforms import (
 )
 from ffcv.fields.decoders import IntDecoder, RandomResizedCropRGBImageDecoder, FloatDecoder, SimpleRGBImageDecoder
 from PIL import Image
+
+import sys
+sys.path.append('.')
+from explore.random_model import SimpleCNN, ResNet9
+
+SEED = 42
+
 
 categories = [
     'bicycle', 'cabinet', 'chair', 'coffee_maker', 'fan', 'kettle',
@@ -121,48 +129,6 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
 NUM_CLASSES = 4
 
 
-class Residual(nn.Module):
-    def __init__(self, module):
-        super(Residual, self).__init__()
-        self.module = module
-
-    def forward(self, x): return x + self.module(x)
-
-
-
-class Model(nn.Module):
-    def __init__(self, num_classes):
-        super().__init__()
-        def conv(in_size, out_size, kernel_size, stride, padding):
-            return nn.Sequential(
-                nn.Conv2d(in_size, out_size, kernel_size=kernel_size, stride=stride, padding=padding, bias=False),
-                nn.BatchNorm2d(out_size),
-                nn.ELU()
-            )
-
-        self.layers = nn.Sequential(
-            conv(3, 64, kernel_size=3, stride=1, padding=1),
-            conv(64, 128, kernel_size=5, stride=2, padding=2),
-            Residual(nn.Sequential(
-                conv(128, 128, kernel_size=3, stride=1, padding=1),
-                conv(128, 128, kernel_size=3, stride=1, padding=1),
-            )),
-            conv(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.MaxPool2d(kernel_size=2),
-            Residual(nn.Sequential(
-                conv(256, 256, kernel_size=3, stride=1, padding=1),
-                conv(256, 256, kernel_size=3, stride=1, padding=1),
-            )),
-            conv(256, 128, kernel_size=3, stride=1, padding=0),
-            nn.AdaptiveMaxPool2d((1, 1)),
-            nn.Flatten(),
-            nn.Linear(128, num_classes),
-        )
-
-    def forward(self, x):
-        return self.layers(x)
-
-
 class DatasetS(Dataset):
     def __init__(self, base_dir, image_paths, labels):
         self.base_dir = base_dir
@@ -184,21 +150,20 @@ def loader_by_df(df, base_dir, batch_size):
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
-# import random
-# SEED = 42
 
 def main():
     data_dir = Path('/home/kirill/data/stanford/Stanford_Online_Products')
     small_dir = Path('/home/kirill/data/stanford/small2')
     # convert_to_rgb(small_dir)
 
-    # random.seed(SEED)
-    # np.random.seed(SEED)
+    random.seed(SEED)
+    np.random.seed(SEED)
 
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    idx = np.random.choice(range(len(df)), 20000, replace=False)
-    split = 12000
+    print(len(df))
+    idx = np.random.choice(range(len(df)), 40000, replace=False)
+    split = 24000
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
@@ -207,16 +172,17 @@ def main():
     )
     val_df = df.iloc[split:]
     val_loader = ffcv_loader_by_df(
-        val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=len(val_df)
+        val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=500
     )
 
-    model = Model(NUM_CLASSES).cuda()
+    model = ResNet9(NUM_CLASSES).cuda()
+    # model = SimpleCNN(NUM_CLASSES).cuda()
     optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
     criterion = torch.nn.CrossEntropyLoss()
 
     train_iter = 0
     writer = SummaryWriter()
-    for epoch in tqdm(range(50)):
+    for epoch in tqdm(range(30)):
         model.train()
         for x, y in train_loader:
             optimizer.zero_grad()
@@ -230,13 +196,18 @@ def main():
 
         with torch.no_grad():
             model.eval()
+            epoch_losses = []
+            correct = []
+
             for x, y in val_loader:
                 x, y = x.cuda(), y.cuda()
                 preds = model(x)
                 loss = criterion(preds, y)
-                writer.add_scalar('Loss/val', loss.item(), train_iter)
-                accuracy = (torch.argmax(preds, dim=-1) == y).to(torch.float).mean()
-                writer.add_scalar('Accuracy/val', accuracy.item(), train_iter)
+                epoch_losses.append(loss.item())
+                correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
+
+            writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
+            writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
 
     writer.close()
 
