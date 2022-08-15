@@ -1,7 +1,8 @@
 """
-level 4:
-Augmentation
+level 5:
+resnet 9 number of params?
 """
+
 import os
 from pathlib import Path
 
@@ -85,16 +86,18 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     image_pipeline.extend([
         ToTensor(), ToDevice(0), ToTorchImage(), Convert(torch.float32)
     ])
+
+    # # Imagenet augmentation
+    # if augment:
+    #     image_pipeline.extend([
+    #         #         # transforms.RandomRotation(10),
+    #         # transforms.ColorJitter(brightness=.1, hue=.1),
+    #         #         transforms.RandomGrayscale()
+    #     ])
     image_pipeline.extend([
         transforms.Normalize(127., 50.)
     ])
 
-    if augment:
-        image_pipeline.extend([
-            #         # transforms.RandomRotation(10),
-            transforms.ColorJitter(brightness=.1, hue=.1),
-            #         transforms.RandomGrayscale()
-        ])
 
 
     label_pipeline = [IntDecoder(), ToTensor(), ToDevice(0), Squeeze()]
@@ -115,37 +118,49 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     return loader
 
 
-NUM_CLASSES = 2
+NUM_CLASSES = 4
+
+
+class Residual(nn.Module):
+    def __init__(self, module):
+        super(Residual, self).__init__()
+        self.module = module
+
+    def forward(self, x): return x + self.module(x)
+
+
 
 class Model(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes):
         super().__init__()
-        self.convs = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
-            nn.BatchNorm2d(64),
-            nn.ELU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ELU(),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ELU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ELU(),
-            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
-            nn.Flatten()
+        def conv(in_size, out_size, kernel_size, stride, padding):
+            return nn.Sequential(
+                nn.Conv2d(in_size, out_size, kernel_size=kernel_size, stride=stride, padding=padding, bias=False),
+                nn.BatchNorm2d(out_size),
+                nn.ELU()
+            )
+
+        self.layers = nn.Sequential(
+            conv(3, 64, kernel_size=3, stride=1, padding=1),
+            conv(64, 128, kernel_size=5, stride=2, padding=2),
+            Residual(nn.Sequential(
+                conv(128, 128, kernel_size=3, stride=1, padding=1),
+                conv(128, 128, kernel_size=3, stride=1, padding=1),
+            )),
+            conv(128, 256, kernel_size=3, stride=1, padding=1),
+            nn.MaxPool2d(kernel_size=2),
+            Residual(nn.Sequential(
+                conv(256, 256, kernel_size=3, stride=1, padding=1),
+                conv(256, 256, kernel_size=3, stride=1, padding=1),
+            )),
+            conv(256, 128, kernel_size=3, stride=1, padding=0),
+            nn.AdaptiveMaxPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(128, num_classes),
         )
-        self.head = nn.Sequential(
-            nn.Linear(512, 128),
-            nn.ELU(),
-            nn.Linear(128, NUM_CLASSES)
-        )
+
     def forward(self, x):
-        x = self.convs(x)
-        x = self.head(x)
-        return x
+        return self.layers(x)
 
 
 class DatasetS(Dataset):
@@ -182,8 +197,8 @@ def main():
 
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    idx = np.random.choice(range(len(df)), 5000, replace=False)
-    split = 3000
+    idx = np.random.choice(range(len(df)), 20000, replace=False)
+    split = 12000
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
@@ -195,13 +210,13 @@ def main():
         val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=len(val_df)
     )
 
-    model = Model().cuda()
+    model = Model(NUM_CLASSES).cuda()
     optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
     criterion = torch.nn.CrossEntropyLoss()
 
     train_iter = 0
     writer = SummaryWriter()
-    for epoch in tqdm(range(200)):
+    for epoch in tqdm(range(50)):
         model.train()
         for x, y in train_loader:
             optimizer.zero_grad()
