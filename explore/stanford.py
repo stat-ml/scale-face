@@ -1,6 +1,6 @@
 """
-level 3:
-convert all to rgb
+level 4:
+Augmentation
 """
 import os
 from pathlib import Path
@@ -16,6 +16,16 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
+from torchvision import transforms
+
+from ffcv.writer import DatasetWriter
+from ffcv.fields import RGBImageField, IntField, FloatField
+from ffcv.loader import Loader, OrderOption
+from ffcv.transforms import (
+    ToTensor, ToDevice, ToTorchImage, Cutout, Convert, Squeeze, RandomTranslate, RandomHorizontalFlip
+)
+from ffcv.fields.decoders import IntDecoder, RandomResizedCropRGBImageDecoder, FloatDecoder, SimpleRGBImageDecoder
+from PIL import Image
 
 categories = [
     'bicycle', 'cabinet', 'chair', 'coffee_maker', 'fan', 'kettle',
@@ -38,13 +48,6 @@ def make_small(data_dir, small_dir):
         )
         img.save(small_dir / path)
 
-from ffcv.writer import DatasetWriter
-from ffcv.fields import RGBImageField, IntField, FloatField
-from ffcv.loader import Loader, OrderOption
-from ffcv.transforms import ToTensor, ToDevice, ToTorchImage, Cutout, Convert, Squeeze
-from ffcv.fields.decoders import IntDecoder, RandomResizedCropRGBImageDecoder, FloatDecoder, SimpleRGBImageDecoder
-from PIL import Image
-
 
 def convert_to_rgb(base_directory):
     subdicrectories = os.listdir(base_directory)
@@ -60,7 +63,7 @@ def convert_to_rgb(base_directory):
                 rgb_img.save(filename)
 
 
-def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=100):
+def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=100, augment=False):
     image_paths = np.array(list(df.path))
     labels = np.array(list(df.super_class_id)) - 1
     dataset = DatasetS(base_dir, image_paths, labels)
@@ -71,7 +74,28 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     })
     writer.from_indexed_dataset(dataset)
 
-    image_pipeline = [SimpleRGBImageDecoder(), ToTensor(), ToDevice(0), ToTorchImage(), Convert(torch.float32), torchvision.transforms.Normalize(127., 50.)]
+    image_pipeline = [SimpleRGBImageDecoder()]
+
+    # if augment:
+    #     image_pipeline.extend([
+    #         RandomHorizontalFlip(),
+    #         RandomTranslate(padding=2),
+    #         Cutout(2, (127, 127, 127)),
+    #     ])
+    image_pipeline.extend([
+        ToTensor(), ToDevice(0), ToTorchImage(), Convert(torch.float32)
+    ])
+    # if augment:
+    #     image_pipeline.extend([
+    #         # transforms.RandomRotation(10),
+    #         transforms.ColorJitter(brightness=.1, hue=.1),
+    #         transforms.RandomGrayscale()
+    #     ])
+    image_pipeline.extend([
+        transforms.Normalize(127., 50.)
+    ])
+
+
     label_pipeline = [IntDecoder(), ToTensor(), ToDevice(0), Squeeze()]
 
     # Pipeline for each data field
@@ -90,28 +114,40 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     return loader
 
 
+NUM_CLASSES = 4
+
 class Model(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(3072, 256),
-            nn.BatchNorm1d(256),
+        self.convs = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=5, stride=2, padding=2),
+            nn.BatchNorm2d(64),
             nn.ELU(),
-            nn.Linear(256, 256),
-            nn.BatchNorm1d(256),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ELU(),
-            nn.Linear(256, 256),
-            nn.BatchNorm1d(256),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
             nn.ELU(),
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
             nn.ELU(),
-            nn.Linear(128, 2)
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ELU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.Flatten()
         )
-
+        self.head = nn.Sequential(
+            nn.Linear(512, 128),
+            nn.ELU(),
+            nn.Linear(128, NUM_CLASSES)
+        )
     def forward(self, x):
-        x = x.reshape(-1, 3072)
-        return self.layers(x)
+        x = self.convs(x)
+        x = self.head(x)
+        return x
 
 
 class DatasetS(Dataset):
@@ -135,20 +171,31 @@ def loader_by_df(df, base_dir, batch_size):
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
     return loader
 
+# import random
+# SEED = 42
+
 def main():
     data_dir = Path('/home/kirill/data/stanford/Stanford_Online_Products')
     small_dir = Path('/home/kirill/data/stanford/small2')
     # convert_to_rgb(small_dir)
 
+    # random.seed(SEED)
+    # np.random.seed(SEED)
+
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
-    df = df[df.super_class_id.isin([1, 2])]
-    idx = np.random.choice(range(len(df)), 5000, replace=False)
-    split = 3000
+    df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
+    idx = np.random.choice(range(len(df)), 10000, replace=False)
+    split = 7000
     df = df.iloc[idx]
 
-    train_loader = ffcv_loader_by_df(df.iloc[:split], small_dir, '/tmp/ds_train.beton', random_order=True, batch_size=50)
+    train_loader = ffcv_loader_by_df(
+        df.iloc[:split], small_dir, '/tmp/ds_train.beton', random_order=True, batch_size=128,
+        augment=True
+    )
     val_df = df.iloc[split:]
-    val_loader = ffcv_loader_by_df(val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=len(val_df))
+    val_loader = ffcv_loader_by_df(
+        val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=len(val_df)
+    )
 
     # train_loader = loader_by_df(df.iloc[:split], small_dir, batch_size=50)
     # val_loader = loader_by_df(df.iloc[split:], small_dir, batch_size=10000)
@@ -160,6 +207,7 @@ def main():
     train_iter = 0
     writer = SummaryWriter()
     for epoch in tqdm(range(200)):
+        model.train()
         for x, y in train_loader:
             optimizer.zero_grad()
             x, y = x.cuda(), y.cuda()
@@ -171,11 +219,14 @@ def main():
             train_iter += 1
 
         with torch.no_grad():
+            model.eval()
             for x, y in val_loader:
                 x, y = x.cuda(), y.cuda()
                 preds = model(x)
                 loss = criterion(preds, y)
                 writer.add_scalar('Loss/val', loss.item(), train_iter)
+                # accuracy = (torch.argmax(preds, dim=-1) == y).to(torch.float).mean()
+                # writer.add_scalar('Accuracy/val', accuracy.item(), train_iter)
 
     writer.close()
 
