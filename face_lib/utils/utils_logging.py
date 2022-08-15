@@ -27,7 +27,7 @@ class AverageMeter(object):
 
 
 def init_logging(log_root, rank, models_root):
-    if rank is 0:
+    if rank == 0:
         log_root.setLevel(logging.INFO)
         formatter = logging.Formatter("Training: %(asctime)s-%(message)s")
         handler_file = logging.FileHandler(os.path.join(models_root, "training.log"))

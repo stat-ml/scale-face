@@ -8,3 +8,4 @@ from .ijb import IJBDataset
 from .ijba import IJBATest
 from .ijbc import IJBCTest
 from .ijbc_templates import IJBCTemplates
+from .stanford_products import ProductsDataset

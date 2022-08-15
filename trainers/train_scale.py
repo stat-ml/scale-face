@@ -20,7 +20,7 @@ from face_lib.utils.utils_callback import (
 from face_lib.datasets import (
     MXFaceDataset, MXFaceDatasetDistorted,
     MXFaceDatasetGauss, SyntheticDataset,
-    DataLoaderX)
+    DataLoaderX, ProductsDataset)
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -65,6 +65,11 @@ class Trainer(TrainerBase):
             self.train_set = MXFaceDataset(
                 root_dir=self.model_args.rec,
                 local_rank=self.local_rank)
+        elif self.model_args.dataset == "products":
+            self.train_set = ProductsDataset(
+                root_dir=self.model_args.rec,
+                local_rank=self.local_rank
+            )
         else:
             raise KeyError("Don't know this name of dataset")
 
