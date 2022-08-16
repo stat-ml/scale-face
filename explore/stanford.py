@@ -1,8 +1,3 @@
-"""
-level 8:
-multiple
-"""
-
 import os
 from pathlib import Path
 import random
@@ -44,8 +39,6 @@ categories = [
 
 def make_small(data_dir, small_dir):
     df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
-    # for category in categories:
-    #     (small_dir / f'{category}_final').mkdir()
 
     for path in tqdm(df.path):
         # print(Path(path))
@@ -74,7 +67,7 @@ def convert_to_rgb(base_directory):
 
 def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=100, augment=False):
     image_paths = np.array(list(df.path))
-    labels = np.array(list(df.super_class_id)) - 1
+    labels = np.array(list(df.labels))
     dataset = DatasetS(base_dir, image_paths, labels)
 
     writer = DatasetWriter(write_path, {
@@ -122,7 +115,9 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
         order = OrderOption.SEQUENTIAL
 
     # Replaces PyTorch data loader (`torch.utils.data.Dataloader`)
-    loader = Loader(write_path, batch_size=batch_size, num_workers=12, order=order, pipelines=pipelines)
+    loader = Loader(
+        write_path, batch_size=batch_size, num_workers=12, order=order, pipelines=pipelines, drop_last=False
+    )
     return loader
 
 
@@ -152,18 +147,19 @@ def loader_by_df(df, base_dir, batch_size):
 
 
 def main():
-    data_dir = Path('/home/kirill/data/stanford/Stanford_Online_Products')
-    small_dir = Path('/home/kirill/data/stanford/small2')
-    # convert_to_rgb(small_dir)
+    base_dir = Path('/home/kirill/data/stanford/')
+    data_dir = base_dir / 'Stanford_Online_Products'
+    small_dir = base_dir / 'small2'
+    checkpoint_dir = base_dir / 'models'
 
     random.seed(SEED)
     np.random.seed(SEED)
 
-    df = pd.read_csv(data_dir / 'Ebay_info.txt', delim_whitespace=True, index_col='image_id')
+    df = pd.read_csv(data_dir / 'Ebay_train.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    print(len(df))
-    idx = np.random.choice(range(len(df)), 40000, replace=False)
-    split = 24000
+    df['labels'] = (df.super_class_id) - 1
+    idx = np.random.choice(range(len(df)), 20000, replace=False)
+    split = 12000
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
@@ -182,7 +178,7 @@ def main():
 
     train_iter = 0
     writer = SummaryWriter()
-    for epoch in tqdm(range(30)):
+    for epoch in tqdm(range(100)):
         model.train()
         for x, y in train_loader:
             optimizer.zero_grad()
@@ -210,6 +206,7 @@ def main():
             writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
 
     writer.close()
+    torch.save(model.state_dict(), checkpoint_dir / 'resnet9.pth')
 
 
 if __name__ == '__main__':
