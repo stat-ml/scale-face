@@ -1,6 +1,6 @@
 """
-Level chetyre:
-inference on test
+Level five:
+generate embeddings
 """
 
 
@@ -18,12 +18,28 @@ from explore.random_model import ResNet9
 from explore.stanford import ffcv_loader_by_df, NUM_CLASSES
 
 
-def main():
-    base_dir = Path('/home/kirill/data/stanford/')
-    data_dir = base_dir / 'Stanford_Online_Products'
-    small_dir = base_dir / 'small2'
-    checkpoint_dir = base_dir / 'models'
+def generate_embeddings(model, loader):
+    criterion = torch.nn.CrossEntropyLoss()
 
+    embeddings, labels = [], []
+
+    with torch.no_grad():
+        for x, y in loader:
+            x, y = x.cuda(), y.cuda()
+            preds = model(x)
+            loss = criterion(preds, y)
+            print(loss.item(), (torch.argmax(preds, dim=-1) == y).to(torch.float).mean().item())
+
+            embeddings.extend(preds.detach().cpu().numpy())
+            labels.extend(y.detach().cpu())
+
+    return np.array(embeddings), np.array(labels)
+
+
+def build_embeddings(base_dir):
+    data_dir = base_dir / 'Stanford_Online_Products'
+    small_dir = base_dir / 'small'
+    checkpoint_dir = base_dir / 'models'
 
     model = ResNet9(NUM_CLASSES)
 
@@ -39,21 +55,15 @@ def main():
         test_df, small_dir, '/tmp/ds_test.beton', random_order=False, batch_size=500
     )
 
-    model.eval()
-    epoch_losses = []
-    correct = []
-    criterion = torch.nn.CrossEntropyLoss()
+    x, y = generate_embeddings(model, test_loader)
+    np.save('/tmp/stanford_x.npz', x)
+    np.save('/tmp/stanford_y.npz', y)
 
-    with torch.no_grad():
-        for x, y in test_loader:
-            x, y = x.cuda(), y.cuda()
-            preds = model(x)
-            loss = criterion(preds, y)
-            epoch_losses.append(loss.item())
-            correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
-        #
-        print(np.mean(epoch_losses))
-        print(np.mean(correct))
+
+def main():
+    base_dir = Path('/home/kirill/data/stanford/')
+    # build_embeddings(base_dir)
+    
 
 
 if __name__ == '__main__':

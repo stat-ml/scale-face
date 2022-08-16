@@ -44,7 +44,6 @@ class ResNet9(nn.Module):
         return self.layers(x)
 
 
-
 class SimpleCNN(nn.Module):
     def __init__(self, num_classes):
         super().__init__()

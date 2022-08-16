@@ -149,7 +149,7 @@ def loader_by_df(df, base_dir, batch_size):
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
     data_dir = base_dir / 'Stanford_Online_Products'
-    small_dir = base_dir / 'small2'
+    small_dir = base_dir / 'small'
     checkpoint_dir = base_dir / 'models'
 
     random.seed(SEED)
