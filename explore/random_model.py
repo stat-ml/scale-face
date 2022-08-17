@@ -13,6 +13,7 @@ class Residual(nn.Module):
 class ResNet9(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
+        self.features = None
         def conv(in_size, out_size, kernel_size, stride, padding):
             return nn.Sequential(
                 nn.Conv2d(in_size, out_size, kernel_size=kernel_size, stride=stride, padding=padding, bias=False),
@@ -27,7 +28,7 @@ class ResNet9(nn.Module):
             ))
 
 
-        self.layers = nn.Sequential(
+        self.backbone = nn.Sequential(
             conv(3, 64, kernel_size=3, stride=1, padding=1),
             conv(64, 128, kernel_size=5, stride=2, padding=2),
             residual(128),
@@ -37,11 +38,13 @@ class ResNet9(nn.Module):
             conv(256, 128, kernel_size=3, stride=1, padding=0),
             nn.AdaptiveMaxPool2d((1, 1)),
             nn.Flatten(),
-            nn.Linear(128, num_classes),
         )
+        self.head = nn.Linear(128, num_classes)
+
 
     def forward(self, x):
-        return self.layers(x)
+        self.features = self.backbone(x)
+        return self.head(self.features)
 
 
 class SimpleCNN(nn.Module):

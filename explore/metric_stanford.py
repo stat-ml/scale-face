@@ -1,7 +1,7 @@
 """
-Lvl 4
+Lvl 6
 =====
-find 3 nn
+by features?
 """
 
 import os
@@ -19,18 +19,14 @@ from explore.stanford import ffcv_loader_by_df, NUM_CLASSES
 
 
 def generate_embeddings(model, loader):
-    criterion = torch.nn.CrossEntropyLoss()
-
     embeddings, labels = [], []
 
     with torch.no_grad():
         for x, y in loader:
             x, y = x.cuda(), y.cuda()
             preds = model(x)
-            loss = criterion(preds, y)
-            print(loss.item(), (torch.argmax(preds, dim=-1) == y).to(torch.float).mean().item())
 
-            embeddings.extend(preds.detach().cpu().numpy())
+            embeddings.extend(model.features.detach().cpu().numpy())
             labels.extend(y.detach().cpu())
 
     return np.array(embeddings), np.array(labels)
@@ -48,7 +44,7 @@ def build_embeddings(base_dir):
 
     test_df = pd.read_csv(data_dir / 'Ebay_test.txt', delim_whitespace=True, index_col='image_id')
     test_df = test_df[test_df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    test_df['labels'] = (test_df.super_class_id) - 1
+    test_df['labels'] = (test_df.class_id) - 1
     print(len(test_df))
 
     test_loader = ffcv_loader_by_df(
@@ -75,11 +71,12 @@ def recall_at_k(embeddings, labels, k=3):
 
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
-    # build_embeddings(base_dir)
+    build_embeddings(base_dir)
     embeddings = np.load('/tmp/stanford_x.npy')
     labels = np.load('/tmp/stanford_y.npy')
+    print(embeddings.shape)
 
-    for k in range(1, 10):
+    for k in range(10):
         k = 2**k
         print(k)
         print(recall_at_k(embeddings, labels, k))
