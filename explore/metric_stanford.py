@@ -1,7 +1,7 @@
 """
-Lvl 6
+Lvl 7
 =====
-by features?
+multiclasses?
 """
 
 import os
@@ -37,7 +37,7 @@ def build_embeddings(base_dir):
     small_dir = base_dir / 'small'
     checkpoint_dir = base_dir / 'models'
 
-    model = ResNet9(NUM_CLASSES)
+    model = ResNet9(3580)
 
     model.load_state_dict(torch.load(checkpoint_dir / 'resnet9.pth'))
     model.eval().cuda()

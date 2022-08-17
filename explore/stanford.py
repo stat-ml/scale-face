@@ -146,6 +146,12 @@ def loader_by_df(df, base_dir, batch_size):
     return loader
 
 
+def remap_labels(labels):
+    # made labels from 0 to N-1
+    classes = np.unique(labels)
+    mapper = {klass: ordered for ordered, klass in enumerate(classes)}
+    return np.array([mapper[old_label] for old_label in labels])
+
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
     data_dir = base_dir / 'Stanford_Online_Products'
@@ -157,7 +163,10 @@ def main():
 
     df = pd.read_csv(data_dir / 'Ebay_train.txt', delim_whitespace=True, index_col='image_id')
     df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    df['labels'] = (df.super_class_id) - 1
+    # df['labels'] = (df.super_class_id) - 1
+    df['labels'] = remap_labels(df.class_id)
+
+
     idx = np.random.choice(range(len(df)), 20000, replace=False)
     split = 12000
     df = df.iloc[idx]
@@ -171,7 +180,9 @@ def main():
         val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=500
     )
 
-    model = ResNet9(NUM_CLASSES).cuda()
+    max_class = np.max(df['labels'])
+    print(max_class)
+    model = ResNet9(max_class+1).cuda()
     # model = SimpleCNN(NUM_CLASSES).cuda()
     optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
     criterion = torch.nn.CrossEntropyLoss()
