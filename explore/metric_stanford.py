@@ -1,8 +1,8 @@
 """
-Level five:
-generate embeddings
+Lvl 4
+=====
+find 3 nn
 """
-
 
 import os
 from pathlib import Path
@@ -11,7 +11,7 @@ import sys
 import torch
 import pandas as pd
 import numpy as np
-
+import faiss
 
 sys.path.append('.')
 from explore.random_model import ResNet9
@@ -56,14 +56,33 @@ def build_embeddings(base_dir):
     )
 
     x, y = generate_embeddings(model, test_loader)
-    np.save('/tmp/stanford_x.npz', x)
-    np.save('/tmp/stanford_y.npz', y)
+    np.save('/tmp/stanford_x.npy', x)
+    np.save('/tmp/stanford_y.npy', y)
+
+
+def recall_at_k(embeddings, labels, k=3):
+    d = embeddings.shape[-1]
+    index = faiss.IndexFlatL2(d)
+    index.add(embeddings)
+    print(index.ntotal)
+    distances, indices = index.search(embeddings, k+1)
+    indices = indices[:, 1:]  # as it's the same db / query
+    pred_labels = labels[indices]
+    recall = np.any(pred_labels == labels[:, None], axis=-1).mean()
+
+    return recall
 
 
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
     # build_embeddings(base_dir)
-    
+    embeddings = np.load('/tmp/stanford_x.npy')
+    labels = np.load('/tmp/stanford_y.npy')
+
+    for k in range(1, 10):
+        k = 2**k
+        print(k)
+        print(recall_at_k(embeddings, labels, k))
 
 
 if __name__ == '__main__':
