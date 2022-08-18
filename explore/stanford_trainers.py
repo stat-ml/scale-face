@@ -112,13 +112,19 @@ class TripletsTrainer(CrossEntropyTrainer):
         torch.save(model.state_dict(), self.checkpoint_path)
 
 
-class ArcFaceTrainer(CrossEntropyTrainer):
-    def train(self, train_loader, val_loader, num_classes=10, embedding_size=512):
+class ArcFaceTrainer():
+    def __init__(self, model, checkpoint_path, epochs, embedding_size, num_classes):
+        self.model = model
+        self.checkpoint_path = checkpoint_path
+        self.epochs = epochs
+        self.embedding_size = embedding_size
+        self.num_classes = num_classes
+
+    def train(self, train_loader, val_loader):
         model = self.model
         optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
         miner = miners.MultiSimilarityMiner()
-        criterion = losses.ArcFaceLoss(num_classes, embedding_size)
-
+        criterion = losses.ArcFaceLoss(self.num_classes, self.embedding_size)
 
         train_iter = 0
         writer = SummaryWriter()
@@ -130,8 +136,6 @@ class ArcFaceTrainer(CrossEntropyTrainer):
                 x, y = x.cuda(), y.cuda()
                 preds = model(x)
                 embeddings = model.features
-                # hard_pairs = miner(embeddings, y)
-                # loss = criterion(embeddings, y, hard_pairs)
                 loss = criterion(embeddings, y)
                 loss.backward()
                 optimizer.step()

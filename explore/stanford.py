@@ -28,7 +28,6 @@ def main():
         'model_label': 'resnet9_arcface.pth'
     })
     base_dir = Path(args.base_dir)
-    checkpoint_dir = base_dir / 'models'
 
     random.seed(SEED)
     np.random.seed(SEED)
@@ -44,10 +43,19 @@ def main():
     embedding_size = 128
 
     model = ResNet9(num_classes).cuda()
-    # trainer = CrossEntropyTrainer(model, checkpoint_dir / args.model_label, epochs=5)
-    # trainer = TripletsTrainer(model, checkpoint_dir / args.model_label, epochs=300)
-    trainer = ArcFaceTrainer(model, checkpoint_dir / args.model_label, epochs=300)
-    trainer.train(train_loader, val_loader, num_classes=num_classes, embedding_size=128)
+
+
+    checkpoint_path = base_dir / 'models' / args.model_label
+    if args.method == 'classification':
+        trainer = CrossEntropyTrainer(model, checkpoint_path, epochs=5)
+    elif args.method == 'triplets':
+        trainer = TripletsTrainer(model, checkpoint_path, epochs=120)
+    else:
+        trainer = ArcFaceTrainer(
+            model, checkpoint_path, embedding_size=embedding_size, num_classes=num_classes,
+            epochs=120
+        )
+    trainer.train(train_loader, val_loader)
 
 
 if __name__ == '__main__':

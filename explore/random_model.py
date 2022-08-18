@@ -44,7 +44,8 @@ class ResNet9(nn.Module):
 
     def forward(self, x):
         self.features = self.backbone(x)
-        return self.head(self.features)
+        x = self.head(self.features)
+        return x
 
 
 class SimpleCNN(nn.Module):
