@@ -1,6 +1,6 @@
 """
-Level 2:
-Refactor
+Level 6:
+precision
 """
 import os
 from pathlib import Path
@@ -158,7 +158,7 @@ def remap_labels(labels):
     return np.array([mapper[old_label] for old_label in labels])
 
 
-def get_loaders(base_dir, super_classes=False, split=(20_000, 12_000)):
+def get_loaders(base_dir, super_classes=False, split=(20_000, 12_000), batch_size=128):
     data_dir = base_dir / 'Stanford_Online_Products'
     small_dir = base_dir / 'small'
     df = pd.read_csv(data_dir / 'Ebay_train.txt', delim_whitespace=True, index_col='image_id')
@@ -173,12 +173,12 @@ def get_loaders(base_dir, super_classes=False, split=(20_000, 12_000)):
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
-        df.iloc[:split], small_dir, '/tmp/ds_train.beton', random_order=True, batch_size=128,
+        df.iloc[:split], small_dir, '/tmp/ds_train.beton', random_order=True, batch_size=batch_size,
         augment=True
     )
     val_df = df.iloc[split:]
     val_loader = ffcv_loader_by_df(
-        val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=500
+        val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=batch_size
     )
     return train_loader, val_loader
 
@@ -226,12 +226,57 @@ class CrossEntropyTrainer:
         torch.save(model.state_dict(), self.checkpoint_path)
 
 
+class TripletsTrainer(CrossEntropyTrainer):
+    def train(self, train_loader, val_loader):
+        model = self.model
+        optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
+        from pytorch_metric_learning import miners, losses
+        miner = miners.MultiSimilarityMiner()
+        criterion = losses.TripletMarginLoss()
+
+        train_iter = 0
+        writer = SummaryWriter()
+
+        for epoch in tqdm(range(self.epochs)):
+            model.train()
+            for x, y in train_loader:
+                optimizer.zero_grad()
+                x, y = x.cuda(), y.cuda()
+                model(x)
+                embeddings = model.features
+                hard_pairs = miner(embeddings, y)
+                loss = criterion(embeddings, y, hard_pairs)
+                loss.backward()
+                optimizer.step()
+                writer.add_scalar('Loss/train', loss.item(), train_iter)
+                train_iter += 1
+
+            with torch.no_grad():
+                model.eval()
+                epoch_losses = []
+                correct = []
+
+                for x, y in val_loader:
+                    x, y = x.cuda(), y.cuda()
+                    model(x)
+                    loss = criterion(model.features, y)
+                    epoch_losses.append(loss.item())
+
+                    # correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
+
+                writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
+            #     writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
+
+        writer.close()
+        torch.save(model.state_dict(), self.checkpoint_path)
+
+
 def main():
     args = EasyDict({
         'base_dir': '/home/kirill/data/stanford/',
         'method': 'triplets',  # ['classification', 'triplets']
-        'super_classes': True,
-        'model_label': 'resnet9_fast.pth'
+        'super_classes': False,
+        'model_label': 'resnet9_triplets.pth'
     })
     base_dir = Path(args.base_dir)
     checkpoint_dir = base_dir / 'models'
@@ -239,7 +284,7 @@ def main():
     random.seed(SEED)
     np.random.seed(SEED)
     train_loader, val_loader = get_loaders(
-        base_dir, super_classes=args.super_classes, split=(20_000, 12_000)
+        base_dir, super_classes=args.super_classes, split=(20_000, 12_000), batch_size=256
     )
 
     if args.super_classes:
@@ -248,7 +293,8 @@ def main():
         num_classes = 3580
 
     model = ResNet9(num_classes).cuda()
-    trainer = CrossEntropyTrainer(model, checkpoint_dir / args.model_label, epochs=5)
+    # trainer = CrossEntropyTrainer(model, checkpoint_dir / args.model_label, epochs=5)
+    trainer = TripletsTrainer(model, checkpoint_dir / args.model_label, epochs=120)
     trainer.train(train_loader, val_loader)
 
 

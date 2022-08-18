@@ -31,9 +31,11 @@ def build_embeddings(base_dir, model_name):
     small_dir = base_dir / 'small'
     checkpoint_dir = base_dir / 'models'
 
-    model = ResNet9(4)
+    checkpoint = torch.load(checkpoint_dir / model_name)
 
-    model.load_state_dict(torch.load(checkpoint_dir / model_name))
+    model = ResNet9(3580)
+
+    model.load_state_dict(checkpoint)
     model.eval().cuda()
 
     test_df = pd.read_csv(data_dir / 'Ebay_test.txt', delim_whitespace=True, index_col='image_id')
@@ -65,7 +67,7 @@ def recall_at_k(embeddings, labels, k=3):
 
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
-    build_embeddings(base_dir, 'resnet9_fast')
+    build_embeddings(base_dir, 'resnet9_triplets.pth')
     embeddings = np.load('/tmp/stanford_x.npy')
     labels = np.load('/tmp/stanford_y.npy')
     print(embeddings.shape)
