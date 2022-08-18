@@ -1,3 +1,7 @@
+"""
+Level 2:
+Refactor
+"""
 import os
 from pathlib import Path
 import random
@@ -14,6 +18,7 @@ from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
 from torchvision import transforms
+from easydict import EasyDict
 
 from ffcv.writer import DatasetWriter
 from ffcv.fields import RGBImageField, IntField, FloatField
@@ -99,8 +104,6 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
         transforms.Normalize(127., 50.)
     ])
 
-
-
     label_pipeline = [IntDecoder(), ToTensor(), ToDevice(0), Squeeze()]
 
     # Pipeline for each data field
@@ -121,7 +124,9 @@ def ffcv_loader_by_df(df, base_dir, write_path, random_order=False, batch_size=1
     return loader
 
 
+SPLIT_CLASSES = 4
 NUM_CLASSES = 4
+
 
 
 class DatasetS(Dataset):
@@ -152,23 +157,19 @@ def remap_labels(labels):
     mapper = {klass: ordered for ordered, klass in enumerate(classes)}
     return np.array([mapper[old_label] for old_label in labels])
 
-def main():
-    base_dir = Path('/home/kirill/data/stanford/')
+
+def get_loaders(base_dir, super_classes=False, split=(20_000, 12_000)):
     data_dir = base_dir / 'Stanford_Online_Products'
     small_dir = base_dir / 'small'
-    checkpoint_dir = base_dir / 'models'
-
-    random.seed(SEED)
-    np.random.seed(SEED)
-
     df = pd.read_csv(data_dir / 'Ebay_train.txt', delim_whitespace=True, index_col='image_id')
-    df = df[df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
-    # df['labels'] = (df.super_class_id) - 1
-    df['labels'] = remap_labels(df.class_id)
+    df = df[df.super_class_id.isin(np.arange(SPLIT_CLASSES) + 1)]
+    if super_classes:
+        df['labels'] = remap_labels(df.super_class_id)
+    else:
+        df['labels'] = remap_labels(df.class_id)
 
-
-    idx = np.random.choice(range(len(df)), 20000, replace=False)
-    split = 12000
+    idx = np.random.choice(range(len(df)), split[0], replace=False)
+    split = split[1]
     df = df.iloc[idx]
 
     train_loader = ffcv_loader_by_df(
@@ -179,45 +180,76 @@ def main():
     val_loader = ffcv_loader_by_df(
         val_df, small_dir, '/tmp/ds_val.beton', random_order=False, batch_size=500
     )
+    return train_loader, val_loader
 
-    max_class = np.max(df['labels'])
-    print(max_class)
-    model = ResNet9(max_class+1).cuda()
-    # model = SimpleCNN(NUM_CLASSES).cuda()
-    optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
-    criterion = torch.nn.CrossEntropyLoss()
 
-    train_iter = 0
-    writer = SummaryWriter()
-    for epoch in tqdm(range(100)):
-        model.train()
-        for x, y in train_loader:
-            optimizer.zero_grad()
-            x, y = x.cuda(), y.cuda()
-            preds = model(x)
-            loss = criterion(preds, y)
-            loss.backward()
-            optimizer.step()
-            writer.add_scalar('Loss/train', loss.item(), train_iter)
-            train_iter += 1
+class CrossEntropyTrainer:
+    def __init__(self, model, checkpoint_path, epochs):
+        self.model = model
+        self.checkpoint_path = checkpoint_path
+        self.epochs = epochs
 
-        with torch.no_grad():
-            model.eval()
-            epoch_losses = []
-            correct = []
-
-            for x, y in val_loader:
+    def train(self, train_loader, val_loader):
+        model = self.model
+        optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
+        criterion = torch.nn.CrossEntropyLoss()
+        train_iter = 0
+        writer = SummaryWriter()
+        for epoch in tqdm(range(self.epochs)):
+            model.train()
+            for x, y in train_loader:
+                optimizer.zero_grad()
                 x, y = x.cuda(), y.cuda()
                 preds = model(x)
                 loss = criterion(preds, y)
-                epoch_losses.append(loss.item())
-                correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
+                loss.backward()
+                optimizer.step()
+                writer.add_scalar('Loss/train', loss.item(), train_iter)
+                train_iter += 1
 
-            writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
-            writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
+            with torch.no_grad():
+                model.eval()
+                epoch_losses = []
+                correct = []
 
-    writer.close()
-    torch.save(model.state_dict(), checkpoint_dir / 'resnet9.pth')
+                for x, y in val_loader:
+                    x, y = x.cuda(), y.cuda()
+                    preds = model(x)
+                    loss = criterion(preds, y)
+                    epoch_losses.append(loss.item())
+                    correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
+
+                writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
+                writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
+
+        writer.close()
+        torch.save(model.state_dict(), self.checkpoint_path)
+
+
+def main():
+    args = EasyDict({
+        'base_dir': '/home/kirill/data/stanford/',
+        'method': 'triplets',  # ['classification', 'triplets']
+        'super_classes': True,
+        'model_label': 'resnet9_fast.pth'
+    })
+    base_dir = Path(args.base_dir)
+    checkpoint_dir = base_dir / 'models'
+
+    random.seed(SEED)
+    np.random.seed(SEED)
+    train_loader, val_loader = get_loaders(
+        base_dir, super_classes=args.super_classes, split=(20_000, 12_000)
+    )
+
+    if args.super_classes:
+        num_classes = 4
+    else:
+        num_classes = 3580
+
+    model = ResNet9(num_classes).cuda()
+    trainer = CrossEntropyTrainer(model, checkpoint_dir / args.model_label, epochs=5)
+    trainer.train(train_loader, val_loader)
 
 
 if __name__ == '__main__':

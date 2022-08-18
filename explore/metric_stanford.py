@@ -1,9 +1,3 @@
-"""
-Lvl 7
-=====
-multiclasses?
-"""
-
 import os
 from pathlib import Path
 import sys
@@ -15,7 +9,7 @@ import faiss
 
 sys.path.append('.')
 from explore.random_model import ResNet9
-from explore.stanford import ffcv_loader_by_df, NUM_CLASSES
+from explore.stanford import ffcv_loader_by_df, SPLIT_CLASSES
 
 
 def generate_embeddings(model, loader):
@@ -32,18 +26,18 @@ def generate_embeddings(model, loader):
     return np.array(embeddings), np.array(labels)
 
 
-def build_embeddings(base_dir):
+def build_embeddings(base_dir, model_name):
     data_dir = base_dir / 'Stanford_Online_Products'
     small_dir = base_dir / 'small'
     checkpoint_dir = base_dir / 'models'
 
-    model = ResNet9(3580)
+    model = ResNet9(4)
 
-    model.load_state_dict(torch.load(checkpoint_dir / 'resnet9.pth'))
+    model.load_state_dict(torch.load(checkpoint_dir / model_name))
     model.eval().cuda()
 
     test_df = pd.read_csv(data_dir / 'Ebay_test.txt', delim_whitespace=True, index_col='image_id')
-    test_df = test_df[test_df.super_class_id.isin(np.arange(NUM_CLASSES)+1)]
+    test_df = test_df[test_df.super_class_id.isin(np.arange(SPLIT_CLASSES)+1)]
     test_df['labels'] = (test_df.class_id) - 1
     print(len(test_df))
 
@@ -71,7 +65,7 @@ def recall_at_k(embeddings, labels, k=3):
 
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
-    build_embeddings(base_dir)
+    build_embeddings(base_dir, 'resnet9_fast')
     embeddings = np.load('/tmp/stanford_x.npy')
     labels = np.load('/tmp/stanford_y.npy')
     print(embeddings.shape)
