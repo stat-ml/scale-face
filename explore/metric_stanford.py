@@ -54,9 +54,11 @@ def build_embeddings(base_dir, model_name):
 
 def recall_at_k(embeddings, labels, k=3, cosine=False):
     d = embeddings.shape[-1]
-    index = faiss.IndexFlatL2(d)
     if cosine:
         embeddings = embeddings / np.linalg.norm(embeddings, axis=-1, keepdims=True)
+        index = faiss.IndexFlat(d, faiss.METRIC_INNER_PRODUCT)
+    else:
+        index = faiss.IndexFlatL2(d)
     index.add(embeddings)
     print(index.ntotal)
     distances, indices = index.search(embeddings, k+1)
@@ -77,7 +79,7 @@ def main():
     for k in range(10):
         k = 2**k
         print(k)
-        print(recall_at_k(embeddings, labels, k, cosine=False))
+        print(recall_at_k(embeddings, labels, k, cosine=True))
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 """
-Level 6:
-cosine index?
+Level 7:
+knn val f1
 """
 import os
 from pathlib import Path
