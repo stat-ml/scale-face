@@ -1,6 +1,6 @@
 """
 Level 8:
-arcface
+arcface! Finally! Hooray!
 """
 import os
 from pathlib import Path
@@ -23,9 +23,9 @@ SEED = 42
 def main():
     args = EasyDict({
         'base_dir': '/home/kirill/data/stanford/',
-        'method': 'triplets',  # ['classification', 'triplets']
+        'method': 'arcface',  # ['classification', 'triplets']
         'super_classes': False,
-        'model_label': 'resnet9_triplets.pth'
+        'model_label': 'resnet9_arcface.pth'
     })
     base_dir = Path(args.base_dir)
     checkpoint_dir = base_dir / 'models'
@@ -41,11 +41,13 @@ def main():
     else:
         num_classes = 3580
 
+    embedding_size = 128
+
     model = ResNet9(num_classes).cuda()
     # trainer = CrossEntropyTrainer(model, checkpoint_dir / args.model_label, epochs=5)
-    trainer = TripletsTrainer(model, checkpoint_dir / args.model_label, epochs=300)
-    # trainer = ArcFaceTrainer(model, checkpoint_dir / args.model_label, epochs=300)
-    trainer.train(train_loader, val_loader)
+    # trainer = TripletsTrainer(model, checkpoint_dir / args.model_label, epochs=300)
+    trainer = ArcFaceTrainer(model, checkpoint_dir / args.model_label, epochs=300)
+    trainer.train(train_loader, val_loader, num_classes=num_classes, embedding_size=128)
 
 
 if __name__ == '__main__':

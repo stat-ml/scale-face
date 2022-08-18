@@ -32,9 +32,9 @@ def build_embeddings(base_dir, model_name):
     checkpoint_dir = base_dir / 'models'
 
     checkpoint = torch.load(checkpoint_dir / model_name)
-
-    model = ResNet9(3580)
-
+    num_classes = list(checkpoint.values())[-2].shape[0]  # Wow, so magick!
+    print(num_classes)
+    model = ResNet9(num_classes)
     model.load_state_dict(checkpoint)
     model.eval().cuda()
 
@@ -71,7 +71,7 @@ def recall_at_k(embeddings, labels, k=3, cosine=False):
 
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
-    build_embeddings(base_dir, 'resnet9_triplets.pth')
+    build_embeddings(base_dir, 'resnet9_arcface.pth')
     embeddings = np.load('/tmp/stanford_x.npy')
     labels = np.load('/tmp/stanford_y.npy')
     print(embeddings.shape)
