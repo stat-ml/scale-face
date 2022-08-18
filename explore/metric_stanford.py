@@ -9,7 +9,7 @@ import faiss
 
 sys.path.append('.')
 from explore.random_model import ResNet9
-from explore.stanford import ffcv_loader_by_df, SPLIT_CLASSES
+from explore.stanford_dataset import ffcv_loader_by_df, SPLIT_CLASSES
 
 
 def generate_embeddings(model, loader):
