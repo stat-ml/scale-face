@@ -52,9 +52,11 @@ def build_embeddings(base_dir, model_name):
     np.save('/tmp/stanford_y.npy', y)
 
 
-def recall_at_k(embeddings, labels, k=3):
+def recall_at_k(embeddings, labels, k=3, cosine=False):
     d = embeddings.shape[-1]
     index = faiss.IndexFlatL2(d)
+    if cosine:
+        embeddings = embeddings / np.linalg.norm(embeddings, axis=-1, keepdims=True)
     index.add(embeddings)
     print(index.ntotal)
     distances, indices = index.search(embeddings, k+1)
@@ -75,7 +77,7 @@ def main():
     for k in range(10):
         k = 2**k
         print(k)
-        print(recall_at_k(embeddings, labels, k))
+        print(recall_at_k(embeddings, labels, k, cosine=False))
 
 
 if __name__ == '__main__':

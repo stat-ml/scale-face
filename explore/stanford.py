@@ -1,6 +1,6 @@
 """
 Level 6:
-precision
+cosine index?
 """
 import os
 from pathlib import Path
@@ -226,6 +226,17 @@ class CrossEntropyTrainer:
         torch.save(model.state_dict(), self.checkpoint_path)
 
 
+def knn_eval(model, loader, writer):
+    embeddings = []
+    labels = []
+    # with torch.no_grad()
+    #     for x, y in loader:
+    #         model(x)
+    #         embeddings.append()
+    #         pass
+    # pass
+
+
 class TripletsTrainer(CrossEntropyTrainer):
     def train(self, train_loader, val_loader):
         model = self.model
@@ -263,9 +274,10 @@ class TripletsTrainer(CrossEntropyTrainer):
                     epoch_losses.append(loss.item())
 
                     # correct.extend(list((torch.argmax(preds, dim=-1) == y).detach().cpu()))
-
                 writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
             #     writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
+
+            knn_eval(model, val_loader, writer)
 
         writer.close()
         torch.save(model.state_dict(), self.checkpoint_path)
