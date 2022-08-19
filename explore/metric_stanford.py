@@ -69,6 +69,34 @@ def recall_at_k(embeddings, labels, k=3, cosine=False):
     return recall
 
 
+def multi_recall(embeddings, labels):
+    for k in range(10):
+        k = 2**k
+        print(k)
+        print(recall_at_k(embeddings, labels, k, cosine=True))
+
+
+import matplotlib.pyplot as plt
+
+def recall_with_rejection(embeddings, labels, k=5):
+    # uncertainties = torch.norm(predictions, dim=-1).cpu()
+    confidences = np.linalg.norm(embeddings, axis=-1)
+    print(recall_at_k(embeddings, labels, 4, cosine=True))
+    print(confidences)
+
+    splits = np.arange(0, 0.3, 0.025)
+    idxs = np.argsort(confidences)
+    embeddings = embeddings[idxs]
+    labels = labels[idxs]
+    recalls = []
+    for split in splits:
+        start_idx = int(split * len(labels))
+        recalls.append(recall_at_k(embeddings[start_idx:], labels[start_idx:], k=k))
+
+    plt.plot(splits, recalls)
+    plt.show()
+
+
 def main():
     base_dir = Path('/home/kirill/data/stanford/')
     build_embeddings(base_dir, 'resnet9_arcface.pth')
@@ -76,10 +104,8 @@ def main():
     labels = np.load('/tmp/stanford_y.npy')
     print(embeddings.shape)
 
-    for k in range(10):
-        k = 2**k
-        print(k)
-        print(recall_at_k(embeddings, labels, k, cosine=True))
+    # multi_recall(embeddings, labels)
+    recall_with_rejection(embeddings, labels, k=10)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,8 @@
 """
-Level 8:
-arcface! Finally! Hooray!
+Level 2:
+rejection
 """
+
 import os
 from pathlib import Path
 import random
