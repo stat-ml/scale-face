@@ -1,4 +1,86 @@
 from torch import nn
+import torch
+
+
+def get_model(name, num_classes, checkpoint=None):
+    """
+    Builds a model from a predefined zoo
+    """
+    if name == 'resnet9':
+        model = ResNet9(num_classes)
+        if checkpoint is not None:
+            model.load_state_dict(torch.load(checkpoint))
+            model.eval()
+    else:
+        raise ValueError('Incorrect model name')
+    return model
+
+
+def get_confidence_model(name, num_classes, backbone_checkpoint=None):
+    if name == 'resnet9_scale':
+        backbone = get_model('resnet9', num_classes, checkpoint=backbone_checkpoint)
+        head = ScaleHead
+
+    """
+    Builds a model from a pretrained zoo with returning the both prediction and uncertainty
+    """
+    return None
+
+
+
+
+class ScaleHead(nn.Module):
+    def __init__(self, num_features):
+        super().__init__()
+        self.num_features = num_features
+
+        self.linear = nn.Linear(num_features, num_features)
+        self.scale = nn.Linear(num_features, 1)
+        # self.scale_value = nn.Parameter
+
+    def forward(self, x):
+        features = self.linear(x)
+        self.scale = self.scale(x)
+        return features, self.scale
+
+
+
+
+class PFEHead(nn.Module):
+    def __init__(self, in_feat=512, learnable=True):
+        super(PFEHead, self).__init__()
+        self.learnable = learnable
+        self.fc1 = nn.Linear(in_feat * 6 * 7, in_feat)
+        self.bn1 = nn.BatchNorm1d(in_feat, affine=True)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(in_feat, in_feat)
+        self.bn2 = nn.BatchNorm1d(in_feat, affine=False)
+        self.gamma = nn.Parameter(torch.Tensor([1e-4]))
+        self.beta = nn.Parameter(torch.Tensor([-7.0]))
+
+    def forward(self, x):
+        x = x / x.norm(dim=-1, keepdim=True)
+        x = self.relu(self.bn1(self.fc1(x)))
+        x = self.bn2(self.fc2(x))
+        x = self.gamma * x + self.beta
+        x = torch.log(1e-6 + torch.exp(x))
+        return x
+
+
+
+
+class ResNet9PFE(nn.Module):
+    def __init__(self, resnet, head):
+        super().__init__()
+        self.resnet = resnet
+        self.head = head
+
+    def forward(self, x):
+        with torch.no_grad():
+            self.resnet(x)
+            x = nn.functional.normalize(self.resnet.features, dim=-1)
+        return self.head(x)
+
 
 
 class Residual(nn.Module):
@@ -7,7 +89,6 @@ class Residual(nn.Module):
         self.module = module
 
     def forward(self, x): return x + self.module(x)
-
 
 
 class ResNet9(nn.Module):

@@ -9,9 +9,8 @@ from tqdm import tqdm
 
 
 class CrossEntropyTrainer:
-    def __init__(self, model, checkpoint_path, epochs):
+    def __init__(self, model, epochs):
         self.model = model
-        self.checkpoint_path = checkpoint_path
         self.epochs = epochs
 
     def train(self, train_loader, val_loader):
@@ -48,7 +47,7 @@ class CrossEntropyTrainer:
                 writer.add_scalar('Accuracy/val', np.mean(correct), train_iter)
 
         writer.close()
-        torch.save(model.state_dict(), self.checkpoint_path)
+        return model
 
 
 def knn_eval(model, loader, k=5, n_iter=0):
@@ -68,6 +67,21 @@ def knn_eval(model, loader, k=5, n_iter=0):
     predictions = torch.mode(idx, dim=-1).values
     accuracy = (predictions == torch.tensor(labels)).to(torch.float).mean()
     return accuracy
+
+
+class ScaleTrainer():
+    pass
+
+
+
+
+class PFETrainer:
+    def __init__(self):
+        pass
+
+    def train(self, train_loader, val_loader):
+        pass
+
 
 
 class TripletsTrainer(CrossEntropyTrainer):
@@ -109,13 +123,12 @@ class TripletsTrainer(CrossEntropyTrainer):
                 writer.add_scalar('Accuracy/val', accuracy, train_iter)
 
         writer.close()
-        torch.save(model.state_dict(), self.checkpoint_path)
+        return model
 
 
 class ArcFaceTrainer():
-    def __init__(self, model, checkpoint_path, epochs, embedding_size, num_classes):
+    def __init__(self, model, epochs, embedding_size, num_classes):
         self.model = model
-        self.checkpoint_path = checkpoint_path
         self.epochs = epochs
         self.embedding_size = embedding_size
         self.num_classes = num_classes
@@ -157,4 +170,4 @@ class ArcFaceTrainer():
                 writer.add_scalar('Accuracy/val', accuracy, train_iter)
 
         writer.close()
-        torch.save(model.state_dict(), self.checkpoint_path)
+        return model

@@ -94,6 +94,9 @@ def recall_with_rejection(embeddings, labels, k=5):
         recalls.append(recall_at_k(embeddings[start_idx:], labels[start_idx:], k=k))
 
     plt.plot(splits, recalls)
+    plt.xlabel('Rejection portion')
+    plt.ylabel("Recall@3")
+
     plt.show()
 
 
@@ -105,7 +108,7 @@ def main():
     print(embeddings.shape)
 
     # multi_recall(embeddings, labels)
-    recall_with_rejection(embeddings, labels, k=10)
+    recall_with_rejection(embeddings, labels, k=3)
 
 
 if __name__ == '__main__':
