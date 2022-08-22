@@ -55,8 +55,8 @@ def knn_eval(model, loader, k=5, n_iter=0):
     labels = []
     with torch.no_grad():
         for x, y in loader:
-            model(x.cuda())
-            embeddings.extend(model.features.detach().cpu().tolist())
+            batch_embeddings = model(x.cuda())
+            embeddings.extend(batch_embeddings.detach().cpu().tolist())
             labels.extend(y.tolist())
     embeddings = np.array(embeddings).astype(np.float32)
 
@@ -136,7 +136,6 @@ class ArcFaceTrainer():
     def train(self, train_loader, val_loader):
         model = self.model
         optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
-        miner = miners.MultiSimilarityMiner()
         criterion = losses.ArcFaceLoss(self.num_classes, self.embedding_size)
 
         train_iter = 0
@@ -147,8 +146,7 @@ class ArcFaceTrainer():
             for x, y in train_loader:
                 optimizer.zero_grad()
                 x, y = x.cuda(), y.cuda()
-                preds = model(x)
-                embeddings = model.features
+                embeddings = model(x)
                 loss = criterion(embeddings, y)
                 loss.backward()
                 optimizer.step()
@@ -161,8 +159,8 @@ class ArcFaceTrainer():
 
                 for x, y in val_loader:
                     x, y = x.cuda(), y.cuda()
-                    model(x)
-                    loss = criterion(model.features, y)
+                    embeddings = model(x)
+                    loss = criterion(embeddings, y)
                     epoch_losses.append(loss.item())
 
                 writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)

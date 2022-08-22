@@ -12,10 +12,9 @@ from easydict import EasyDict
 
 import sys
 sys.path.append('.')
-from explore.random_model import SimpleCNN, ResNet9, ResNet9PFE
+from explore.random_model import get_model, get_confidence_model
 from explore.stanford_trainers import TripletsTrainer, CrossEntropyTrainer, ArcFaceTrainer
 from explore.stanford_dataset import get_loaders
-from face_lib.models.heads import PFEHead
 import torch
 
 SEED = 42
@@ -25,27 +24,14 @@ SEED = 42
 def save_model(model, checkpoint_path):
     torch.save(model.state_dict(), checkpoint_path)
 
-
-# def get_model(method, num_classes):
-#     base_dir = Path('/home/kirill/data/stanford/')
-#     if method == 'pfe':
-#         backbone = ResNet9(num_classes)
-#         head = PFEHead(128)
-#         model = ResNet9PFE(backbone, head).cuda()
-#     elif method == 'scale':
-#         backbone = ResNet9(num_classes).cuda()
-#         pass
-#     else:
-#         model = ResNet9(num_classes).cuda()
-#     return model
-
+from argparse import ArgumentParser
 
 def main():
-    args = EasyDict({
-        'base_dir': '/home/kirill/data/stanford/',
-        'method': 'scale',  # ['classification', 'triplets', 'arcface', 'scale']
-        'super_classes': False,
-    })
+    parser = ArgumentParser()
+    parser.add_argument('--base_dir', type=str, default='/home/kirill/data/stanford', help='Directory with dataset and models')
+    parser.add_argument('--method', default='classification', choices=['classification', 'triplets', 'arcface', 'scale'])
+    parser.add_argument('--super_classes', action='store_true', default=False)
+    args = parser.parse_args()
     base_dir = Path(args.base_dir)
     checkpoint_dir = base_dir / 'models'
 
@@ -64,33 +50,27 @@ def main():
 
     # 'model_label': 'resnet9_arcface.pth'
     if args.method == 'classification':
-        model = get_model('resnet9', num_classes)
+        model = get_model('resnet9', num_classes).cuda()
         trainer = CrossEntropyTrainer(model, epochs=5)
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_classification.pth')
     elif args.method == 'triplets':
-        model = get_model('resnet9', num_classes)
+        model = get_model('resnet9_embeddings', num_classes).cuda()
         trainer = TripletsTrainer(model, epochs=120)
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_triplets.pth')
-    elif args.method == 'argface':
-        model = get_model('resnet9', num_classes)
+    elif args.method == 'arcface':
+        model = get_model('resnet9_embeddings', num_classes).cuda()
         trainer = ArcFaceTrainer(
             model, embedding_size=embedding_size, num_classes=num_classes,
-            epochs=120
+            epochs=50
         )
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_arcface.pth')
     elif args.method == 'scale':
-        backbone = get_confidence_model('resnet9_scale', num_classes, 'resnet9_arcface.pth')
-
-
-
-    # elif args.method == 'scale':
-    #     trainer = ScaleTrainer()
-    # else:
-    #     raise ValueError
-    # trainer.train(train_loader, val_loader)
+        model = get_confidence_model('resnet9_scale', num_classes, checkpoint_dir / 'resnet9_arcface.pth')
+    else:
+        raise ValueError('Incorrect method')
 
 
 if __name__ == '__main__':

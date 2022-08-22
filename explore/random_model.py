@@ -8,18 +8,21 @@ def get_model(name, num_classes, checkpoint=None):
     """
     if name == 'resnet9':
         model = ResNet9(num_classes)
-        if checkpoint is not None:
-            model.load_state_dict(torch.load(checkpoint))
-            model.eval()
+    elif name == 'resnet9_embeddings':
+        model = Resnet9Embeddings(num_classes)
     else:
         raise ValueError('Incorrect model name')
+
+    if checkpoint is not None:
+        model.load_state_dict(torch.load(checkpoint))
+        model.eval()
     return model
 
 
 def get_confidence_model(name, num_classes, backbone_checkpoint=None):
     if name == 'resnet9_scale':
         backbone = get_model('resnet9', num_classes, checkpoint=backbone_checkpoint)
-        head = ScaleHead
+        ScaleFace(backbone, num_features=128)
 
     """
     Builds a model from a pretrained zoo with returning the both prediction and uncertainty
@@ -27,23 +30,22 @@ def get_confidence_model(name, num_classes, backbone_checkpoint=None):
     return None
 
 
-
-
-class ScaleHead(nn.Module):
-    def __init__(self, num_features):
+class ScaleFace(nn.Module):
+    def __init__(self, backbone, num_features):
         super().__init__()
+        self.backbone = backbone
         self.num_features = num_features
 
         self.linear = nn.Linear(num_features, num_features)
-        self.scale = nn.Linear(num_features, 1)
-        # self.scale_value = nn.Parameter
+        self.scale_layer = nn.Linear(num_features, 1)
 
     def forward(self, x):
-        features = self.linear(x)
-        self.scale = self.scale(x)
-        return features, self.scale
-
-
+        with torch.no_grad:
+            self.backbone(x)
+            x = self.backbone.features
+        embeddings = self.linear(x)
+        self.scale = self.scale_layer(x)
+        return embeddings, self.scale
 
 
 class PFEHead(nn.Module):
@@ -65,21 +67,6 @@ class PFEHead(nn.Module):
         x = self.gamma * x + self.beta
         x = torch.log(1e-6 + torch.exp(x))
         return x
-
-
-
-
-class ResNet9PFE(nn.Module):
-    def __init__(self, resnet, head):
-        super().__init__()
-        self.resnet = resnet
-        self.head = head
-
-    def forward(self, x):
-        with torch.no_grad():
-            self.resnet(x)
-            x = nn.functional.normalize(self.resnet.features, dim=-1)
-        return self.head(x)
 
 
 
@@ -127,6 +114,16 @@ class ResNet9(nn.Module):
         self.features = self.backbone(x)
         x = self.head(self.features)
         return x
+
+
+class Resnet9Embeddings(ResNet9):
+    def __init__(self, num_classes):
+        super().__init__(num_classes)
+        del(self.head)
+
+    def forward(self, x):
+        return self.backbone(x)
+
 
 
 class SimpleCNN(nn.Module):
