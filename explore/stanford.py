@@ -48,17 +48,18 @@ def main():
 
     embedding_size = 128
 
-    # 'model_label': 'resnet9_arcface.pth'
     if args.method == 'classification':
         model = get_model('resnet9', num_classes).cuda()
         trainer = CrossEntropyTrainer(model, epochs=5)
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_classification.pth')
+
     elif args.method == 'triplets':
         model = get_model('resnet9_embeddings', num_classes).cuda()
         trainer = TripletsTrainer(model, epochs=120)
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_triplets.pth')
+
     elif args.method == 'arcface':
         model = get_model('resnet9_embeddings', num_classes).cuda()
         trainer = ArcFaceTrainer(
@@ -67,8 +68,10 @@ def main():
         )
         trainer.train(train_loader, val_loader)
         save_model(model, checkpoint_dir / 'resnet9_arcface.pth')
+
     elif args.method == 'scale':
         model = get_confidence_model('resnet9_scale', num_classes, checkpoint_dir / 'resnet9_arcface.pth')
+        trainer = ScaleFaceTrainer(model, embedding_size, num_classes, epochs=10)
     else:
         raise ValueError('Incorrect method')
 

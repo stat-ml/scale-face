@@ -169,3 +169,50 @@ class ArcFaceTrainer():
 
         writer.close()
         return model
+
+
+
+
+class ScaleFaceTrainer():
+    def __init__(self, model, epochs, embedding_size, num_classes):
+        self.model = model
+        self.epochs = epochs
+        self.embedding_size = embedding_size
+        self.num_classes = num_classes
+
+    def train(self, train_loader, val_loader):
+        model = self.model
+        optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
+        criterion = losses.ArcFaceLoss(self.num_classes, self.embedding_size)
+
+        train_iter = 0
+        writer = SummaryWriter()
+
+        for epoch in tqdm(range(self.epochs)):
+            model.train()
+            for x, y in train_loader:
+                optimizer.zero_grad()
+                x, y = x.cuda(), y.cuda()
+                embeddings = model(x)
+                loss = criterion(embeddings, y)
+                loss.backward()
+                optimizer.step()
+                writer.add_scalar('Loss/train', loss.item(), train_iter)
+                train_iter += 1
+
+            with torch.no_grad():
+                model.eval()
+                epoch_losses = []
+
+                for x, y in val_loader:
+                    x, y = x.cuda(), y.cuda()
+                    embeddings = model(x)
+                    loss = criterion(embeddings, y)
+                    epoch_losses.append(loss.item())
+
+                writer.add_scalar('Loss/val', np.mean(epoch_losses), train_iter)
+                accuracy = knn_eval(model, val_loader, k=1, n_iter=train_iter)
+                writer.add_scalar('Accuracy/val', accuracy, train_iter)
+
+        writer.close()
+        return model

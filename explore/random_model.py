@@ -1,15 +1,18 @@
+"""
+Level 2 wc
+"""
 from torch import nn
 import torch
 
 
-def get_model(name, num_classes, checkpoint=None):
+def get_model(name, num_classes=4, checkpoint=None):
     """
     Builds a model from a predefined zoo
     """
     if name == 'resnet9':
         model = ResNet9(num_classes)
-    elif name == 'resnet9_embeddings':
-        model = Resnet9Embeddings(num_classes)
+    elif name == 'resnet9_backbone':
+        model = Resnet9Backbone()
     else:
         raise ValueError('Incorrect model name')
 
@@ -82,6 +85,19 @@ class ResNet9(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
         self.features = None
+        self.backbone = Resnet9Backbone()
+        self.head = nn.Linear(128, num_classes)
+
+
+    def forward(self, x):
+        self.features = self.backbone(x)
+        x = self.head(self.features)
+        return x
+
+
+class Resnet9Backbone(nn.Module):
+    def __init__(self):
+        super().__init__()
         def conv(in_size, out_size, kernel_size, stride, padding):
             return nn.Sequential(
                 nn.Conv2d(in_size, out_size, kernel_size=kernel_size, stride=stride, padding=padding, bias=False),
@@ -95,7 +111,6 @@ class ResNet9(nn.Module):
                 conv(channels, channels, kernel_size=3, stride=1, padding=1),
             ))
 
-
         self.backbone = nn.Sequential(
             conv(3, 64, kernel_size=3, stride=1, padding=1),
             conv(64, 128, kernel_size=5, stride=2, padding=2),
@@ -107,19 +122,6 @@ class ResNet9(nn.Module):
             nn.AdaptiveMaxPool2d((1, 1)),
             nn.Flatten(),
         )
-        self.head = nn.Linear(128, num_classes)
-
-
-    def forward(self, x):
-        self.features = self.backbone(x)
-        x = self.head(self.features)
-        return x
-
-
-class Resnet9Embeddings(ResNet9):
-    def __init__(self, num_classes):
-        super().__init__(num_classes)
-        del(self.head)
 
     def forward(self, x):
         return self.backbone(x)
