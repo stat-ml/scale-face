@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from easydict import EasyDict
 from sklearn.metrics import auc
+from tqdm import tqdm
 
 sys.path.append(".")
 from face_lib.models.iresnet import iresnet50
@@ -40,10 +41,10 @@ class Inferencer:
         self.full_model = full_model
         self.batch_size = batch_size
 
-    def __call__(self, image_paths):
+    def __call__(self, image_paths, silence=False):
         mus = {}
         sigmas = {}
-        for idx in range(0, len(image_paths), self.batch_size):
+        for idx in tqdm(range(0, len(image_paths), self.batch_size), disable=silence):
             batch_paths = image_paths[idx: idx + self.batch_size]
             batch = self.preprocessing(batch_paths)
             batch_mus, batch_sigmas = self.full_model(batch)
@@ -159,16 +160,17 @@ class Preprocessor:
     """
     Converts the list of image paths to ready-to-use tensors
     """
-    def __init__(self, base_directory, image_size=(112, 112)):
+    def __init__(self, base_directory, image_size=(112, 112), is_training=False):
         self.base_directory = Path(base_directory)
         self.image_size = image_size
+        self.is_training = is_training
 
     def _full_paths(self, paths):
         return [str(self.base_directory/p) for p in paths]
 
     def __call__(self, image_paths):
         full_paths = self._full_paths(image_paths)
-        batch = preprocess(full_paths, self.image_size)
+        batch = preprocess(full_paths, self.image_size, is_training=self.is_training)
         batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to('cuda')
         return batch
 
@@ -253,13 +255,11 @@ def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=No
         fig.savefig(save_fig_path, dpi=400)
         return fig
 
-from sklearn.metrics import auc
-
 
 def print_scores(far, name, splits, tars):
     tar_at_02 = np.array(tars)[splits == 0.2][0].round(4)
     print(far, name, tar_at_02)
-    # print(far, name, (auc(splits, tars) / splits.max()).round(4))
+    print(far, name, (auc(splits, tars) / splits.max()).round(4))
 
 
 def plot_tar_far(scores, fars):
