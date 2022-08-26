@@ -1,6 +1,3 @@
-"""
-Level 2 wc
-"""
 from torch import nn
 import torch
 

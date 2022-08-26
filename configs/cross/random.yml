@@ -1,0 +1,3 @@
+data_directory: '/home/kirill/data/faces'
+uncertainty_type: 'random'
+checkpoint_path: 'models/scaleface.pth'
