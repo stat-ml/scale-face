@@ -1,6 +1,6 @@
 """
-Lvl 10
-align
+Lvl 11
+draw green bar
 """
 
 import cv2
@@ -28,19 +28,18 @@ face_parts = ("left_eye", "right_eye", "nose", "mouth_left", "mouth_right")
 
 
 
-def detect_face(detector, frame):
-    box, confidence, landmarks = detector.detect(frame, landmarks=True)
-    if landmarks is not None:
-        confidence = confidence[0]
-        landmarks = landmarks[0]
-        box = np.round(box[0]).astype(np.int)
-        print(confidence)
-    return box, landmarks
 
 def draw_box(image, b):
     image = cv2.rectangle(image, (b[0], b[1]), (b[2], b[3]), (36, 255, 12), 2)
     return image
-    pass
+
+class Barista:
+    def __init__(self):
+        pass
+
+    def draw(self, image, confidence):
+        return image
+        pass
 
 def align_face(full_image, landmarks):
     tform = trans.SimilarityTransform()
@@ -50,19 +49,36 @@ def align_face(full_image, landmarks):
     return face_aligned
 
 
-def process_image(detector, frame):
-    try:
-        box, landmarks = detect_face(detector, frame)
-        if box is not None:
-            face_aligned = align_face(frame, landmarks)
-            print(face_aligned.shape)
 
-            frame = draw_box(frame, box)
-            cv2.imshow('frame', frame)
-    except IndexError:
-        print('wtf')
-    pass
+class Detector:
+    def __init__(self):
+        self.base = MTCNN(keep_all=True)
 
+    def detect(self, frame):
+        box, confidence, landmarks = self.base.detect(frame, landmarks=True)
+        if landmarks is not None:
+            confidence = confidence[0]
+            landmarks = landmarks[0]
+            box = np.round(box[0]).astype(np.int)
+            print(confidence)
+        return box, confidence, landmarks
+
+
+class ImageProcessor:
+    def __init__(self):
+        self.detector = Detector()
+
+    def __call__(self, frame):
+        try:
+            box, confidence, landmarks = self.detector.detect(frame)
+            if box is not None:
+                face_aligned = align_face(frame, landmarks)
+                print(face_aligned.shape)
+
+                frame = draw_box(frame, box)
+                cv2.imshow('frame', frame)
+        except IndexError:
+            print('wtf')
 
 
 def main():
@@ -70,7 +86,7 @@ def main():
 
     vid = cv2.VideoCapture(0)
 
-    detector = MTCNN(keep_all=True)
+    processor = ImageProcessor()
     frame_rate = 10
     prev = 0
 
@@ -81,7 +97,7 @@ def main():
 
         if time_elapsed > 1. / frame_rate:
             prev = time()
-            process_image(detector, frame)
+            processor(frame)
             print()
         else:
             print('.', end='', flush=True)
