@@ -1,6 +1,3 @@
-"""
-Lvl 4
-"""
 import os
 from pathlib import Path
 import random
@@ -70,7 +67,7 @@ def main():
 
     elif args.method == 'scale':
         model = get_confidence_model('resnet9_scale', num_classes, checkpoint_dir / 'resnet9_arcface.pth')
-        trainer = ScaleFaceTrainer(model, embedding_size, num_classes, epochs=10)
+        # trainer = ScaleFaceTrainer(model, embedding_size, num_classes, epochs=10)
     else:
         raise ValueError('Incorrect method')
 
