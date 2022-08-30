@@ -42,6 +42,29 @@ def draw_box(image, b):
     return image
     pass
 
+def align_face(full_image, landmarks):
+    tform = trans.SimilarityTransform()
+    tform.estimate(landmarks, src)
+    M = tform.params[0:2, :]
+    face_aligned = cv2.warpAffine(full_image, M, (112, 112), borderValue=0)
+    return face_aligned
+
+
+def process_image(detector, frame):
+    try:
+        box, landmarks = detect_face(detector, frame)
+        if box is not None:
+            face_aligned = align_face(frame, landmarks)
+            print(face_aligned.shape)
+
+            frame = draw_box(frame, box)
+            cv2.imshow('frame', frame)
+    except IndexError:
+        print('wtf')
+    pass
+
+
+
 def main():
     print('boo')
 
@@ -58,19 +81,7 @@ def main():
 
         if time_elapsed > 1. / frame_rate:
             prev = time()
-            try:
-                box, landmarks = detect_face(detector, frame)
-                if box is not None:
-                    frame = draw_box(frame, box)
-                    tform = trans.SimilarityTransform()
-                    tform.estimate(landmarks, src)
-                    M = tform.params[0:2, :]
-
-                    frame_aligned = cv2.warpAffine(frame, M, (112, 112), borderValue=0)
-
-                    cv2.imshow('frame', frame_aligned)
-            except IndexError:
-                print('wtf')
+            process_image(detector, frame)
             print()
         else:
             print('.', end='', flush=True)
