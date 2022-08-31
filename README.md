@@ -9,8 +9,10 @@ For now just install the requirements in `requirements.txt`
 
 ### Training
 
-See `scripts/train` for training scripts
+For a face recognition experiments we use iResNet-50 model. The pretrained model checkpoint could be found in Insight Face [repository](https://github.com/deepinsight/insightface/tree/master/model_zoo).
 
+You can see `scripts/train` for training scripts.
+To train you'll need the data (MS1M-V2 dataset)
 
 ### Evaluation
 
