@@ -262,6 +262,8 @@ def preprocess(
     preprocess_train = [
         ["center_crop", center_crop_size],
         ["random_flip"],
+        # ["gaussian_blur", 0.5],
+        # ["add_noise"],
         ["standardize", "mean_scale"],
     ]
     preprocess_test = [

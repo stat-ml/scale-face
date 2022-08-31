@@ -42,7 +42,6 @@ def main():
 
     print(matches.loc[idx])
     matches.loc[idx].to_csv(DIRECTORY / 'short_matches.csv', index=False, header=False)
-    import ipdb; ipdb.set_trace()
 
 
 if __name__ == '__main__':

@@ -51,7 +51,7 @@ def generate_val_test_split(dataframe, dataset_dir):
 from pathlib import Path
 
 if __name__ == '__main__':
-    name = 'calfw'
+    name = 'cplfw'
     dataset_dir = Path(f'/home/kirill/data/faces/{name}')
     df = parse_pairs(dataset_dir, name.upper())
     generate_val_test_split(df, dataset_dir)

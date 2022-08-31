@@ -12,9 +12,6 @@ print(model_0["conv1.weight"][0, 0])
 print(model_1["conv1.weight"][0, 0])
 
 
-import ipdb; ipdb.set_trace()
-
-
 
 
 

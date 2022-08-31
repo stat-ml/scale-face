@@ -70,7 +70,6 @@ colors = {
 
 # prop_cycle = plt.rcParams['axes.prop_cycle']
 # colors = prop_cycle.by_key()['color']
-# import ipdb; ipdb.set_trace()
 
 def plot_TAR_FAR_different_methods(
         results, rejected_portions, AUCs, title=None, save_figs_path=None

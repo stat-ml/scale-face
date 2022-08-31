@@ -11,8 +11,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from easydict import EasyDict
 from sklearn.metrics import auc
+from tqdm import tqdm
 
-sys.path.append(".")
+sys.path.append("../../explore")
 from face_lib.models.iresnet import iresnet50
 from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.cfg import load_config
@@ -23,6 +24,10 @@ SEED = 42
 
 
 def get_pairs(data_directory, dataset, short=False):
+    """
+    generates a pandas dataset with photo_1, photo_2, label (0/1) columns
+    with positive and negative pairs to benchmark on
+    """
     pairs = pd.read_csv(data_directory / dataset / 'pairs_test.csv')
     if short:
         cut = 300
@@ -36,10 +41,10 @@ class Inferencer:
         self.full_model = full_model
         self.batch_size = batch_size
 
-    def __call__(self, image_paths):
+    def __call__(self, image_paths, silence=False):
         mus = {}
         sigmas = {}
-        for idx in range(0, len(image_paths), self.batch_size):
+        for idx in tqdm(range(0, len(image_paths), self.batch_size), disable=silence):
             batch_paths = image_paths[idx: idx + self.batch_size]
             batch = self.preprocessing(batch_paths)
             batch_mus, batch_sigmas = self.full_model(batch)
@@ -72,9 +77,17 @@ class EmbeddingNorm:
         with torch.no_grad():
             output = self.backbone(batch)
             predictions = output['feature']
-            uncertainties = torch.norm(predictions, dim=-1).cpu()
+            uncertainties = self._uncertainty(predictions)
             predictions = torch.nn.functional.normalize(predictions, dim=-1).cpu()
         return predictions, uncertainties
+
+    def _uncertainty(self, predictions):
+        return torch.norm(predictions, dim=-1).cpu()
+
+
+class RandomModel(EmbeddingNorm):
+    def _uncertainty(self, predictions):
+        return torch.rand(len(predictions))
 
 
 class ScaleFace:
@@ -132,6 +145,8 @@ class PFE:
 def load_model(uncertainty_type, checkpoint_path):
     if uncertainty_type == 'embedding_norm':
         model = EmbeddingNorm().from_checkpoint(checkpoint_path)
+    elif uncertainty_type == 'random':
+        model = RandomModel().from_checkpoint(checkpoint_path)
     elif uncertainty_type == 'scale':
         model = ScaleFace().from_checkpoint(checkpoint_path)
     elif uncertainty_type == 'pfe':
@@ -145,16 +160,17 @@ class Preprocessor:
     """
     Converts the list of image paths to ready-to-use tensors
     """
-    def __init__(self, base_directory, image_size=(112, 112)):
+    def __init__(self, base_directory, image_size=(112, 112), is_training=False):
         self.base_directory = Path(base_directory)
         self.image_size = image_size
+        self.is_training = is_training
 
     def _full_paths(self, paths):
         return [str(self.base_directory/p) for p in paths]
 
     def __call__(self, image_paths):
         full_paths = self._full_paths(image_paths)
-        batch = preprocess(full_paths, self.image_size)
+        batch = preprocess(full_paths, self.image_size, is_training=self.is_training)
         batch = torch.from_numpy(batch).permute(0, 3, 1, 2).to('cuda')
         return batch
 
@@ -189,7 +205,6 @@ class Scorer:
 def plot_rejection(scores):
     for name, score in scores.items():
         preds = (score.similarities > 0.19).astype(np.uint)
-        print((preds == score.labels).mean())
 
         correct = np.array((preds == score.labels))
         idxs = np.argsort(score.confidences)
@@ -224,7 +239,6 @@ def tar_far_rejected(confidences, similarities, labels, far):
     for split in splits:
         start_idx = int(split * len(labels))
         tars.append(tar_at_far(similarities[start_idx:], labels[start_idx:], far))
-    print(auc(splits, tars))
 
     return splits, tars
 
@@ -242,6 +256,12 @@ def plot_rejected_TAR_FAR(table, rejected_portions, title=None, save_fig_path=No
         return fig
 
 
+def print_scores(far, name, splits, tars):
+    tar_at_02 = np.array(tars)[splits == 0.2][0].round(4)
+    print(far, name, tar_at_02)
+    print(far, name, (auc(splits, tars) / splits.max()).round(4))
+
+
 def plot_tar_far(scores, fars):
     fig, axes = plt.subplots(1, len(fars), figsize=(12, 4), dpi=200)
 
@@ -255,11 +275,18 @@ def plot_tar_far(scores, fars):
             )
 
             ax.plot(splits, tars, label=name, linewidth=2, alpha=0.8)
+
+            print_scores(far, name, splits, tars)
+
         ax.set_title(f'TAR@FAR={far}')
         ax.legend()
 
     # plt.legend()
+    plt.savefig('tmp/fig.png', dpi=150)
     plt.show()
+
+def calculate_scores():
+    pass
 
 
 
@@ -273,12 +300,14 @@ def main():
 
     parser = ArgumentParser()
     parser.add_argument('--dataset', default='cplfw', choices=['cplfw', 'calfw'])
+    parser.add_argument('--cached', default=False, action='store_true')
     cli_args = parser.parse_args()
     dataset = cli_args.dataset
 
     cache_file = f'/tmp/scores_{dataset}.data'
     configs = {
-        'Embedding norm': './configs/cross/play.yaml',
+        'Random': './configs/cross/random.yml',
+        'Embedding norm': './configs/cross/norm.yaml',
         'PFE': './configs/cross/pfe.yaml',
         'ScaleFace': './configs/cross/scale.yaml',
     }
@@ -288,32 +317,33 @@ def main():
     np.random.random(SEED)
     torch.manual_seed(SEED)
 
-    for name, config in configs.items():
-        args = load_config(config)
-        args.images_path = f'{dataset}/aligned images'
-        args.short = False
-        data_directory = Path(args.data_directory)
-        pairs = get_pairs(data_directory, dataset, short=args.short)
-        photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
+    if not cli_args.cached:
+        for name, config in configs.items():
+            args = load_config(config)
+            args.images_path = f'{dataset}/aligned images'
+            args.short = False
+            data_directory = Path(args.data_directory)
+            pairs = get_pairs(data_directory, dataset, short=args.short)
+            photo_list = np.unique(pairs.photo_1.to_list() + pairs.photo_2.to_list())
 
-        preprocessor = Preprocessor(data_directory / args.images_path)
-        checkpoint_path = data_directory / args.checkpoint_path
-        model = load_model(args.uncertainty_type, checkpoint_path)
+            preprocessor = Preprocessor(data_directory / args.images_path)
+            checkpoint_path = data_directory / args.checkpoint_path
+            model = load_model(args.uncertainty_type, checkpoint_path)
 
-        inferencer = Inferencer(preprocessor, model, 100)
-        mus, sigmas = inferencer(photo_list)
+            inferencer = Inferencer(preprocessor, model, 100)
+            mus, sigmas = inferencer(photo_list)
 
-        print(np.std(list(sigmas.values())))
-        scorer = Scorer()
-        scores[name] = scorer(pairs, mus, sigmas)
+            print(np.std(list(sigmas.values())))
+            scorer = Scorer()
+            scores[name] = scorer(pairs, mus, sigmas)
 
-    with open(cache_file, 'wb') as f:
-        pickle.dump(scores, f)
+        with open(cache_file, 'wb') as f:
+            pickle.dump(scores, f)
 
-    # plot_rejection(scores)
 
     with open(cache_file, 'rb') as f:
         scores = pickle.load(f)
+
     fars = [1e-1, 1e-2, 5e-3]
     plot_tar_far(scores, fars)
 
