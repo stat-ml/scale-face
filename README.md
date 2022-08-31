@@ -1,10 +1,16 @@
-# Face library for huawei project
+# ScaleFace
 
-Repository is dedicated to evaluation of results of uncertainty estimation.
+Repository is dedicated to evaluation of results of uncertainty estimation by ScaleFace method. The repository provides source code for experiments from paper.
 
 ### INSTALL
 
 For now just install the requirements in `requirements.txt`
+
+
+### Training
+
+See `scripts/train` for training scripts
+
 
 ### Evaluation
 
