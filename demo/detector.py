@@ -1,5 +1,5 @@
 import cv2
-from time import sleep, time
+from time import time
 import sys
 
 import numpy as np
@@ -8,7 +8,7 @@ from facenet_pytorch import MTCNN
 from skimage import transform as trans
 
 sys.path.append(".")
-from explore.cross import ScaleFace, preprocess
+from face_lib.evaluation.cross import ScaleFace, preprocess
 import torch
 
 

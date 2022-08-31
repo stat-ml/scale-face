@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 
 sys.path.append('.')
-from explore.cross import load_config, get_pairs, Preprocessor, load_model, Inferencer
+from face_lib.evaluation.cross import load_config, get_pairs, Preprocessor, load_model, Inferencer
 
 
 def main():

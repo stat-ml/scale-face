@@ -13,7 +13,7 @@ from easydict import EasyDict
 from sklearn.metrics import auc
 from tqdm import tqdm
 
-sys.path.append(".")
+sys.path.append("../../explore")
 from face_lib.models.iresnet import iresnet50
 from face_lib.utils.imageprocessing import preprocess
 from face_lib.utils.cfg import load_config
