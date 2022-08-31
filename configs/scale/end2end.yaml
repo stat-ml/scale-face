@@ -1,0 +1,37 @@
+title: "iresnet_ms1m_pair_classifier_smart_cosine"
+backbone:
+    name: "iresnet50_normalized"
+    learnable: false
+
+scale_predictor:
+    name: "MLPHead"
+    num_feats: [25088, 512, 1]
+    batch_norm: true
+    activation: "exp"
+    fp16: true
+
+is_distributed: true
+resume: false
+source: null
+loss: "arcface_scale"
+
+scale_source: null
+output: "/beegfs/home/r.kail/faces/test"
+embedding_size: 512
+sample_rate: 1.0
+fp16: true
+momentum: 0.9
+weight_decay: 0.0005
+batch_size: 128
+lr: 0.0001  # batch size is 512
+scale_lr: 0.0001
+freeze_backbone: false
+
+dataset: "ms1m"
+rec: "/gpfs/gpfs0/k.fedyanin/space/ms1m"
+num_classes: 93431
+num_image: 5179510
+num_epoch: 24
+warmup_epoch: -1
+decay_epoch: [6, 12, 18]
+val_targets: ["lfw", "cfp_fp", "agedb_30"]
