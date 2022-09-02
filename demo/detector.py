@@ -30,7 +30,7 @@ face_parts = ("left_eye", "right_eye", "nose", "mouth_left", "mouth_right")
 
 def draw_box(image, b):
     # color = (36, 255, 12)
-    color = (240, 240, 240)
+    color = (200, 200, 200)
     image = cv2.rectangle(image, (b[0], b[1]), (b[2], b[3]), color, 1)
     return image
 
@@ -45,7 +45,9 @@ def align_face(full_image, landmarks):
 
 class Detector:
     def __init__(self):
-        self.base = MTCNN(keep_all=True, thresholds=[0.4, 0.4, 0.4])
+        self.base = MTCNN(
+            thresholds=[0.8, 0.7, 0.7], device='cuda', post_process=False, min_face_size=30
+        )
 
     def detect(self, frame):
         box, confidence, landmarks = self.base.detect(frame, landmarks=True)
@@ -72,7 +74,7 @@ class Barista:
 
     def __call__(self, image, confidence):
         self._update_confidence(confidence)
-        print(self.confidence, 'res')
+        # print(self.confidence, 'res')
 
         bar_top = (600, int(470 - 470 * self.confidence))
         color = self._color(self.confidence)
@@ -140,6 +142,7 @@ def putBText(img,text,text_offset_x=20,text_offset_y=20,vspace=10,hspace=10, fon
     return img
 
 
+import random
 
 class ImageProcessor:
     def __init__(self, full_screen=False):
@@ -154,15 +157,14 @@ class ImageProcessor:
 
     def __call__(self, frame):
         try:
+            self.prev_confidence = 20*random.random() # TODO: delete this shit
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             box, confidence, landmarks = self.detector.detect(frame_rgb)
             if box is not None:
                 face_aligned = align_face(frame_rgb, landmarks)
                 scale_confidence = self.conman(face_aligned)
-                print(scale_confidence)
                 self.prev_confidence = scale_confidence
-
                 frame = draw_box(frame, box)
             frame = self.barista(frame, self.prev_confidence)
             frame = putBText(
@@ -198,7 +200,7 @@ def main():
     parser.add_argument(
         '--gif', default=False, action='store_true', help='record a gif in tmp folder'
     )
-    parser.add_argument('--frame_rate', type=float, default=5.)
+    parser.add_argument('--frame_rate', type=float, default=None)
     parser.add_argument('--full_screen', default=False, action='store_true')
     args = parser.parse_args()
 
@@ -208,20 +210,23 @@ def main():
     prev = 0
 
     frames = []
+    fpses = []
 
     while (True):
         time_elapsed = time() - prev
         # Capture the video frame by frame
         ret, frame = vid.read()
 
-        if time_elapsed > 1. / args.frame_rate:
-            prev = time()
-            modified_frame = processor(frame)
-            if args.gif:
-                frames.append(modified_frame)
-            print()
-        else:
-            print('.', end='', flush=True)
+        if args.frame_rate is not None and time_elapsed < 1. / args.frame_rate:
+            continue
+        # else:
+        fpses.append(int(1 / time_elapsed))
+        print('FPS', fpses[-1])
+
+        prev = time()
+        modified_frame = processor(frame)
+        if args.gif:
+            frames.append(modified_frame)
 
         # the 'q' button is set as the
         # quitting button you may use any
@@ -233,8 +238,9 @@ def main():
     vid.release()
     # Destroy all the windows
     cv2.destroyAllWindows()
+    print('Mean FPS', np.mean(fpses))
 
-    if args.gif:
+    if args.gif and args.frame_rate is not None:
         frames = [
             cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) for frame in frames if frame is not None
         ]
