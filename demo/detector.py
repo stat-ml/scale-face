@@ -10,6 +10,8 @@ from skimage import transform as trans
 sys.path.append(".")
 from face_lib.evaluation.cross import ScaleFace, preprocess
 import torch
+import imageio
+import pyshine as ps
 
 
 src = np.array(
@@ -97,12 +99,17 @@ class ScaleConfidence:
         return res[1].item()
 
 
+
 class ImageProcessor:
-    def __init__(self):
+    def __init__(self, fullscreen=False):
         self.detector = Detector()
         self.barista = Barista((0, 14), alpha=0.25)
         self.conman = ScaleConfidence()
         self.prev_confidence = 0
+
+        if fullscreen:
+            cv2.namedWindow("ScaleFace", cv2.WND_PROP_FULLSCREEN)
+            cv2.setWindowProperty("ScaleFace", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     def __call__(self, frame):
         try:
@@ -116,28 +123,42 @@ class ImageProcessor:
                 self.prev_confidence = scale_confidence
 
                 frame = draw_box(frame, box)
-                frame = self.barista(frame, scale_confidence)
-            else:
-                frame = self.barista(frame, self.prev_confidence)
+            frame = self.barista(frame, self.prev_confidence)
+            frame = ps.putBText(
+                frame, 'Face recognition confidence', text_offset_x=20,
+                text_offset_y=20, vspace=10, hspace=10, font_scale=0.5,
+                background_RGB=(240, 240, 240), text_RGB=(50, 50, 50), thickness=1
+            )
+            # cv2.rectangle(frame, (40, 10), (550, 70), (50, 50, 50), -1)
+            # frame = cv2.putText(
+            #     frame, 'Face recognition confidence', org=(50, 40),
+            #     fontFace=2, fontScale=1,
+            #     color=(200, 200, 200), thickness=2
+            # )
 
-            cv2.imshow('frame', frame)
+            cv2.imshow('ScaleFace', frame)
             return frame
                 # cv2.imshow('frame', face_aligned)
         except IndexError:
             print('wtf')
 
+from argparse import ArgumentParser
 
-import imageio
 def main():
-    print('boo')
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--gif', default=False, action='store_true', help='record a gif in tmp folder'
+    )
+    args = parser.parse_args()
 
     vid = cv2.VideoCapture(0)
 
-    processor = ImageProcessor()
+    processor = ImageProcessor(fullscreen=True)
     frame_rate = 10
     prev = 0
 
     frames = []
+
     while (True):
         time_elapsed = time() - prev
         # Capture the video frame by frame
@@ -145,7 +166,9 @@ def main():
 
         if time_elapsed > 1. / frame_rate:
             prev = time()
-            frames.append(processor(frame))
+            modified_frame = processor(frame)
+            if args.gif:
+                frames.append(modified_frame)
             print()
         else:
             print('.', end='', flush=True)
@@ -161,8 +184,11 @@ def main():
     # Destroy all the windows
     cv2.destroyAllWindows()
 
-    frames = [cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) for frame in frames if frame is not None]
-    imageio.mimsave(f'tmp/scale_demo_{time()}.gif', frames, fps=int(frame_rate*0.7))
+    if args.gif:
+        frames = [
+            cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) for frame in frames if frame is not None
+        ]
+        imageio.mimsave(f'tmp/scale_demo_{time()}.gif', frames, fps=int(frame_rate*0.7))
 
 
 if __name__ == '__main__':
