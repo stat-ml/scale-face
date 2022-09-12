@@ -1,17 +1,20 @@
+"""
+lvl 1
+correct requirements
+"""
 import cv2
 from time import time
 import sys
+from argparse import ArgumentParser
 
 import numpy as np
-# from mtcnn import MTCNN
 from facenet_pytorch import MTCNN
 from skimage import transform as trans
+import torch
+import imageio
 
 sys.path.append(".")
 from face_lib.evaluation.cross import ScaleFace, preprocess
-import torch
-import imageio
-from argparse import ArgumentParser
 
 
 src = np.array(
@@ -142,14 +145,11 @@ def putBText(img,text,text_offset_x=20,text_offset_y=20,vspace=10,hspace=10, fon
     return img
 
 
-import random
-
 class ImageProcessor:
     def __init__(self, full_screen=False):
         self.detector = Detector()
-        self.barista = Barista((0, 14), alpha=0.25)
+        self.barista = Barista((0, 14), alpha=0.1)
         self.conman = ScaleConfidence()
-        self.prev_confidence = 0
 
         if full_screen:
             cv2.namedWindow("ScaleFace", cv2.WND_PROP_FULLSCREEN)
@@ -157,16 +157,17 @@ class ImageProcessor:
 
     def __call__(self, frame):
         try:
-            self.prev_confidence = 20*random.random() # TODO: delete this shit
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
             box, confidence, landmarks = self.detector.detect(frame_rgb)
             if box is not None:
                 face_aligned = align_face(frame_rgb, landmarks)
                 scale_confidence = self.conman(face_aligned)
-                self.prev_confidence = scale_confidence
+                final_confidence = scale_confidence
                 frame = draw_box(frame, box)
-            frame = self.barista(frame, self.prev_confidence)
+            else:
+                final_confidence = 0
+            frame = self.barista(frame, final_confidence)
             frame = putBText(
                 frame, 'Face recognition confidence', text_offset_x=20,
                 text_offset_y=20, vspace=10, hspace=10, font_scale=1,
@@ -202,9 +203,11 @@ def main():
     )
     parser.add_argument('--frame_rate', type=float, default=None)
     parser.add_argument('--full_screen', default=False, action='store_true')
+    parser.add_argument('--verbose', default=False, action='store_true')
+    parser.add_argument('--camera', type=int, default=0)
     args = parser.parse_args()
 
-    vid = cv2.VideoCapture(0)
+    vid = cv2.VideoCapture(args.camera)
 
     processor = ImageProcessor(full_screen=args.full_screen)
     prev = 0
@@ -221,7 +224,8 @@ def main():
             continue
         # else:
         fpses.append(int(1 / time_elapsed))
-        print('FPS', fpses[-1])
+        if args.verbose:
+            print('FPS', fpses[-1])
 
         prev = time()
         modified_frame = processor(frame)
