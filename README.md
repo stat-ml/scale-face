@@ -2,6 +2,36 @@
 
 Repository is dedicated to evaluation of results of uncertainty estimation by ScaleFace method. The repository provides source code for experiments from paper.
 
+
+
+### What is ScaleFace?
+
+ScaleFace is a simple method for uncertainty estimation on metric learning / open-set classification tasks. It allows a model to distinguish an easy sample from a harder one. For example, in the following image, the top row is high uncertainty images, and the bottom line is low uncertainty.
+![Confidence and uncertain faces](figures/visual.png)
+
+One of the standard architectures for the tasks is ArcFace; we propose to make scale a trainable parameter in the ArcFace loss.
+
+![ScaleFace architecture](figures/arch.png)
+
+Uncertainty measure allows for filtering out the bad samples. You can use it for higher security or to send them for inspection to a human in the loop. For example, how accuracy grows with rejecting parts of the test samples on the IJB-C dataset.
+
+
+### Paper
+
+You can read full paper here [https://arxiv.org/pdf/2209.01880.pdf](https://arxiv.org/pdf/2209.01880.pdf). For the citation 
+```bibtex
+@article{Kail2022ScaleFaceUD,
+  title={ScaleFace: Uncertainty-aware Deep Metric Learning},
+  author={Roma Kail and Kirill Fedyanin and Nikita Muravev and Alexey Zaytsev and Maxim Panov},
+  journal={ArXiv},
+  year={2022},
+  volume={abs/2209.01880}
+}
+```
+
+
+
+
 ### INSTALL
 
 For now just install the requirements in `requirements.txt`
