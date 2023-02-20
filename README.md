@@ -13,7 +13,9 @@ One of the standard architectures for the tasks is ArcFace; we propose to make s
 
 ![ScaleFace architecture](figures/arch.png)
 
-Uncertainty measure allows for filtering out the bad samples. You can use it for higher security or to send them for inspection to a human in the loop. For example, how accuracy grows with rejecting parts of the test samples on the IJB-C dataset.
+Uncertainty measure allows for filtering out the bad samples. You can use it for higher security or to send them for inspection to a human in the loop. For example, how accuracy grows with rejecting parts of the test samples on the IJB-C dataset (higher is better)
+
+![Benchmark on IJB-C](figures/benchmark.png)
 
 
 ### Paper
